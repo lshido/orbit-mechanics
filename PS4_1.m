@@ -53,6 +53,7 @@ fprintf('Scalar r times theta dot (r_times_theta_dot): %.7e[km/sec]\n', r_times_
 % Find flight path angle:
 FPA = atand( scalar_r_dot / r_times_theta_dot );
 fprintf('Flight Path Angle (FPA): %.7e[deg]\n', FPA);
+fprintf('Flight Path Angle in rads (FPA): %.7e[deg]\n', rad(FPA));
 
 % Find circular velocity:
 v_c = sqrt( Gm_earth / r_0 );
@@ -99,13 +100,13 @@ fprintf('Position in e_hat and p_hat @ t_f: %.7e[km]e_hat %.7e[km]p_hat\n', r_f_
 fprintf('\n')
 fprintf('Problem 1c:\n')
 % Find t_0 - t_p:
-t_0_from_t_p = ( EA_0 - (e * sind(EA_0))) / sqrt(Gm_earth / (a^3));
+t_0_from_t_p = ( deg2rad(EA_0) - (e * sind(EA_0))) / sqrt(Gm_earth / (a^3));
 fprintf('t_0 relative to t_p (sec): %.7e[sec]\n', t_0_from_t_p);
 fprintf('t_0 relative to t_p (hours): %.7e[hours]\n', t_0_from_t_p/3600);
 fprintf('t_0 relative to t_p (days): %.7e[days]\n', t_0_from_t_p/3600/24);
 
 % Find t_f - t_p:
-t_f_from_t_p = ( EA_f - (e * sind(EA_f))) / sqrt(Gm_earth / (a^3));
+t_f_from_t_p = ( deg2rad(EA_f) - (e * sind(EA_f))) / sqrt(Gm_earth / (a^3));
 fprintf('t_f relative to t_p (sec): %.7e[sec]\n', t_f_from_t_p);
 fprintf('t_f relative to t_p (hours): %.7e[hours]\n', t_f_from_t_p/3600);
 fprintf('t_f relative to t_p (days): %.7e[days]\n', t_f_from_t_p/3600/24);
@@ -123,3 +124,33 @@ fprintf('Delta True Anomaly (d_TA): %.7e[deg]\n', d_TA);
 % Find delta Eccentric anomaly:
 d_EA = EA_f - EA_0;
 fprintf('Delta Eccentric Anomaly (d_EA): %.7e[deg]\n', d_EA);
+
+% Problem 1d 
+% Plot the orbit
+b = a * sqrt( 1 - (e^2) );
+fprintf('Semi-major Axis (a): %.7e[km]\n', a);
+fprintf('Semi-minor Axis (b): %.7e[km]\n', b);
+
+% ellipse
+t = linspace(0, 2*pi);
+x = a * cos(t) - (a*e);
+y = b * sin(t);
+plot(x,y);
+hold on;
+
+% reference cirle
+x_c = a * cos(t) - (a*e);
+y_c = a * sin(t);
+plot(x_c,y_c, '--');
+
+% center lines
+xline( - (a*e));
+yline(0);
+
+axis equal;
+grid on;
+hold off;
+axis auto;
+title("Orbit of spacecraft around Earth")
+xlabel("Distance [km]")
+ylabel("Distance [km]")
