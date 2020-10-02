@@ -53,7 +53,7 @@ fprintf('Scalar r times theta dot (r_times_theta_dot): %.7e[km/sec]\n', r_times_
 % Find flight path angle:
 FPA = atand( scalar_r_dot / r_times_theta_dot );
 fprintf('Flight Path Angle (FPA): %.7e[deg]\n', FPA);
-fprintf('Flight Path Angle in rads (FPA): %.7e[deg]\n', rad(FPA));
+fprintf('Flight Path Angle in rads (FPA): %.7e[deg]\n', deg2rad(FPA));
 
 % Find circular velocity:
 v_c = sqrt( Gm_earth / r_0 );
