@@ -121,3 +121,81 @@ fprintf("Difference in True Anomaly: %.4e rad\n", deg2rad(d_TA));
 d_EA = solved_EA_new - EA;
 fprintf("Difference in Eccentric Anomaly: %.4e rad\n", d_EA);
 fprintf("Difference in Eccentric Anomaly: %.4e deg\n", rad2deg(d_EA));
+
+%solve f and g
+f = 1 - (r_new/p*(1 - cosd(d_TA)));
+g = r_new*r_1/sqrt(Gm_earth*p)*sind(d_TA);
+f_dot = ((dot(r_inertial, v_inertial)/(p*r_1))*(1-cosd(d_TA))) - ((1/r_1)*sqrt(Gm_earth/p)*sind(d_TA));
+g_dot = 1-((r_1/p)*(1-cosd(d_TA)));
+fprintf("f: %.4e rad\n", f);
+fprintf("g: %.4e sec\n", g);
+fprintf("f_dot: %.4e 1/sec\n", f_dot);
+fprintf("g_dot: %.4e rad \n", g_dot);
+
+% solve f and g using EA
+f_EA = 1-((a/r_1)*(1-cos(d_EA)));
+g_EA = (d_t) - sqrt((a^3)/Gm_earth)*(d_EA - sin(d_EA));
+f_dot_EA = -sqrt(Gm_earth*a)/(r_new*r_1)*sin(d_EA);
+g_dot_EA = 1-(a/r_new)*(1-cos(d_EA));
+fprintf("f_EA: %.4e rad\n", f_EA);
+fprintf("g_EA: %.4e sec\n", g_EA);
+fprintf("f_dot_EA: %.4e 1/sec\n", f_dot_EA);
+fprintf("g_dot_EA: %.4e rad \n", g_dot_EA);
+
+r_inertial_2 = f*r_inertial + g*v_inertial;
+v_inertial_2 = f_dot*r_inertial + g_dot*v_inertial;
+fprintf("r_inertial at t2: %.4e km x^ %.4e km y^ %.4e km z^\n", r_inertial_2(1), r_inertial_2(2), r_inertial_2(3));
+fprintf("v_inertial at t2: %.4e km/s x^ %.4e km/s y^ %.4e km/s z^\n", v_inertial_2(1), v_inertial_2(2), v_inertial_2(3));
+
+r_polar_1 = [ r_1 0 0];
+v_polar_1 = [-r_dot r_theta_dot 0 ];
+f_dot_polar = ((dot(r_polar_1, v_polar_1)/(p*r_1))*(1-cosd(d_TA))) - ((1/r_1)*sqrt(Gm_earth/p)*sind(d_TA));
+g_dot_polar = 1-((r_1/p)*(1-cosd(d_TA)));
+v_polar_2 = f_dot_polar*r_polar_1 + g_dot_polar*v_polar_1;
+fprintf("v_polar at t2: %.4e km/s r^ %.4e km/s theta^ %.4e km/s h^\n", v_polar_2(1), v_polar_2(2), v_polar_2(3));
+
+% calc r_dot 
+r_dot_2 = sqrt((v_new^2)-(p*Gm_earth/(r_new^2)));
+fprintf("r_dot_2 mag at t1: %.4e km/sec\n", r_dot_2);
+
+% calc r_theta_dot
+r_theta_dot_2 = sqrt(p*Gm_earth)/r_new;
+fprintf("r_theta_dot_2 mag at t1: %.4e km/sec\n", r_theta_dot_2);
+
+% calc FPA
+FPA_2 = atand(r_dot_2/r_theta_dot_2);
+fprintf("FPA at t2: %.4e deg\n", FPA_2);
+fprintf("FPA_GMAT at t2: %.4e deg\n", 90 - FPA_2);
+
+% Plot the orbit
+b = a * sqrt( 1 - (e^2) );
+fprintf('Semi-major Axis (a): %.7e[km]\n', a);
+fprintf('Semi-minor Axis (b): %.7e[km]\n', b);
+
+r_p = a * (1-e);
+fprintf('radius at periapsis: %.7e[km]\n', r_p);
+
+% ellipse
+t = linspace(0, 2*pi);
+x = a * cos(t) - (a*e);
+y = b * sin(t);
+plot(x,y);
+hold on;
+
+% reference cirle
+x_c = a * cos(t) - (a*e);
+y_c = a * sin(t);
+plot(x_c,y_c,'--');
+
+% center lines
+xline(0);
+yline(0);
+
+
+axis equal;
+grid on;
+hold off;
+axis auto;
+title("Orbit of spacecraft around Earth-Lillian Shido")
+xlabel("Distance [km]")
+ylabel("Distance [km]")
