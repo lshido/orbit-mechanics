@@ -149,13 +149,22 @@ title("Orbit of spacecraft around Mars-Lillian Shido")
 xlabel("Distance [km]")
 ylabel("Distance [km]")
 
+% iterative solver for EA - Lillian Shido
+M = 90; % [deg]
+e = 0.625;
+MA_error = 1;
+EA_guess = deg2rad(M);
+stepsize = 0.001;
 
-
-
-
-
-
-
-
-
-
+while MA_error > 0.001
+    if MA_error > 0
+        EA_guess = EA_guess - stepsize;
+    else
+        EA_guess = EA_guess + stepsize;
+    end
+    MA_calced = EA_guess - solved_e*sin(EA_guess);
+    MA_error = MA_calced - deg2rad(M);
+    fprintf("Guessed EA: %.4e rad    MA_error: %.4e\n", EA_guess, MA_error);
+end
+fprintf("Calculated EA: %.4e rad\n", EA_guess);
+fprintf("Calculated EA: %.4e degrees\n", rad2deg(EA_guess));
