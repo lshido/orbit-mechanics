@@ -113,10 +113,3 @@ period = 2*pi*sqrt((a^3)/Gm_earth);
 fprintf("period: %.4e sec\n", period);
 fprintf("period: %.4e hours\n", period/3600);
 fprintf("period: %.4e days\n", period/3600/24);
-
-
-
-
-
-
-
