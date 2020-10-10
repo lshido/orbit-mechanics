@@ -88,11 +88,31 @@ fprintf("r_dot_1: %.4e km/sec\n", r_dot_1);
 r_theta_dot_1 = dot(v_inertial_1, theta_unit);
 fprintf("r_theta_dot_1: %.4e km/sec\n", r_theta_dot_1);
 
-% FPA
+% FPA1
 FPA_1 = atand(r_dot_1/r_theta_dot_1);
 fprintf("FPA_1: %.4e degrees\n", FPA_1);
 
+% calc EA1
+EA_1 = 2*atan(sqrt((1-e)/(1+e))*tand(-TA_1/2));
+fprintf("Eccentric Anomaly at t1: %.4e rad\n", EA_1);
+fprintf("Eccentric Anomaly at t1: %.4e deg\n", rad2deg(EA_1));
 
+% calc MA1
+MA_1 = EA_1 - e*sin(EA_1);
+fprintf("Mean Anomaly at t1: %.4e rad\n", MA_1);
+fprintf("Mean Anomaly at t1: %.4e deg\n", rad2deg(MA_1));
+
+%calc time since periapsis
+t1_since_tp = MA_1*sqrt((a^3)/Gm_earth);
+fprintf("time since periapsis: %.4e sec\n", t1_since_tp);
+fprintf("time since periapsis: %.4e hours\n", t1_since_tp/3600);
+fprintf("time since periapsis: %.4e days\n", t1_since_tp/3600/24);
+
+%calc period
+period = 2*pi*sqrt((a^3)/Gm_earth);
+fprintf("period: %.4e sec\n", period);
+fprintf("period: %.4e hours\n", period/3600);
+fprintf("period: %.4e days\n", period/3600/24);
 
 
 
