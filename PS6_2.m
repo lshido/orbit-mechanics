@@ -71,7 +71,7 @@ p_new = h^2/Gm_earth;
 fprintf("semilatus rectum after maneuver: %.4e km\n", p_new);
 
 % calc new specific energy
-specific_energy_new = (v_new^2/2) - (Gm_earth/r);
+specific_energy_new = ((v_new^2)/2) - (Gm_earth/r);
 fprintf("specific energy after maneuver: %.4e km^2/sec^2\n", specific_energy_new);
 
 % calc new semi major axis
@@ -92,8 +92,13 @@ fprintf("period after maneuver: %.4e days\n", period_new/3600/24);
 rp_new = a_new*(1-e_new);
 fprintf("rp after maneuver: %.4e km\n", rp_new);
 
+% calc new TA
+TA_new = acosd((p_new/(r*e_new))-(1/e_new));
+fprintf("True Anomaly after maneuver: %.4e deg\n", TA_new);
+fprintf("True Anomaly after maneuver: %.4e rad\n", deg2rad(TA_new));
+
 % calc EA
-EA_new = 2*atan(sqrt((1-e_new)/(1+e_new))*tand(TA/2));
+EA_new = 2*atan(sqrt((1-e_new)/(1+e_new))*tand(TA_new/2));
 fprintf("Eccentric Anomaly: %.4e rad\n", EA_new);
 fprintf("Eccentric Anomaly: %.4e deg\n", rad2deg(EA_new));
 
@@ -108,5 +113,44 @@ fprintf("time since periapsis: %.4e sec\n", t_since_tp);
 fprintf("time since periapsis: %.4e hours\n", t_since_tp/3600);
 fprintf("time since periapsis: %.4e days\n", t_since_tp/3600/24);
 
+d_little_omega = -TA_new + TA;
+fprintf("shift in little omega: %.4e deg\n", d_little_omega);
 
+% plot the original orbit
+b = a * sqrt( 1 - (e^2) );
+fprintf('old Semi-major Axis (a): %.7e[km]\n', a);
+fprintf('old Semi-minor Axis (b): %.7e[km]\n', b);
+
+% original orbit
+t = linspace(0, 2*pi);
+x = a * cos(t) - (a*e);
+y = b * sin(t);
+plot(x,y);
+hold on;
+
+% new orbit
+b_new = a_new * sqrt( 1 - (e_new^2) );
+theta = deg2rad(d_little_omega);
+fprintf('new Semi-minor Axis (b_new): %.7e[km]\n', b_new);
+% use the general parametric equation for rotated ellipse
+x_new = a_new*cos(t)*cos(theta) - b_new*sin(t)*sin(theta) - (a_new*e_new*cos(theta));
+y_new = b_new*sin(t)*cos(theta) + a_new*cos(t)*sin(theta) - (a_new*e_new*sin(theta));
+plot(x_new,y_new, '-.');
+hold on;
+
+% center lines
+xline(0);
+yline(0);
+hold on;
+
+axis equal;
+grid on;
+hold off;
+xlim([-6e4 3e4])
+ylim([-5e4 3e4])
+legend('orbit before maneuver', 'orbit after maneuver')
+%axis auto;
+title("Orbit of spacecraft around Earth-Lillian Shido")
+xlabel("Distance [km]")
+ylabel("Distance [km]")
 
