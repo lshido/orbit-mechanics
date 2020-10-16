@@ -30,6 +30,17 @@ fprintf("FPA before maneuver: %.4e deg\n", gamma_old);
 v_vector_old = [v_old*sind(gamma_old) v_old*cosd(gamma_old)];
 fprintf("Velocity vector before maneuver: %.4e km/s %.4e km/s\n", v_vector_old(1), v_vector_old(2));
 
+% calc maneuver d_v_vector
+d_v_vector_vnb = [ d_v*cosd(alpha_angle) d_v*sind(alpha_angle) ];
+fprintf("Delta v vector in VNB: %.4e km/s V^ %.4e km/s N^\n", d_v_vector_vnb(1), d_v_vector_vnb(2));
+TM_vnb_to_polar = [ sind(gamma_old) cosd(gamma_old); cosd(gamma_old) -sind(gamma_old)];
+d_v_vector_polar = d_v_vector_vnb*TM_vnb_to_polar;
+fprintf("Delta v vector in polar: %.4e km/s r^ %.4e km/s theta^\n", d_v_vector_polar(1), d_v_vector_polar(2));
+TM_polar_to_inertial = [ cosd(TA) sind(TA); -sind(TA) cosd(TA)];
+d_v_vector_inertial = d_v_vector_polar*TM_polar_to_inertial;
+fprintf("Delta v vector in inertial: %.4e km/s e^ %.4e km/s p^\n", d_v_vector_inertial(1), d_v_vector_inertial(2));
+
+
 % express r and v in inertial frame
 TM_inertial = [ cosd(TA) sind(TA); -sind(TA) cosd(TA)];
 r_inertial = [r 0] * TM_inertial;
@@ -143,7 +154,7 @@ xline(0);
 yline(0);
 hold on;
 
-axis equal;
+daspect([1 1 1]);
 grid on;
 hold off;
 xlim([-6e4 3e4])
