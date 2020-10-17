@@ -94,7 +94,7 @@ gamma_new = acosd(sqrt(p_new*Gm_mars)/(r_new*v_new));
 fprintf("FPA after maneuver: %.4e deg\n", gamma_new);
 
 % calc delta v
-d_gamma = FPA;
+d_gamma = -FPA;
 d_v = sqrt((v_new^2) + (v_1^2) - (2*v_new*v_1*cosd(d_gamma)));
 fprintf("delta v magnitude: %.4e km/sec\n", d_v);
 
@@ -102,6 +102,12 @@ fprintf("delta v magnitude: %.4e km/sec\n", d_v);
 beta_angle = asind(v_new*sind(d_gamma)/d_v);
 fprintf("beta angle: %.4e deg\n", beta_angle);
 fprintf("alpha angle: %.4e deg\n", 180-beta_angle);
+
+% check beta and alpha using cosine rule
+beta_check = acosd((v_new^2 - v_1^2 - d_v^2)/(-2*v_1*d_v));
+alpha_check = 180-beta_check;
+fprintf("beta check: %.4e deg\n", beta_check);
+fprintf("alpha check: %.4e deg\n", alpha_check);
 
 % Plot the orbit
 b = solved_a * sqrt( 1 - (solved_e^2) );
