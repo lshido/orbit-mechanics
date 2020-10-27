@@ -108,7 +108,16 @@ f_dot = ((dot(r_inertial, v_inertial)/(p*r))*(1-cos(d_TA))) - ((1/r)*sqrt(Gm_mar
 g_dot = 1-((r/p)*(1-cos(d_TA)));
 fprintf("f: %.4e rad\n", f);
 fprintf("g: %.4e sec\n", g);
+fprintf("--------------------\n")
 fprintf("f_dot: %.4e 1/sec\n", f_dot);
+fprintf("dot product: %.4e\n", dot(r_inertial, v_inertial));
+fprintf("p: %.4e km\n", p);
+fprintf("r: %.4e km\n", r);
+fprintf("d_TA: %.4e deg\n", rad2deg(d_TA));
+fprintf("Gm_mars: %.4e km^3/s^2\n", Gm_mars);
+fprintf("r_inertial at M: %.4e km e^ %.4e km p^\n", r_inertial(1), r_inertial(2));
+fprintf("v_inertial at M: %.4e km/s e^ %.4e km/s p^\n", v_inertial(1), v_inertial(2));
+fprintf("----------------------\ns")
 fprintf("g_dot: %.4e rad \n", g_dot);
 
 % solve f and g using EA
