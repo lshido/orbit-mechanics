@@ -10,6 +10,7 @@ little_omega = 30; % deg
 
 fprintf("Semi major axis before maneuver: %.4e km\n", a_old);
 
+
 specific_energy_old = -Gm_mars/(2*a_old);
 fprintf("specific energy before maneuver: %.4e km^2/s^2\n", specific_energy_old);
 
@@ -172,7 +173,7 @@ y_old = inertial_vector_old(:,2);
 z_old = inertial_vector_old(:,3);
 
 %new_vector = [ e p h ]*TA_inplane_to_inertial
-plot3(x_old,y_old,z_old);
+plot3(x_old,y_old,z_old, 'k--');
 hold on;
 
 % new orbit
@@ -199,12 +200,71 @@ y_new = inertial_vector_new(:,2);
 z_new = inertial_vector_new(:,3);
 
 %new_vector = [ e p h ]*TA_inplane_to_inertial
-plot3(x_new,y_new,z_new);
+plot3(x_new,y_new,z_new, 'k-');
 hold on;
 
-% add h_hat
-plotv(h_unit_new, '--')
+% add mars
+plot3(0,0,0,'ro','MarkerSize',15);
+hold on;
 
+% add mars equator 
+equator_x = [-3e4 -3e4 2e4 2e4];
+equator_y = [1e4 -2.5e4 -2.5e4 1e4];
+equator_z = [0 0 0 0];
+s = fill3(equator_x, equator_y, equator_z, 'k');
+alpha(s, .3);
+hold on;
+
+% add line of nodes
+TA_n_to_inertial_line_of_nodes_old = [ cosd(big_omega) sind(big_omega) 0;...
+                     -sind(big_omega) cosd(big_omega) 0;...
+                     0 0 1 ];
+line_of_nodes = [1 0 0];
+line_of_nodes_old_inertial = line_of_nodes*TA_n_to_inertial_line_of_nodes_old;
+quiver3(-line_of_nodes_old_inertial(1), -line_of_nodes_old_inertial(2), -line_of_nodes_old_inertial(3), line_of_nodes_old_inertial(1), line_of_nodes_old_inertial(2), line_of_nodes_old_inertial(3), 0, 'k--');
+
+TA_n_to_inertial_line_of_nodes_new = [ cosd(big_omega_new) sind(big_omega_new) 0;...
+                     -sind(big_omega_new) cosd(big_omega_new) 0;...
+                     0 0 1 ];
+line_of_nodes_new_inertial = line_of_nodes*TA_n_to_inertial_line_of_nodes_new;
+quiver3(-line_of_nodes_new_inertial(1)*3e4, -line_of_nodes_new_inertial(2)*3e4, -line_of_nodes_new_inertial(3)*3e4, line_of_nodes_new_inertial(1)*5e4, line_of_nodes_new_inertial(2)*5e4, line_of_nodes_new_inertial(3)*5e4, 0, 'k-');
+
+% add rps
+theta_rp_old = little_omega;
+TA_inertial_to_rotational_rp_old = [ (cosd(big_omega)*cosd(theta_rp_old))-(sind(big_omega)*cosd(inc)*sind(theta_rp_old)) (-cosd(big_omega)*sind(theta_rp_old))-(sind(big_omega)*cosd(inc)*cosd(theta_rp_old)) sind(big_omega)*sind(inc);...
+                              (sind(big_omega)*cosd(theta_rp_old))+(cosd(big_omega)*cosd(inc)*sind(theta_rp_old)) (-sind(big_omega)*sind(theta_rp_old))+(cosd(big_omega)*cosd(inc)*cosd(theta_rp_old)) -cosd(big_omega)*sind(inc);...
+                              sind(inc)*sind(theta_rp_old) sind(inc)*cosd(theta_rp_old) cosd(inc) ];
+rp_old = a_old*(1-e_old);
+fprintf("rp_old: %.4e km\n", rp_old);
+rp_old_vector_rotational = [rp_old 0 0];
+rp_old_vector_inertial = rp_old_vector_rotational*transpose(TA_inertial_to_rotational_rp_old);
+fprintf("rp_old_vector_inertial: %.4e km x^ %.4e km y^ %.4e km z^\n", rp_old_vector_inertial);
+quiver3(0, 0, 0, rp_old_vector_inertial(1), rp_old_vector_inertial(2), rp_old_vector_inertial(3), 0, 'k--');
+
+theta_rp_new = little_omega_new;
+TA_inertial_to_rotational_new = [ (cosd(big_omega_new)*cosd(theta_rp_new))-(sind(big_omega_new)*cosd(inc_new)*sind(theta_rp_new)) (-cosd(big_omega_new)*sind(theta_rp_new))-(sind(big_omega_new)*cosd(inc_new)*cosd(theta_rp_new)) sind(big_omega_new)*sind(inc_new);...
+                              (sind(big_omega_new)*cosd(theta_rp_new))+(cosd(big_omega_new)*cosd(inc_new)*sind(theta_rp_new)) (-sind(big_omega_new)*sind(theta_rp_new))+(cosd(big_omega_new)*cosd(inc_new)*cosd(theta_rp_new)) -cosd(big_omega_new)*sind(inc_new);...
+                              sind(inc_new)*sind(theta_rp_new) sind(inc_new)*cosd(theta_rp_new) cosd(inc_new) ];
+rp_new = a_new*(1-e_new);
+rp_new_vector_rotational = [rp_new 0 0];
+rp_new_vector_inertial = rp_new_vector_rotational*transpose(TA_inertial_to_rotational_new);
+quiver3(0, 0, 0, rp_new_vector_inertial(1), rp_new_vector_inertial(2), rp_new_vector_inertial(3), 0, 'k-');
+fprintf("rp_new: %.4e km\n", rp_new);
+
+% add h_hat
+quiver3(0, 0, 0, h_unit_new(1), h_unit_new(2), h_unit_new(3), 1e4, 'k-');
+
+h_unit_old = cross(r_vector_inertial, v_vector_old_inertial)/(norm(cross(r_vector_inertial, v_vector_old_inertial)));
+quiver3(0, 0, 0, h_unit_old(1), h_unit_old(2), h_unit_old(3), 1e4, 'k--');
+
+% add maneuver location
+quiver3(0, 0, 0, r_vector_inertial(1), r_vector_inertial(2), r_vector_inertial(3), 0, 'k-.');
+plot3(r_vector_inertial(1), r_vector_inertial(2), r_vector_inertial(3), 'ko', 'MarkerSize', 10);
+
+% add inertial frame
+quiver3(0, 0, 0, 1, 0, 0, 2e4, 'k-', 'LineWidth', 2);
+quiver3(0, 0, 0, 0, 1, 0, 2e4, 'k-', 'LineWidth', 2);
+quiver3(0, 0, 0, 0, 0, 1, 2e4, 'k-', 'LineWidth', 2);
 daspect([1 1 1]);
 axis auto;
 % xlim([-3.5e4 1e4]);
@@ -213,8 +273,8 @@ axis auto;
 grid on;
 hold off;
 
-%legend("Before maneuver", "After maneuver")
-title("Orbit of spacecraft around Earth-Lillian Shido")
+legend("Old Orbit", "New Orbit")
+title("Orbit of spacecraft around Mars-Lillian Shido")
 xlabel("X [km]")
 ylabel("Y [km]")
 zlabel("Z [km]")

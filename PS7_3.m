@@ -59,7 +59,7 @@ psi_angle_2 = (180-inc)/2;
 fprintf("psi_angle_2: %.4e deg\n", psi_angle_2);
 beta_angle_2 = 180-psi_angle;
 fprintf("beta_angle_2: %.4e deg\n", beta_angle_2);
-delta_v_2_vector = [ delta_v_2*cosd(beta_angle) delta_v_2*sind(beta_angle) 0 ];
+delta_v_2_vector = [ delta_v_2*cosd(beta_angle_2) delta_v_2*sind(beta_angle_2) 0 ];
 fprintf("delta_v_2_vector: %.4e km/s V^ %.4e km/s N^ %.4e km/s B^\n", delta_v_2_vector);
 
 
@@ -87,3 +87,24 @@ fprintf("TOF_bielliptic in years: %.8e years\n", TOF_bielliptic/3600/24/365);
 % delta v cost savings
 delta_v_savings = delta_v - delta_v_total;
 fprintf("delta_v_savings: %.4e km/sec\n", delta_v_savings);
+
+% moon
+Gm_earth = 398600.4415;
+r_earth_moon = +384400;
+Gm_moon = 4902.8005821478;
+r_sc_moon = -(r_earth_moon+r_2);
+fprintf("r_sc_moon: %.4e km \n", r_sc_moon);
+fprintf("r_earth_moon: %.4e km \n", r_earth_moon);
+fprintf("r_2: %.4e km \n", r_2);
+
+% calculate dominant term for spacecraft relative to moon
+dominant = -(Gm_earth*r_2)/((abs(r_2))^3);
+fprintf('dominant = %.5e km/s^2\n\n', dominant);
+
+% due to moon
+direct_moon = Gm_moon*r_sc_moon/(abs(r_sc_moon))^3;
+indirect_moon = Gm_moon*r_earth_moon/(abs(r_earth_moon))^3;
+net_pert_moon = direct_moon - indirect_moon;
+fprintf('direct_moon = %.5e km/s^2\n', direct_moon);
+fprintf('indirect_moon = %.5e km/s^2\n', indirect_moon);
+fprintf('net_pert_moon = %.5e km/s^2\n\n', net_pert_moon);
