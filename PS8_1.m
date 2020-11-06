@@ -95,3 +95,95 @@ fprintf("delta_v_arr_change: %.4e km/s\n", delta_v_arr_change);
 % delta v total new = 
 delta_v_total_new = delta_v_total + delta_v_arr_change;
 fprintf("delta_v_total_new: %.4e km/s\n", delta_v_total_new);
+
+% Characteristics of hyperbola for jupiter flyby
+specific_energy_flyby = v_inf_arr^2/2;
+fprintf("specific_energy_flyby: %.4e km^2/s^2\n", specific_energy_flyby);
+
+a_hyp_flyby = Gm_jupiter/(2*specific_energy_flyby);
+fprintf("a_hyp_flyby: %.4e km\n", a_hyp_flyby);
+
+e_hyp_flyby = (rp_jupiter/a_hyp_flyby) + 1;
+fprintf("e_hyp_flyby: %.4e km\n", e_hyp_flyby);
+
+% calculate flyby angle
+turn_angle = asind(1/e_hyp_flyby);
+fprintf("turn_angle: %.4e deg\n", turn_angle);
+FBA = 2*asind(1/e_hyp_flyby);
+fprintf("FBA: %.4e deg\n", FBA);
+
+rp_and_a = rp_jupiter + a_hyp_flyby;
+fprintf("rp_and_a: %.4e km\n", rp_and_a);
+
+p_hyp_flyby = a_hyp_flyby*((e_hyp_flyby^2) - 1);
+fprintf("p_hyp_flyby: %.4e km\n", p_hyp_flyby);
+
+L = sqrt((rp_and_a^2) + (p_hyp_flyby^2));
+fprintf("L: %.4e km\n", L);
+
+kappa_angle = acosd(rp_and_a/L);
+fprintf("kappa_angle: %.4e deg\n", kappa_angle);
+kappa_angle_check = asind(p_hyp_flyby/L);
+fprintf("kappa_angle_check: %.4e deg\n", kappa_angle_check);
+
+FBA_check = 180 - (2*kappa_angle);
+fprintf("FBA_check: %.4e deg\n", FBA_check);
+
+b_hyp_flyby = a_hyp_flyby*sqrt((e_hyp_flyby^2)-1);
+fprintf("b_hyp_flyby: %.4e deg\n", b_hyp_flyby);
+kappa_angle_check_2 = asind(b_hyp_flyby/rp_and_a);
+fprintf("kappa_angle_check_2: %.4e deg\n", kappa_angle_check_2);
+
+FBA_check_2 = 180 - (2*kappa_angle_check_2);
+fprintf("FBA_check_2: %.4e deg\n", FBA_check_2);
+
+alpha_angle_flyby = (180-FBA)/2;
+fprintf("alpha_angle_flyby: %.4e deg\n", alpha_angle_flyby);
+
+delta_v_flyby = 2*v_inf_arr*cosd(alpha_angle_flyby);
+fprintf("delta_v_flyby: %.4e km/s\n", delta_v_flyby);
+
+v_plus_flyby = sqrt((va^2)+(delta_v_flyby^2)-2*va*delta_v_flyby*cosd(180-alpha_angle_flyby));
+fprintf("v_plus_flyby: %.4e km/s\n", v_plus_flyby);
+
+gamma_plus_flyby = asind((delta_v_flyby*sind(180-alpha_angle_flyby))/v_plus_flyby);
+fprintf("gamma_plus_flyby: %.4e km/s\n", gamma_plus_flyby);
+
+TA_plus_flyby = atand(((a_jupiter*v_plus_flyby^2/Gm_sun)*cosd(gamma_plus_flyby)*sind(gamma_plus_flyby))/((a_jupiter*v_plus_flyby^2/Gm_sun)*(cosd(gamma_plus_flyby))^2)+1);
+fprintf("TA_plus_flyby: %.4e km/s\n", TA_plus_flyby);
+
+specific_energy_flyby_new = ((v_plus_flyby^2)/2)-(Gm_sun/a_jupiter);
+fprintf("specific_energy_flyby_new: %.4e km/s\n", specific_energy_flyby_new);
+
+a_flyby_new = -Gm_sun/(2*specific_energy_flyby_new);
+fprintf("a_flyby_new: %.4e km\n", a_flyby_new);
+
+v_plus_flyby_rhat = v_plus_flyby*cosd(gamma_plus_flyby);
+fprintf("v_plus_flyby_rhat: %.4e km/s\n", v_plus_flyby_rhat);
+
+v_plus_flyby_thetahat = v_plus_flyby*sind(gamma_plus_flyby);
+fprintf("v_plus_flyby_thetahat: %.4e km/s\n", v_plus_flyby_thetahat);
+
+h = a_jupiter*v_plus_flyby_thetahat;
+fprintf("h: %.4e km^2/s\n", h);
+
+p_flyby_new = h^2/Gm_sun;
+fprintf("p_flyby_new: %.4e km\n", p_flyby_new);
+
+e_flyby_new = sqrt(1-(p_flyby_new/a_flyby_new));
+fprintf("e_flyby_new: %.4e\n", e_flyby_new);
+
+ra_flyby_new = a_flyby_new*(1+e_flyby_new);
+rp_flyby_new = a_flyby_new*(1-e_flyby_new);
+fprintf("ra_flyby_new: %.4e km\n", ra_flyby_new);
+fprintf("rp_flyby_new: %.4e km\n", rp_flyby_new);
+
+period_flyby_new = 2*pi*sqrt((a_flyby_new^3)/Gm_sun);
+fprintf("period_flyby_new: %.4e sec\n", period_flyby_new);
+fprintf("period_flyby_new: %.4e years\n", period_flyby_new/3600/24/365);
+
+delta_small_omega = -TA_plus_flyby + 180;
+fprintf("delta_small_omega: %.4e deg\n", delta_small_omega);
+
+specific_energy_flyby_old = ((va^2)/2) - (Gm_sun/a_jupiter);
+fprintf("specific_energy_flyby_old: %.4e km^2/s^2\n", specific_energy_flyby_old);
