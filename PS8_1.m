@@ -11,7 +11,7 @@ rp_earth = R_earth + 250;
 rp_jupiter = 2.8*R_jupiter;
 
 % circular orbit of Earth
-v_earth = sqrt(Gm_sun/a_Earth);
+v_earth = sqrt((Gm_sun+Gm_earth)/a_Earth);
 fprintf("v_earth: %.4e km/s\n", v_earth);
 v_earth_vector = [ v_earth 0 ];
 
@@ -42,7 +42,7 @@ delta_v_dep = sqrt((v_inf_dep^2) + (2*Gm_earth/rp_earth)) - v_parking_earth;
 fprintf("delta_v_dep: %.4e km/s\n", delta_v_dep);
 
 % circular orbit of Jupiter
-v_jupiter = sqrt(Gm_sun/a_jupiter);
+v_jupiter = sqrt((Gm_sun+Gm_jupiter)/a_jupiter);
 fprintf("v_jupiter: %.4e km/s\n", v_jupiter);
 v_jupiter_vector = [ v_jupiter 0 ];
 
@@ -149,7 +149,7 @@ fprintf("v_plus_flyby: %.4e km/s\n", v_plus_flyby);
 gamma_plus_flyby = asind((delta_v_flyby*sind(180-alpha_angle_flyby))/v_plus_flyby);
 fprintf("gamma_plus_flyby: %.4e km/s\n", gamma_plus_flyby);
 
-TA_plus_flyby = atand(((a_jupiter*v_plus_flyby^2/Gm_sun)*cosd(gamma_plus_flyby)*sind(gamma_plus_flyby))/((a_jupiter*v_plus_flyby^2/Gm_sun)*(cosd(gamma_plus_flyby))^2)+1);
+TA_plus_flyby = atand(((a_jupiter*(v_plus_flyby^2)/Gm_sun)*cosd(gamma_plus_flyby)*sind(gamma_plus_flyby))/(((a_jupiter*(v_plus_flyby^2)/Gm_sun)*(cosd(gamma_plus_flyby))^2)-1));
 fprintf("TA_plus_flyby: %.4e km/s\n", TA_plus_flyby);
 
 specific_energy_flyby_new = ((v_plus_flyby^2)/2)-(Gm_sun/a_jupiter);
@@ -158,16 +158,16 @@ fprintf("specific_energy_flyby_new: %.4e km/s\n", specific_energy_flyby_new);
 a_flyby_new = -Gm_sun/(2*specific_energy_flyby_new);
 fprintf("a_flyby_new: %.4e km\n", a_flyby_new);
 
-v_plus_flyby_rhat = v_plus_flyby*cosd(gamma_plus_flyby);
+v_plus_flyby_rhat = v_plus_flyby*sind(gamma_plus_flyby);
 fprintf("v_plus_flyby_rhat: %.4e km/s\n", v_plus_flyby_rhat);
 
-v_plus_flyby_thetahat = v_plus_flyby*sind(gamma_plus_flyby);
+v_plus_flyby_thetahat = v_plus_flyby*cosd(gamma_plus_flyby);
 fprintf("v_plus_flyby_thetahat: %.4e km/s\n", v_plus_flyby_thetahat);
 
 h = a_jupiter*v_plus_flyby_thetahat;
 fprintf("h: %.4e km^2/s\n", h);
 
-p_flyby_new = h^2/Gm_sun;
+p_flyby_new = (h^2)/Gm_sun;
 fprintf("p_flyby_new: %.4e km\n", p_flyby_new);
 
 e_flyby_new = sqrt(1-(p_flyby_new/a_flyby_new));
