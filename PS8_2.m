@@ -37,7 +37,7 @@ fprintf("delta_v_dep: %.4e km/s\n", delta_v_dep);
 
 % calculate delta_v_arr
 %v_moon_around_earth = sqrt((Gm_moon+Gm_earth)/a_earth_moon);
-v_moon_around_earth = sqrt((Gm_earth)/a_earth_moon);
+v_moon_around_earth = sqrt((Gm_earth+Gm_moon)/a_earth_moon);
 v_inf_arr = va_transfer - v_moon_around_earth;
 delta_v_arr = sqrt((v_inf_arr^2) + (2*(Gm_moon)/r_parking_moon)) - v_circular_moon;
 fprintf("v_moon_around_earth: %.4e km/s\n", v_moon_around_earth);
@@ -55,7 +55,7 @@ TA_apoapsis = 180;
 period_transfer = 2*pi*sqrt((a_transfer^3)/Gm_earth);
 TOF_earth_moon = 1/2*period_transfer;
 energy_transfer = -Gm_earth/(2*a_transfer);
-mean_motion = sqrt((Gm_earth+Gm_moon)/a_earth_moon^3);
+mean_motion = sqrt((Gm_earth)/a_earth_moon^3);
 phase_angle = 180 - rad2deg(mean_motion*TOF_earth_moon);
 fprintf("ra_transfer: %.4e km\n", ra_transfer);
 fprintf("rp_transfer: %.4e km\n", rp_transfer);

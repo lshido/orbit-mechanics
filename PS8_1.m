@@ -187,3 +187,48 @@ fprintf("delta_small_omega: %.4e deg\n", delta_small_omega);
 
 specific_energy_flyby_old = ((va^2)/2) - (Gm_sun/a_jupiter);
 fprintf("specific_energy_flyby_old: %.4e km^2/s^2\n", specific_energy_flyby_old);
+
+
+% Earth orbit
+plot_eph(0, a_earth, 0, 360);
+
+
+% uranus orbit
+a_uranus = 2870480873;
+plot_eph(0, a_uranus, 0, 360);
+
+% saturn orbit
+a_saturn = 930115906;
+plot_eph(0, a_saturn, 0, 360);
+
+% heliocentric orbit
+plot_eph(e_flyby_new, p_flyby_new, delta_small_omega, 360)
+
+% transfer orbit
+p_transfer = a_transfer*(1-(e_transfer)^2);
+plot_eph(e_transfer, p_transfer, 0, 360)
+
+% plot function
+function plot_eph(e,p,AOP, periodic_range, orbit_name)
+    %orbit distance
+    ta = [0:0.1:periodic_range];
+    rmag = p ./ (1+e*cosd(ta-AOP));
+    rplot(1,:) = rmag.*cosd(ta);
+    rplot(2,:) = rmag.*sind(ta);
+    
+    plot(0,0,'.','MarkerSize',25,'Color','k','HandleVisibility','off'), hold on %Primary Body
+    [~,indx] = min(abs(ta-AOP));
+    plot(rplot(1,indx),rplot(2,indx),'.','MarkerSize',7,'Color','k','HandleVisibility','off') %line of apsides
+    [~,indx] = min(abs(ta-(180+AOP)));
+    plot(rplot(1,indx),rplot(2,indx),'.','MarkerSize',7,'Color','k','HandleVisibility','off') %line of apsides
+    plot(rplot(1,:),rplot(2,:)); %entire orbit
+
+    title("Flyby of Spacecraft at Jupiter-Lillian Shido")
+    xlabel("Distance [km]")
+    ylabel("Distance [km]")
+    
+    % Keep zoom fixed
+    daspect([1 1 1]); %axis equal
+    h = zoom();
+    h.ActionPostCallback = @(o, e) daspect(e.Axes, [1 1 1]);
+end
