@@ -118,7 +118,7 @@ fprintf("delta_v_eq: %.4e km/s\n", delta_v_eq);
 
 % Problem 3d: New Heliocentric Characteristics:
 fprintf("----Problem 3d: New Heliocentric Characteristics-----------\n");
-v_new = sqrt((v_old^2)+(delta_v_eq^2)-(v_old*delta_v_eq*cosd(kappa_angle)));
+v_new = sqrt((v_old^2)+(delta_v_eq^2)-(2*v_old*delta_v_eq*cosd(kappa_angle)));
 FPA_new = asind((delta_v_eq*sind(kappa_angle))/v_new);
 TA_new = atand(((rp_transfer*(v_new^2)/Gm_sun)*cosd(FPA_new)*sind(FPA_new))/(((rp_transfer*(v_new^2)/Gm_sun)*(cosd(FPA_new))^2)-1));
 e_new = sqrt(((((rp_transfer*v_new^2)/Gm_sun)-1)^2)*((cosd(FPA_new))^2)+(sind(FPA_new))^2);

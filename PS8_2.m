@@ -37,7 +37,7 @@ fprintf("delta_v_dep: %.4e km/s\n", delta_v_dep);
 
 % calculate delta_v_arr
 %v_moon_around_earth = sqrt((Gm_moon+Gm_earth)/a_earth_moon);
-v_moon_around_earth = sqrt((Gm_earth+Gm_moon)/a_earth_moon);
+v_moon_around_earth = sqrt((Gm_earth)/a_earth_moon);
 v_inf_arr = va_transfer - v_moon_around_earth;
 delta_v_arr = sqrt((v_inf_arr^2) + (2*(Gm_moon)/r_parking_moon)) - v_circular_moon;
 fprintf("v_moon_around_earth: %.4e km/s\n", v_moon_around_earth);
