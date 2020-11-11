@@ -10,10 +10,12 @@ fprintf("-----------Problem 1a: Calculate dark-side arrival---------\n")
 rp_transfer = R_earth + 190;
 ra_transfer = 3.8440e5; % km
 va_transfer = 0.18666; % km/s
-v_inf_arr = 0.83789; % km/s
-FBA = 103.03; % deg
+v_inf_arr = 0.83165; % km/s
+FBA = 103.49; % deg
 fprintf("rp_transfer: %.4e km\n", rp_transfer);
 fprintf("ra_transfer: %.4e km\n", ra_transfer);
+fprintf("va_transfer: %.4e km\n", va_transfer);
+fprintf("v_inf_arr: %.4e km\n", v_inf_arr);
 fprintf("FBA: %.4e deg\n", FBA);
 
 % Problem 1a: Orbital Characteristics after Flyby
@@ -67,7 +69,8 @@ fprintf("delta_v_flyby_vector: %.4e km/s V^ %.4e km/s N^ %.4e km/s B^\n", delta_
 % Problem 1b: Free-return Transfer Characteristics
 fprintf("-----------Problem 1b: Free-return Transfer Characteristics---------\n")
 r_free_return = a_earth_moon;
-TA = 173.8;
+transfer_angle = 173.8;
+TA = transfer_angle;
 a_free_return = 2.3450e5;
 e_free_return = 1 - rp_transfer/a_free_return;
 p_free_return = a_free_return*(1-e_free_return^2);
@@ -77,7 +80,7 @@ ra_free_return = a_free_return*(1+e_free_return);
 energy_free_return = -Gm_earth/(2*a_free_return);
 EA_free_return = 2*atan(sqrt((1-e_free_return)/(1+e_free_return))*tand(TA/2));
 TOF_outbound = sqrt((a_free_return^3)/Gm_earth)*(EA_free_return - e_free_return*sin(EA_free_return));
-phi_angle = TA - rad2deg(sqrt(Gm_earth/(a_free_return^3))*TOF_outbound);
+phi_angle = transfer_angle - rad2deg(sqrt(Gm_earth/(a_free_return^3))*TOF_outbound);
 fprintf("a_free_return: %.4e\n", a_free_return);
 fprintf("p_free_return: %.4e\n", p_free_return);
 fprintf("e_free_return: %.4e\n", e_free_return);
@@ -102,14 +105,14 @@ v_free_return_old_rhat = sqrt((v_free_return_old_mag^2)-(p_free_return*Gm_earth/
 v_free_return_old_thetahat = sqrt(p_free_return*Gm_earth)/r_free_return;
 v_free_return_old_rhat_check = v_free_return_old_mag*sind(FPA_free_return_old);
 v_free_return_old_thetahat_check = v_free_return_old_mag*cosd(FPA_free_return_old);
-v_moon_mag = sqrt((Gm_earth+Gm_moon)/a_earth_moon);
+v_moon_mag = sqrt((Gm_earth)/a_earth_moon);
 v_free_return_old = [ v_free_return_old_rhat v_free_return_old_thetahat ];
 v_moon = [ 0 v_moon_mag ];
 v_inf_arr_free_return = v_free_return_old - v_moon;
 v_inf_arr_free_return_mag = norm(v_inf_arr_free_return);
 turn_angle = asind(v_free_return_old_mag*sind(FPA_free_return_old)/v_inf_arr_free_return_mag);
 FBA_free_return_hyp = 2*turn_angle;
-e_free_return_hyp = 1/(sind(FBA_free_return_hyp)/2);
+e_free_return_hyp = 1/(sind(FBA_free_return_hyp/2));
 energy_free_return_hyp = (v_inf_arr_free_return_mag^2)/2;
 a_free_return_hyp = Gm_moon/(2*energy_free_return_hyp);
 p_free_return_hyp = a_free_return_hyp*((e_free_return_hyp^2)-1);
