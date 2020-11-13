@@ -80,7 +80,8 @@ ra_free_return = a_free_return*(1+e_free_return);
 energy_free_return = -Gm_earth/(2*a_free_return);
 EA_free_return = 2*atan(sqrt((1-e_free_return)/(1+e_free_return))*tand(TA/2));
 TOF_outbound = sqrt((a_free_return^3)/Gm_earth)*(EA_free_return - e_free_return*sin(EA_free_return));
-phi_angle = transfer_angle - rad2deg(sqrt(Gm_earth/(a_free_return^3))*TOF_outbound);
+n = sqrt(Gm_earth/(a_earth_moon^3));
+phi_angle = transfer_angle - rad2deg(n*TOF_outbound);
 fprintf("a_free_return: %.4e\n", a_free_return);
 fprintf("p_free_return: %.4e\n", p_free_return);
 fprintf("e_free_return: %.4e\n", e_free_return);
@@ -96,6 +97,7 @@ fprintf("TOF_outbound: %.4e sec\n", TOF_outbound);
 fprintf("TOF_outbound: %.4e hours\n", TOF_outbound/3600);
 fprintf("TOF_outbound: %.4e days\n", TOF_outbound/3600/24);
 fprintf("phi_angle: %.4e deg\n", phi_angle);
+fprintf("n: %.4e \n", n);
 
 % Problem 1c: Free-return Lunar Arrival
 fprintf("-----------Problem 1c: Free-return Lunar Arrival---------\n")
@@ -179,18 +181,33 @@ fprintf("kappa_angle_new: %.4e deg\n", kappa_angle_new);
 fprintf("alpha_angle_new: %.4e deg\n", alpha_angle_new);
 
 
-% % Earth-centered view
-% % parking orbit
-% plot_eph(0, rp_transfer, 0, 0, 360);
-% % outbound
-% plot_eph(e_free_return, p_free_return, 6.2, 0, 180)
-% % return
-% plot_eph(e_free_return, p_free_return, -6.2, 180, 360)
-% % moon orbit
-% plot_eph(0, 384400,0, 0, 360)
+% Earth-centered view
+% parking orbit
+plot_eph(0, rp_transfer, 0, 0, 360);
+% outbound
+plot_eph(e_free_return, p_free_return, 0, 0, 173.8)
+% return
+plot_eph(e_free_return, p_free_return, -12.4, 173.8, 360)
 
-% luna-centered view
-plot_eph(e_free_return_hyp, p_free_return_hyp, 0, 0, 360)
+
+
+% hyperbola (using my old code)
+% t = linspace(deg2rad(-180), deg2rad(180));
+% x = a_free_return_hyp * -cosh(t) + (a_free_return_hyp+r_pass_free_return);
+% y = p_free_return_hyp * sinh(t);
+% plot(x,y);
+
+% hold on;
+% axis equal;
+% grid on;
+% hold off;
+% axis auto;
+% title("Lunar Free-Return Maneuver (Moon-centered View)-Lillian Shido")
+% xlabel("Distance [km]")
+% ylabel("Distance [km]")
+
+% luna-centered view (using colin's code)
+% plot_eph(e_free_return_hyp, p_free_return_hyp, 0, 0, 360)
 
 
 % plot function
@@ -203,9 +220,9 @@ function plot_eph(e,p,AOP, start_range, end_range)
     
     plot(0,0,'.','MarkerSize',10,'Color','k','HandleVisibility','off'), hold on %Primary Body
     [~,indx] = min(abs(ta-AOP));
-    plot(rplot(1,indx),rplot(2,indx),'.','MarkerSize',7,'Color','k','HandleVisibility','off') %line of apsides
+    plot(rplot(1,indx),rplot(2,indx),'.','MarkerSize',1,'Color','k','HandleVisibility','off') %line of apsides
     [~,indx] = min(abs(ta-(180+AOP)));
-    plot(rplot(1,indx),rplot(2,indx),'.','MarkerSize',7,'Color','k','HandleVisibility','off') %line of apsides
+    plot(rplot(1,indx),rplot(2,indx),'.','MarkerSize',1,'Color','k','HandleVisibility','off') %line of apsides
     plot(rplot(1,:),rplot(2,:)); %entire orbit
 
     title("Lunar Free-Return Maneuver (Moon-centered View)-Lillian Shido")
@@ -214,6 +231,6 @@ function plot_eph(e,p,AOP, start_range, end_range)
     
     % Keep zoom fixed
     daspect([1 1 1]); %axis equal
-    h = zoom();
-    h.ActionPostCallback = @(o, e) daspect(e.Axes, [1 1 1]);
+    % h = zoom();
+    % h.ActionPostCallback = @(o, e) daspect(e.Axes, [1 1 1]);
 end
