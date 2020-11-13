@@ -85,7 +85,27 @@ fprintf("FBA_hyp: %.4e deg\n", FBA_hyp);
 
 fprintf("-----------Problem 3d: Compute post-encounter---------\n")
 delta_v_eq_mag = 2*v_inf_arr_mag*sind(FBA_hyp/2);
+nu_angle = FPA_encounter_old_sc - FPA_encounter_old_remus;
+rho_angle = asind((v_encounter_old_mag_sc*sind(nu_angle))/v_inf_arr_mag);
+rho_angle_check = acosd(((v_encounter_old_mag_sc^2) - (v_encounter_old_mag_remus^2) - (v_inf_arr_mag^2))/(-2*v_encounter_old_mag_remus*v_inf_arr_mag));
+sigma_angle = FBA_hyp - rho_angle;
+v_encounter_new_mag_sc = sqrt((v_encounter_old_mag_remus^2)+(v_inf_arr_mag^2)-(2*v_encounter_old_mag_remus*v_inf_arr_mag*cosd(sigma_angle)));
+kappa_angle = asind((v_inf_arr_mag*sind(sigma_angle))/v_encounter_new_mag_sc);
+kappa_angle_check = acosd(((v_inf_arr_mag^2) - (v_encounter_new_mag_sc^2) - (v_encounter_old_mag_remus^2))/(-2*v_encounter_new_mag_sc*v_encounter_old_mag_remus));
+FPA_encounter_new_sc = kappa_angle - FPA_encounter_old_remus;
+TA_encounter_new_sc = atand(((r_encounter*(v_encounter_new_mag_sc^2)/Gm_jupiter)*cosd(FPA_encounter_new_sc)*sind(FPA_encounter_new_sc))/(((r_encounter*(v_encounter_new_mag_sc^2)/Gm_jupiter)*(cosd(FPA_encounter_new_sc))^2)-1));
+
 fprintf("delta_v_eq_mag: %.4e km/s\n", delta_v_eq_mag);
+fprintf("nu_angle: %.4e deg\n", nu_angle);
+fprintf("rho_angle: %.4e deg\n", rho_angle);
+fprintf("rho_angle_check: %.4e deg\n", rho_angle_check);
+fprintf("sigma_angle: %.4e deg\n", sigma_angle);
+fprintf("v_encounter_new_mag_sc: %.4e km/s\n", v_encounter_new_mag_sc);
+fprintf("kappa_angle: %.4e deg\n", kappa_angle);
+fprintf("kappa_angle_check: %.4e deg\n", kappa_angle_check);
+fprintf("FPA_encounter_new_sc: %.4e deg\n", FPA_encounter_new_sc);
+fprintf("TA_encounter_new_sc: %.4e deg\n", TA_encounter_new_sc);
+
 
 
 
