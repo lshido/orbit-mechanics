@@ -154,7 +154,7 @@ function plot_eph(e,p,AOP, start_range, end_range)
     [~,indx] = min(abs(ta-AOP));
     plot(rplot(1,indx),rplot(2,indx),'.','MarkerSize',7,'Color','k','HandleVisibility','off') %line of apsides
     [~,indx] = min(abs(ta-(180+AOP)));
-    plot(rplot(1,indx),rplot(2,indx),'.','MarkerSize',7,'Color','k','HandleVisibility','on') %line of apsides
+    plot(rplot(1,indx),rplot(2,indx),'.','MarkerSize',7,'Color','k','HandleVisibility','off') %line of apsides
     plot(rplot(1,:),rplot(2,:)); %entire orbit
 
     title("Non-tangential Venus Flyby (Heliocentric View)-Lillian Shido")

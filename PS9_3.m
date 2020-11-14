@@ -53,8 +53,7 @@ fprintf("FPA_encounter_old_sc: %.4e deg\n", FPA_encounter_old_sc);
 fprintf("FPA_encounter_old_sc_check: %.4e deg\n", FPA_encounter_old_sc_check);
 fprintf("v_encounter_old_sc: %.4e km/s r^ %.4e km/s theta^\n", v_encounter_old_sc);
 
-plot_eph(e_remus, p_remus, delta_small_omega_remus_spacecraft, 0, 360)
-plot_eph(e_spacecraft, p_spacecraft, 0, 0, 360)
+
 
 fprintf("-----------Problem 3b: Remus at Encounter---------\n")
 energy_encounter_remus = -Gm_jupiter/(2*a_remus);
@@ -92,8 +91,8 @@ sigma_angle = FBA_hyp - rho_angle;
 v_encounter_new_mag_sc = sqrt((v_encounter_old_mag_remus^2)+(v_inf_arr_mag^2)-(2*v_encounter_old_mag_remus*v_inf_arr_mag*cosd(sigma_angle)));
 kappa_angle = asind((v_inf_arr_mag*sind(sigma_angle))/v_encounter_new_mag_sc);
 kappa_angle_check = acosd(((v_inf_arr_mag^2) - (v_encounter_new_mag_sc^2) - (v_encounter_old_mag_remus^2))/(-2*v_encounter_new_mag_sc*v_encounter_old_mag_remus));
-FPA_encounter_new_sc = kappa_angle - FPA_encounter_old_remus;
-TA_encounter_new_sc = atand(((r_encounter*(v_encounter_new_mag_sc^2)/Gm_jupiter)*cosd(FPA_encounter_new_sc)*sind(FPA_encounter_new_sc))/(((r_encounter*(v_encounter_new_mag_sc^2)/Gm_jupiter)*(cosd(FPA_encounter_new_sc))^2)-1));
+FPA_encounter_new_sc = -(kappa_angle - FPA_encounter_old_remus);
+TA_encounter_new_sc = 180 + atand(((r_encounter*(v_encounter_new_mag_sc^2)/Gm_jupiter)*cosd(FPA_encounter_new_sc)*sind(FPA_encounter_new_sc))/(((r_encounter*(v_encounter_new_mag_sc^2)/Gm_jupiter)*(cosd(FPA_encounter_new_sc))^2)-1));
 
 fprintf("delta_v_eq_mag: %.4e km/s\n", delta_v_eq_mag);
 fprintf("nu_angle: %.4e deg\n", nu_angle);
@@ -106,8 +105,41 @@ fprintf("kappa_angle_check: %.4e deg\n", kappa_angle_check);
 fprintf("FPA_encounter_new_sc: %.4e deg\n", FPA_encounter_new_sc);
 fprintf("TA_encounter_new_sc: %.4e deg\n", TA_encounter_new_sc);
 
+fprintf("-----------Problem 3d: Compute new orbital characteristics---------\n")
+energy_encounter_sc_new = ((v_encounter_new_mag_sc^2)/2) - (Gm_jupiter/r_encounter);
+a_spacecraft_new = -Gm_jupiter/(2*energy_encounter_sc_new);
+e_spacecraft_new = sqrt(((((r_encounter*v_encounter_new_mag_sc^2)/Gm_jupiter)-1)^2)*((cosd(FPA_encounter_new_sc))^2)+(sind(FPA_encounter_new_sc))^2);
+p_spacecraft_new = a_spacecraft_new*(1-e_spacecraft_new^2);
+rp_spacecraft_new = a_spacecraft_new*(1-e_spacecraft_new);
+ra_spacecraft_new = a_spacecraft_new*(1+e_spacecraft_new);
+period_spacecraft_new = 2*pi*sqrt((a_spacecraft_new^3)/Gm_jupiter);
+delta_small_omega_spacecraft_only = -TA_encounter_new_sc + TA_spacecraft;
+epsilon_angle = asind((v_encounter_new_mag_sc*sind(nu_angle+kappa_angle))/delta_v_eq_mag);
+epsilon_angle_check = acosd(((v_encounter_new_mag_sc^2) - (v_encounter_old_mag_sc^2) - (delta_v_eq_mag^2))/(-2*v_encounter_old_mag_sc*delta_v_eq_mag));
+alpha_angle_new = -(180 - epsilon_angle);
+delta_v_eq_vnb = [ delta_v_eq_mag*cosd(alpha_angle_new) delta_v_eq_mag*sind(alpha_angle_new) ];
 
+fprintf("energy_encounter_sc_new: %.4e km^2/s^2\n", energy_encounter_sc_new);
+fprintf("a_spacecraft_new: %.4e km\n", a_spacecraft_new);
+fprintf("e_spacecraft_new: %.4e\n", e_spacecraft_new);
+fprintf("rp_spacecraft_new: %.4e km\n", rp_spacecraft_new);
+fprintf("ra_spacecraft_new: %.4e km\n", ra_spacecraft_new);
+fprintf("period_spacecraft_new: %.4e sec\n", period_spacecraft_new);
+fprintf("period_spacecraft_new: %.4e days\n", period_spacecraft_new/3600/24);
+fprintf("period_spacecraft_new: %.4e years\n", period_spacecraft_new/3600/24/365);
+fprintf("delta_small_omega_spacecraft_only: %.4e deg\n", delta_small_omega_spacecraft_only);
+fprintf("epsilon_angle: %.4e deg\n", epsilon_angle);
+fprintf("epsilon_angle_check: %.4e deg\n", epsilon_angle_check);
+fprintf("alpha_angle_new: %.4e deg\n", alpha_angle_new);
+fprintf("delta_v_eq_vnb: %.4e km/s V^ %.4e km/s B^\n", delta_v_eq_vnb);
 
+% plot_eph(e_remus, p_remus, 0, 0, 360)
+% plot_eph(e_spacecraft, p_spacecraft, -delta_small_omega_remus_spacecraft, 0, 360)
+% plot_eph(e_spacecraft_new, p_spacecraft_new, -delta_small_omega_remus_spacecraft + delta_small_omega_spacecraft_only, 0,360)
+
+% hyperbolic remus-centered view
+p_hyp = a_hyp*((e_hyp^2)-1);
+plot_eph(e_hyp, -p_hyp, 0, 0, 360)
 
 % plot function
 function plot_eph(e,p,AOP, start_range, end_range)
@@ -124,7 +156,7 @@ function plot_eph(e,p,AOP, start_range, end_range)
     plot(rplot(1,indx),rplot(2,indx),'.','MarkerSize',7,'Color','k','HandleVisibility','off') %line of apsides
     plot(rplot(1,:),rplot(2,:)); %entire orbit
 
-    title("Lunar Free-Return Maneuver (Moon-centered View)-Lillian Shido")
+    title("Juno Orbit around Remus(Remus-centered view)-Lillian Shido")
     xlabel("Distance [km]")
     ylabel("Distance [km]")
     
