@@ -55,14 +55,29 @@ fprintf("a_guess: %.4e km,", a_guess);
 fprintf("TOF_error: %.4e\n", TOF_error);
 
 fprintf("-------Problem 1a: Calculate 'p's----------\n")
-p_plus = (4*a_guess*(s-r1)*(s-r2))/c^2 * (sin((alpha_guess + beta_guess)/2))^2;
-p_minus = (4*a_guess*(s-r1)*(s-r2))/c^2 * (sin((alpha_guess - beta_guess)/2))^2;
+p_plus = ((4*a_guess*(s-r1)*(s-r2))/c^2) * (sin((alpha_guess + beta_guess)/2))^2;
+p_minus = ((4*a_guess*(s-r1)*(s-r2))/c^2) * (sin((alpha_guess - beta_guess)/2))^2;
 p = p_plus;
 e = sqrt(1- (p/a_guess));
+energy = -mu_mars/(2*a_guess);
+fprintf("energy: %.4e km^2/s^2\n", energy);
 fprintf("p_plus: %.4e km\n", p_plus);
 fprintf("p_minus: %.4e km\n", p_minus);
 fprintf("p: %.4e km\n", p);
 fprintf("e: %.4e\n", e);
+
+fprintf("-------Problem 1a: Calculate velocities-----------\n")
+v_dep = sqrt(2*(energy + (mu_mars/r1)));
+v_arr = sqrt(2*(energy + (mu_mars/r2)));
+fprintf("v_dep: %.4e km/s\n", v_dep);
+fprintf("v_arr: %.4e km/s\n", v_arr);
+
+fprintf("-------Problem 1a: Calculate true anomalies-----------\n")
+theta_star_dep = acosd((p-r1)/(r1*e));
+theta_star_arr = acosd((p-r2)/(r2*e));
+fprintf("theta_star_dep: %.4e deg\n", theta_star_dep);
+fprintf("theta_star_arr: %.4e deg\n", theta_star_arr);
+
 
 
 
