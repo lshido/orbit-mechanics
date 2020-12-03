@@ -95,6 +95,33 @@ FPA_arr = acosd(sqrt(p*mu_mars)/(r2*v_arr));
 fprintf("FPA_dep: %.4e deg\n", FPA_dep);
 fprintf("FPA_arr: %.4e deg\n", FPA_arr);
 
+fprintf("-------Problem 1a: Calculate delta_v-----------\n")
+v1 = sqrt(mu_mars/r1);
+v2 = sqrt(mu_mars/r2);
+delta_v1 = sqrt((v1^2)+(v_dep^2)-(2*v1*v_dep*cosd(FPA_dep)));
+delta_v2 = sqrt((v2^2)+(v_arr^2)-(2*v2*v_arr*cosd(FPA_arr)));
+kappa_angle_1 = asind((v_dep*sind(FPA_dep))/delta_v1);
+kappa_angle_2 = asind((v2*sind(FPA_arr))/delta_v2);
+kappa_angle_1_check = acosd(((v_dep^2) - (delta_v1^2) - (v1^2))/(-2*v1*delta_v1));
+kappa_angle_2_check = acosd(((v2^2) - (v_arr^2) - (delta_v2^2))/(-2*v_arr*delta_v2));
+alpha_angle_1 = -(180 - kappa_angle_1_check);
+alpha_angle_2 = 180 - kappa_angle_2_check;
+delta_v1_vector = [ delta_v1*cosd(alpha_angle_1) delta_v1*sind(alpha_angle_1) ];
+delta_v2_vector = [ delta_v2*cosd(alpha_angle_2) delta_v2*sind(alpha_angle_2) ];
+fprintf("v1: %.4e km/s\n", v1);
+fprintf("v2: %.4e km/s\n", v2);
+fprintf("delta_v1: %.4e km/s\n", delta_v1);
+fprintf("delta_v2: %.4e km/s\n", delta_v2);
+fprintf("kappa_angle_1: %.4e deg\n", kappa_angle_1);
+fprintf("kappa_angle_1_check: %.4e deg\n", kappa_angle_1_check);
+fprintf("alpha_angle_1: %.4e deg\n", alpha_angle_1);
+fprintf("alpha_angle_2: %.4e deg\n", alpha_angle_2);
+fprintf("delta_v1_vector: %.4e V^ %.4e B^ km/s\n", delta_v1_vector);
+fprintf("delta_v2_vector: %.4e V^ %.4e B^ km/s\n", delta_v2_vector);
+fprintf("kappa_angle_2: %.4e deg\n", kappa_angle_2);
+fprintf("kappa_angle_2_check: %.4e deg\n", kappa_angle_2_check);
+
+
 
 
 
