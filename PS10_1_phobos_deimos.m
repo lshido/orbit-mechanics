@@ -108,6 +108,7 @@ alpha_angle_1 = -(180 - kappa_angle_1_check);
 alpha_angle_2 = 180 - kappa_angle_2_check;
 delta_v1_vector = [ delta_v1*cosd(alpha_angle_1) delta_v1*sind(alpha_angle_1) ];
 delta_v2_vector = [ delta_v2*cosd(alpha_angle_2) delta_v2*sind(alpha_angle_2) ];
+delta_v_total = delta_v1 + delta_v2;
 fprintf("v1: %.4e km/s\n", v1);
 fprintf("v2: %.4e km/s\n", v2);
 fprintf("delta_v1: %.4e km/s\n", delta_v1);
@@ -120,8 +121,21 @@ fprintf("delta_v1_vector: %.4e V^ %.4e B^ km/s\n", delta_v1_vector);
 fprintf("delta_v2_vector: %.4e V^ %.4e B^ km/s\n", delta_v2_vector);
 fprintf("kappa_angle_2: %.4e deg\n", kappa_angle_2);
 fprintf("kappa_angle_2_check: %.4e deg\n", kappa_angle_2_check);
+fprintf("delta_v_total: %.4e km/s\n", delta_v_total);
 
-
-
-
-
+fprintf("-------Problem 1a: Calculate phase angle-----------\n")
+n_deimos = sqrt(mu_mars/(a_deimos^3));
+n_phobos = sqrt(mu_mars/(a_phobos^3));
+phase_angle = TA - rad2deg(n_deimos*TOF_desired);
+t_synodic = 2*pi/(n_phobos - n_deimos);
+P_phobos = 2*pi/n_phobos;
+P_deimos = 2*pi/n_deimos;
+fprintf("n_deimos: %.4e 1/s\n", n_deimos);
+fprintf("phase_angle: %.4e deg\n", phase_angle);
+fprintf("n_phobos: %.4e 1/s\n", n_phobos);
+fprintf("t_synodic: %.4e s\n", t_synodic);
+fprintf("t_synodic: %.4e hours\n", t_synodic/3600);
+fprintf("P_phobos: %.4e s\n", P_phobos);
+fprintf("P_phobos: %.4e hours\n", P_phobos/3600);
+fprintf("P_deimos: %.4e s\n", P_deimos);
+fprintf("P_deimos: %.4e hours\n", P_deimos/3600);
