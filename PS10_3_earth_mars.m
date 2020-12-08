@@ -89,8 +89,98 @@ fprintf("theta_star_dep_2: %.4e deg\n", theta_star_dep_2);
 fprintf("theta_star_arr_1: %.4e deg\n", theta_star_arr_1);
 fprintf("theta_star_arr_2: %.4e deg\n", theta_star_arr_2);
 
-fprintf("-------Problem 23b: Calculate FPAs-----------\n")
+fprintf("-------Problem 3b: Calculate FPAs-----------\n")
 FPA_dep = acosd(sqrt(p*mu_sun)/(r1*v_dep));
 FPA_arr = acosd(sqrt(p*mu_sun)/(r2*v_arr));
 fprintf("FPA_dep: %.4e deg\n", FPA_dep);
 fprintf("FPA_arr: %.4e deg\n", FPA_arr);
+
+fprintf("-------Problem 3c: Calculate delta_v-----------\n")
+v1 = sqrt(mu_sun/r1);
+v2 = sqrt(mu_sun/r2);
+delta_v1 = sqrt((v1^2)+(v_dep^2)-(2*v1*v_dep*cosd(FPA_dep)));
+delta_v2 = sqrt((v2^2)+(v_arr^2)-(2*v2*v_arr*cosd(FPA_arr)));
+
+kappa_angle_1 = asind((v_dep*sind(FPA_dep))/delta_v1);
+kappa_angle_1_check = acosd(((v_dep^2) - (delta_v1^2) - (v1^2))/(-2*v1*delta_v1));
+alpha_angle_1 = -(180 - kappa_angle_1_check);
+delta_v1_vector = [ delta_v1*cosd(alpha_angle_1) delta_v1*sind(alpha_angle_1) ];
+kappa_angle_2 = asind((v2*sind(FPA_arr))/delta_v2);
+kappa_angle_2_check = acosd(((v2^2) - (v_arr^2) - (delta_v2^2))/(-2*v_arr*delta_v2));
+alpha_angle_2 = -(180 - kappa_angle_2_check);
+delta_v2_vector = [ delta_v2*cosd(alpha_angle_2) delta_v2*sind(alpha_angle_2) ];
+
+fprintf("v1: %.4e km/s\n", v1);
+fprintf("v2: %.4e km/s\n", v2);
+fprintf("delta_v1: %.4e km/s\n", delta_v1);
+fprintf("delta_v2: %.4e km/s\n", delta_v2);
+
+fprintf("kappa_angle_1: %.4e deg\n", kappa_angle_1);
+fprintf("kappa_angle_1_check: %.4e deg\n", kappa_angle_1_check);
+fprintf("alpha_angle_1: %.4e deg\n", alpha_angle_1);
+fprintf("delta_v1_vector: %.4e V^ %.4e B^ km/s\n", delta_v1_vector);
+fprintf("kappa_angle_2: %.4e deg\n", kappa_angle_2);
+fprintf("kappa_angle_2_check: %.4e deg\n", kappa_angle_2_check);
+fprintf("alpha_angle_2: %.4e deg\n", alpha_angle_2);
+fprintf("delta_v2_vector: %.4e V^ %.4e B^ km/s\n", delta_v2_vector);
+
+fprintf("-------Problem 2f: Consider Earth Local Field-----------\n")
+r_pass_earth = 1000 + R_earth;
+v_inf_earth = delta_v1;
+energy_hyp_earth = v_inf_earth^2/2;
+v_pass_earth = sqrt(2*(energy_hyp_earth + (mu_earth/r_pass_earth)));
+fprintf("energy_hyp_earth: %.4e km^2/s^2\n", energy_hyp_earth);
+fprintf("v_pass_earth: %.4e km/s\n", v_pass_earth);
+
+fprintf("-------Problem 2f: Consider Mars Local Field-----------\n")
+r_pass_mars = 500 + R_mars;
+v_arr_vector = [ v_arr 0 ];
+v_mars_vector = [ v2*cosd(FPA_arr) v2*sind(FPA_arr) ];
+v_inf_mars_vector = v_arr_vector - v_mars_vector;
+v_inf_mars = norm(v_inf_mars_vector);
+energy_hyp_mars = v_inf_mars^2/2;
+v_pass_mars = sqrt(2*(energy_hyp_mars + (mu_mars/r_pass_mars)));
+
+fprintf("v_arr_vector: %.4e V^ %.4e B^ km/s\n", v_arr_vector);
+fprintf("v_mars_vector: %.4e V^ %.4e B^ km/s\n", v_mars_vector);
+fprintf("v_inf_mars_vector: %.4e V^ %.4e B^ km/s\n", v_inf_mars_vector);
+fprintf("v_inf_mars: %.4e km/s\n", v_inf_mars);
+fprintf("energy_hyp_mars: %.4e km^2/s^2\n", energy_hyp_mars);
+fprintf("v_pass_mars: %.4e km/s\n", v_pass_mars);
+
+
+% plot earth's orbit
+p_earth = a_earth;
+plot_eph(0, p_earth, 0, 0, 360)
+
+% plot mars' orbit
+p_mars = a_mars;
+plot_eph(0, p_mars, 0, 0, 360)
+
+% plot transfer
+plot_eph(e, p, 0, -43.301, 78.699)
+
+% plot function
+function plot_eph(e,p,AOP, start_range, end_range)
+    %orbit distance
+    ta = [start_range:0.1:end_range];
+    rmag = p ./ (1+e*cosd(ta-AOP));
+    rplot(1,:) = rmag.*cosd(ta);
+    rplot(2,:) = rmag.*sind(ta);
+    
+    plot(0,0,'.','MarkerSize',10,'Color','k','HandleVisibility','off'), hold on %Primary Body
+    [~,indx] = min(abs(ta-AOP));
+    plot(rplot(1,indx),rplot(2,indx),'.','MarkerSize',7,'Color','k','HandleVisibility','off') %line of apsides
+    [~,indx] = min(abs(ta-(180+AOP)));
+    plot(rplot(1,indx),rplot(2,indx),'.','MarkerSize',7,'Color','k','HandleVisibility','off') %line of apsides
+    plot(rplot(1,:),rplot(2,:)); %entire orbit
+
+    title("Lambert Arc from Earth to Mars-Lillian Shido")
+    xlabel("Distance [km]")
+    ylabel("Distance [km]")
+    
+    % Keep zoom fixed
+    daspect([1 1 1]); %axis equal
+    h = zoom();
+    h.ActionPostCallback = @(o, e) daspect(e.Axes, [1 1 1]);
+end
