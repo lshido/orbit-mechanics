@@ -140,9 +140,17 @@ fprintf("delta_v2_vector: %.4e V^ %.4e B^ km/s\n", delta_v2_vector);
 
 fprintf("-------Problem 2f: Consider Earth Local Field-----------\n")
 r_pass_earth = 1000 + R_earth;
-v_inf_earth = delta_v1;
+v_earth_vector = [ v1 0 ];
+v_dep_vector = [ v_dep*cosd(FPA_dep) v_dep*sind(FPA_dep) ];
+v_inf_earth_vector = v_dep_vector - v_earth_vector;
+v_inf_earth = norm(v_inf_earth_vector);
+%v_inf_earth = delta_v1;
 energy_hyp_earth = v_inf_earth^2/2;
 v_pass_earth = sqrt(2*(energy_hyp_earth + (mu_earth/r_pass_earth)));
+fprintf("v_dep_vector: %.4e V^ %.4e B^ km/s\n", v_dep_vector);
+fprintf("v_earth_vector: %.4e V^ %.4e B^ km/s\n", v_earth_vector);
+fprintf("v_inf_earth_vector: %.4e V^ %.4e B^ km/s\n", v_inf_earth_vector);
+fprintf("v_inf_earth: %.4e km/s\n", v_inf_earth);
 fprintf("energy_hyp_earth: %.4e km/s\n", energy_hyp_earth);
 fprintf("v_pass_earth: %.4e km/s\n", v_pass_earth);
 
@@ -150,7 +158,7 @@ fprintf("v_pass_earth: %.4e km/s\n", v_pass_earth);
 fprintf("-------Problem 2f: Consider Mars Local Field-----------\n")
 r_pass_mars = 500 + R_mars;
 v_arr_vector = [ v_arr 0 ];
-v_mars_vector = [ v2*cosd(FPA_arr) v2*sind(FPA_arr) ];
+v_mars_vector = [ v2*cosd(-FPA_arr) v2*sind(-FPA_arr) ];
 v_inf_mars_vector = v_arr_vector - v_mars_vector;
 v_inf_mars = norm(v_inf_mars_vector);
 energy_hyp_mars = v_inf_mars^2/2;
