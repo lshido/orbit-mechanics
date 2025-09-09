@@ -1,9 +1,95 @@
 R_earth = 6378.1363; % [km]
 Gm_earth = 398600.4415;
-e = 0.6;
-p = 6 * R_earth;
-theta_star_0 = 90; % [deg]
+e = 0.85;
+a = 7.5 * R_earth;
 
+
+% Find semi-minor axis b:
+b = a*sqrt(1-e^2);
+fprintf('Semi-minor axis (b): %.7e[km]\n', b);
+
+% Find semi-latus rectum p:
+p = a / (1- (e^2) );
+fprintf('Semi-latus rectum (p): %.7e[km]\n', p);
+fprintf('p with respect to R_earth: %.7e\n', p/R_earth);
+
+% Find r at periapsis r_p:
+r_p = a * (1-e);
+fprintf('Radius at periapsis (r_p)): %.7e[km]\n', r_p);
+fprintf('With respect to R_earth: %.7e\n', r_p/R_earth);
+
+% Find r at apoapsis r_a:
+r_a = a * (1+e);
+fprintf('Radius at apoapsis (r_a)): %.7e[km]\n', r_a);
+fprintf('With respect to R_earth: %.7e\n', r_a/R_earth);
+
+% Find period P:
+period = 2 * pi * sqrt( (a^3)/(Gm_earth) );
+fprintf('Period (P): %.7e[sec]\n', period);
+fprintf('Period (P): %.7e[hr]\n', period/3600);
+
+% Find mean motion n
+n = sqrt(Gm_earth/(a^3));
+fprintf('Mean motion (n): %.7e[rad/s]\n', n);
+
+% Mean motion Check
+n_check = 2*pi/period;
+fprintf('Mean motion check (n): %.7e[rad/s]\n', n_check);
+
+% Create a table 
+TA = linspace(0, 360, 9); % Parameter true_anomaly from 0 to 2*pi with 20 points
+
+% Define equations
+EA = 2*atand(sqrt((1-e)/(1+e))*tand(TA/2));
+MA = deg2rad(EA) - e*sind(EA);
+
+% Create the Table
+my_table = table(TA', EA', MA', 'VariableNames', {'True_Anomaly', 'Eccentric_Anomaly', 'Mean_Anomaly'});
+disp(my_table);
+
+% Plot the table
+hFig1 = figure('Name', 'Anomalies')
+plot(TA, TA);
+hold on;
+% plot(TA, EA, '--');
+% hold on;
+plot(TA, MA, ':');
+
+legend()
+axis equal;
+grid on;
+hold off;
+axis auto;
+title("Relationship between True Anomaly, Eccentric Anomaly, and Mean Anomaly")
+xlabel("True Anomaly [deg]")
+ylabel("Angles [deg]")
+
+% ellipse
+t = linspace(0, 2*pi);
+x = a * cos(t) - (a*e);
+y = b * sin(t);
+
+hFig2 = figure('Name', 'Orbit');
+plot(x,y);
+hold on;
+
+% reference cirle
+x_c = a * cos(t) - (a*e);
+y_c = a * sin(t);
+plot(x_c,y_c, '--');
+
+% center lines
+xline( - (a*e));
+yline(0);
+
+axis equal;
+grid on;
+hold off;
+axis auto;
+title("Orbit of spacecraft around Earth")
+xlabel("Distance [km]")
+ylabel("Distance [km]")
+%{
 % 1(a)
 fprintf('Problem 1a:\n')
 % Find semi-major axis a:
@@ -154,3 +240,4 @@ axis auto;
 title("Orbit of spacecraft around Earth")
 xlabel("Distance [km]")
 ylabel("Distance [km]")
+%}
