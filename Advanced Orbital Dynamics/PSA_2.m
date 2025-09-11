@@ -39,6 +39,8 @@ fprintf('Mean motion check (n): %.7e[rad/s]\n', n_check);
 % Create a table 
 TA = linspace(0, 360, 9); % Parameter true_anomaly from 0 to 2*pi with 20 points
 
+% for a given True Anomaly, 
+
 % Define equations
 EA = 2*atand(sqrt((1-e)/(1+e))*tand(TA/2));
 MA = deg2rad(EA) - e*sind(EA);
