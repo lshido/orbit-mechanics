@@ -15,8 +15,8 @@
 
 R_earth = 6378.1363; % [km]
 Gm_earth = 398600.4415;
-e = 0.85;
-a = 7.5 * R_earth;
+e = 0.93;
+a = 20 * R_earth;
 
 % Find mean motion n
 mean_motion = sqrt(Gm_earth/(a^3));
@@ -41,14 +41,14 @@ for M = 0:1:360
             % calc True Anomaly
             TA = 2*(atan(sqrt((1+e)/(1-e))*tan(E_guess/2)));
             r = a*(1 - e*cos(E_guess));
-            all_results(end+1,:) = [time_since_periapsis time_since_periapsis/3600 M rad2deg(M_guess) rad2deg(E_guess) counter mod(rad2deg(TA), 360) r];
+            all_results(end+1,:) = [time_since_periapsis time_since_periapsis/3600 M rad2deg(M_guess) rad2deg(E_guess) counter mod(rad2deg(TA), 360) r/R_earth];
             break
         end
     end
 end
-t = array2table(all_results,'VariableNames',{'Time [sec]' 'Time [hours]' 'Target M [deg]', 'M_result [deg]', 'E [deg]', 'Iterations', 'True Anomaly [deg]', 'radius [km]'})
+t = array2table(all_results,'VariableNames',{'Time [sec]' 'Time [hours]' 'Target M [deg]', 'M_result [deg]', 'E [deg]', 'Iterations', 'True Anomaly [deg]', 'radius in R_earth [R_earth]'})
 
-fig1 = figure('Name', 'PS_A2_anomalies');
+fig1 = figure('Name', 'PS_A3_anomalies');
 subplot(3,1,1);
 ta_plot = plot(t, "Time [hours]", "True Anomaly [deg]");
 hold on;
@@ -64,28 +64,28 @@ yticks(0:45:360)
 
 %fig2 = figure('Name', 'PS_A4 radius');
 subplot(3,1,2); 
-r_ta_plot = plot(t, "True Anomaly [deg]", "radius [km]");
+r_ta_plot = plot(t, "True Anomaly [deg]", "radius in R_earth [R_earth]");
 hold on;
-r_e_plot = plot(t, "E [deg]", "radius [km]");
-r_m_plot = plot(t, "Target M [deg]", "radius [km]");
+r_e_plot = plot(t, "E [deg]", "radius in R_earth [R_earth]");
+r_m_plot = plot(t, "Target M [deg]", "radius in R_earth [R_earth]");
 r_e_plot.LineStyle = ":";
 r_m_plot.LineStyle = "--";
 legend
 hold off;
 title("Radius as a function of True Anomaly, E, and M")
-ylabel("Radius [km]")
+ylabel("radius in R_earth [R_earth]")
 xlim([0 360])
 xticks(0:30:360)
 xlabel("Angles [deg]")
 
 subplot(3,1,3); 
-r_plot = plot(t, "Time [hours]", "radius [km]");
+r_plot = plot(t, "Time [hours]", "radius in R_earth [R_earth]");
 hold on;
 hold off;
 title("Time history of Radius")
-ylabel("Radius [km]")
+ylabel("radius in R_earth [R_earth]")
 
-fig2 = figure('Name', 'PS_A2_anomalies');
+fig2 = figure('Name', 'PS_A3_anomalies');
 ta_plot = plot(t, "Time [hours]", "True Anomaly [deg]");
 hold on;
 e_plot = plot(t, "Time [hours]", "E [deg]");
@@ -99,7 +99,7 @@ ylabel("Angles [deg]")
 yticks(0:45:360)
 ylim([0 360])
 
-fig3 = figure('Name', 'compare radius and anomalies');
+fig3 = figure('Name', 'A3 compare radius and anomalies');
 subplot(2,1,1);
 ta_plot = plot(t, "Time [hours]", "True Anomaly [deg]");
 hold on;
@@ -114,8 +114,34 @@ ylabel("Angles [deg]")
 yticks(0:45:360)
 
 subplot(2,1,2); 
-r_plot = plot(t, "Time [hours]", "radius [km]");
+r_plot = plot(t, "Time [hours]", "radius in R_earth [R_earth]");
 hold on;
 hold off;
 title("Time history of Radius")
-ylabel("Radius [km]")
+ylabel("radius in R_earth [R_earth]")
+
+% plot the orbit
+b = a * sqrt( 1 - (e^2) );
+% ellipse
+t = linspace(0, 2*pi);
+x = a * cos(t) - (a*e);
+y = b * sin(t);
+plot(x,y);
+hold on;
+
+% reference cirle
+x_c = a * cos(t) - (a*e);
+y_c = a * sin(t);
+plot(x_c,y_c, '--');
+
+% center lines
+xline( - (a*e));
+yline(0);
+
+axis equal;
+grid on;
+hold off;
+axis auto;
+title("Orbit of spacecraft around Earth")
+xlabel("Distance [km]")
+ylabel("Distance [km]")
