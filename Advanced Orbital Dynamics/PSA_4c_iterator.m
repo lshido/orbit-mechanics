@@ -15,8 +15,7 @@
 
 R_earth = 6378.1363; % [km]
 Gm_earth = 398600.4415;
-e = 0.93;
-a = 20 * R_earth;
+e = 0.999;
 
 % Find mean motion n
 mean_motion = sqrt(Gm_earth/(a^3));
@@ -24,13 +23,15 @@ fprintf('Mean motion (n): %.7e[rad/s]\n', mean_motion);
 
 counter = 0;
 tolerance = 10e-12;
-all_results = zeros(0,8);
+results_i = zeros(0,4);
+results_ii = zeros(0,4);
+results_iii = zeros(0,4);
 
-for M = 0:1:360
+% M = 4 %[deg]
+for M = 0:0.75:360
     E_guess = deg2rad(M);
     while 1
         counter = counter + 1;
-        time_since_periapsis = deg2rad(M) / mean_motion;
         M_guess = E_guess - e*sin(E_guess);
         delta_M = deg2rad(M) - M_guess;
         delta_E = delta_M / (1 - e*cos(E_guess));
@@ -38,28 +39,25 @@ for M = 0:1:360
         if abs(delta_E) > tolerance
             continue
         else
-            % calc True Anomaly
-            TA = 2*(atan(sqrt((1+e)/(1-e))*tan(E_guess/2)));
-            r = a*(1 - e*cos(E_guess));
-            all_results(end+1,:) = [time_since_periapsis time_since_periapsis/3600 M rad2deg(M_guess) rad2deg(E_guess) counter mod(rad2deg(TA), 360) r/R_earth];
+            results_i(end+1,:) = [M rad2deg(M_guess) rad2deg(E_guess) counter];
             counter = 0;
             break
         end
     end
 end
-t = array2table(all_results,'VariableNames',{'Time [sec]' 'Time [hours]' 'Target M [deg]', 'M_result [deg]', 'E [deg]', 'Iterations', 'True Anomaly [deg]', 'radius in R_earth [R_earth]'})
 
-fig1 = figure('Name', 'PS_A3_anomalies');
-r_ta_plot = plot(t, "True Anomaly [deg]", "radius in R_earth [R_earth]");
+t1 = array2table(results_i,'VariableNames',{'Target M [deg]', 'M_result [deg]', 'E [deg]', 'Iterations'})
+
+fig1 = figure('Name', 'PS_A4_c');
+i_plot = plot(t1, "Target M [deg]", "E [deg]");
+i_plot.LineWidth = 2;
+fontsize(14, "points")
 hold on;
-r_e_plot = plot(t, "E [deg]", "radius in R_earth [R_earth]");
-r_m_plot = plot(t, "Target M [deg]", "radius in R_earth [R_earth]");
-r_e_plot.LineStyle = ":";
-r_m_plot.LineStyle = "--";
-legend
 hold off;
-title("Radius as a function of True Anomaly, E, and M")
-ylabel("radius in R_earth [R_earth]")
+title("E as a function of M (Lillian Shido, PSA\_4c\_iterator.m)")
+ylabel("Eccentric Anomaly [degrees]")
 xlim([0 360])
+ylim([0 360])
+yticks(0:30:360)
 xticks(0:30:360)
-xlabel("Angles [deg]")
+xlabel("Mean Anomaly M [degrees]")

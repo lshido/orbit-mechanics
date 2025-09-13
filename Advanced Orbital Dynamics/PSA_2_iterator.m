@@ -42,10 +42,12 @@ for M = 0:1:360
             TA = 2*(atan(sqrt((1+e)/(1-e))*tan(E_guess/2)));
             r = a*(1 - e*cos(E_guess));
             all_results(end+1,:) = [time_since_periapsis time_since_periapsis/3600 M rad2deg(M_guess) rad2deg(E_guess) counter mod(rad2deg(TA), 360) r];
+            counter = 0;
             break
         end
     end
 end
+% t = array2table(all_results,'VariableNames',{'Time [sec]' 'Time [hours]' 'Target M [deg]', 'M_result [deg]', 'E [deg]', 'Iterations', 'True Anomaly [deg]', 'radius [km]'})
 t = array2table(all_results,'VariableNames',{'Time [sec]' 'Time [hours]' 'Target M [deg]', 'M_result [deg]', 'E [deg]', 'Iterations', 'True Anomaly [deg]', 'radius [km]'})
 
 fig1 = figure('Name', 'PS_A2_anomalies');
