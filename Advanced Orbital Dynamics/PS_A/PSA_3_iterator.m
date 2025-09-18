@@ -47,7 +47,8 @@ for M = 0:1:360
         end
     end
 end
-t = array2table(all_results,'VariableNames',{'Time [sec]' 'Time [hours]' 'Target M [deg]', 'M_result [deg]', 'E [deg]', 'Iterations', 'True Anomaly [deg]', 'radius in R_earth [R_earth]'})
+t = array2table(all_results,'VariableNames',{'Time [sec]' 'Time [hours]' 'Target M [deg]', 'M_result [deg]', 'E [deg]', 'Iterations', 'True Anomaly [deg]', 'radius in R_earth [R_earth]'});
+disp(t)
 
 fig1 = figure('Name', 'PS_A3_anomalies');
 r_ta_plot = plot(t, "True Anomaly [deg]", "radius in R_earth [R_earth]");

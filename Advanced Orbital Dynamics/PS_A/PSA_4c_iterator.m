@@ -16,6 +16,7 @@
 R_earth = 6378.1363; % [km]
 Gm_earth = 398600.4415;
 e = 0.999;
+a = 20*R_earth;
 
 % Find mean motion n
 mean_motion = sqrt(Gm_earth/(a^3));
@@ -24,8 +25,7 @@ fprintf('Mean motion (n): %.7e[rad/s]\n', mean_motion);
 counter = 0;
 tolerance = 10e-12;
 results_i = zeros(0,4);
-results_ii = zeros(0,4);
-results_iii = zeros(0,4);
+n = 4;
 
 % M = 4 %[deg]
 for M = 0:0.75:360
@@ -46,7 +46,8 @@ for M = 0:0.75:360
     end
 end
 
-t1 = array2table(results_i,'VariableNames',{'Target M [deg]', 'M_result [deg]', 'E [deg]', 'Iterations'})
+t1 = array2table(results_i,'VariableNames',{'Target M [deg]', 'M_result [deg]', 'E [deg]', 'Iterations'});
+disp(t1)
 
 fig1 = figure('Name', 'PS_A4_c');
 i_plot = plot(t1, "Target M [deg]", "E [deg]");
