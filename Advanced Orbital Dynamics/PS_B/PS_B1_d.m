@@ -5,7 +5,7 @@ mu_Sun = 132712440017.99; % km^3/s^2
 mu_Jupiter = 126712767.8578; % km^3/s^2
 mu_comet = 0; % assume massless
 mu_asteroid = 0; % assume massless
-e = 0.15;
+e = 0.55;
 
 % Determine the mean motion of Jupiter
 mean_motion_Jupiter = sqrt((mu_Jupiter+mu_Sun)/a_Jupiter^3);
@@ -34,10 +34,9 @@ end
 t1 = array2table(results_theta, 'VariableNames', {'Fraction of Jupiter Period', 'Theta of Jupiter [deg]', 'Theta of Comet [deg]', 'Theta of Asteroid [deg]'});
 disp(t1)
 
-e = 0; % circle
 b_Jupiter = a_Jupiter; % a = b because circle
-b_comet = a_comet; % a = b because circle
-b_asteroid = a_asteroid; % a = b because circle
+b_comet = a_comet*sqrt(1-e^2);
+b_asteroid = a_asteroid*sqrt(1-e^2);
 
 % Equations for the Sun
 x_Sun = cos(0);
@@ -46,7 +45,7 @@ y_Sun = sin(0);
 %================PLOT THE INERTIAL FRAME==============================
 
 % The orbits of Asteroid A and Comet C in the inertial frame
-inertial_table = zeros(0,5);
+inertial_results = zeros(0,7);
 for i = 0:0.01:4
     t = i*Period_Jupiter;
     % Equations for Jupiter
@@ -80,7 +79,7 @@ for i = 0:0.25:1
     theta_asteroid = mean_motion_Asteroid*t;
     x_asteroid = a_asteroid * cos(theta_asteroid) - (a_asteroid*e);
     y_asteroid = b_asteroid * sin(theta_asteroid);
-    inertial_results_select(end+1,:) = [rad2deg(i*2*pi) x_Jupiter y_Jupiter x_comet y_comet asteroid_x asteroid_y];
+    inertial_results_select(end+1,:) = [rad2deg(i*2*pi) x_Jupiter y_Jupiter x_comet y_comet x_asteroid y_asteroid];
 end
 inertial_select = array2table(inertial_results_select, 'VariableNames', {'Orbit', 'Jupiter_X', 'Jupiter_Y', 'Comet_X', 'Comet_Y', 'Asteroid_X', 'Asteroid_Y'});
 disp(inertial_select)
@@ -90,12 +89,12 @@ fig1 = figure('Name', 'inertial orbits');
 sun = scatter(x_Sun, y_Sun, 'red', 'filled', 'SizeData', 200);
 hold on
 Jupiter_orbit = plot(inertial_table, 'Jupiter_X', 'Jupiter_Y');
-Comet_orbit = plot(inertial_table, "Comet X", "Comet Y");
-Asteroid_orbit = plot(inertial_table, "Asteroid X", "Asteroid Y");
+Comet_orbit = plot(inertial_table, "Comet_X", "Comet_Y");
+Asteroid_orbit = plot(inertial_table, "Asteroid_X", "Asteroid_Y");
 legend('Sun', 'Jupiter', 'Comet', 'Asteroid')
 title('Orbits of Jupiter, Asteroid A, and Comet C in the inertial frame')
-xlim([-10e8 10e8])
-ylim([-10e8 10e8])
+xlim([-1.2e9 1.2e9])
+ylim([-1.2e9 1.2e9])
 axis square
 hold off
 Jupiter_orbit.LineWidth = 2;
@@ -106,12 +105,12 @@ xlabel('Distance [km]')
 ylabel('Distance [km]')
 
 % Plot the 0, 0.25, 0.5 positions in the inertial frame
-fig1 = figure('Name', 'Positions');
+fig1 = figure('Name', 'inertial Positions');
 sun = scatter(x_Sun, y_Sun, 'red', 'filled', 'SizeData', 200);
 hold on
 Jupiter_orbit = plot(inertial_table, 'Jupiter_X', 'Jupiter_Y');
-Comet_orbit = plot(inertial_table, "Comet X", "Comet Y");
-Asteroid_orbit = plot(inertial_table, "Asteroid X", "Asteroid Y");
+Comet_orbit = plot(inertial_table, "Comet_X", "Comet_Y");
+Asteroid_orbit = plot(inertial_table, "Asteroid_X", "Asteroid_Y");
 legend_0 = scatter(inertial_select.Jupiter_X(1), inertial_select.Jupiter_Y(1), 'black', 'square', 'filled', 'SizeData', 100);
 scatter(inertial_select.Comet_X(1), inertial_select.Comet_Y(1), 'black', 'square', 'filled', 'SizeData', 100)
 scatter(inertial_select.Asteroid_X(1), inertial_select.Asteroid_Y(1), 'black', 'square', 'filled', 'SizeData', 100)
@@ -123,8 +122,8 @@ scatter(inertial_select.Comet_X(3), inertial_select.Comet_Y(3), 'black', 'diamon
 scatter(inertial_select.Asteroid_X(3), inertial_select.Asteroid_Y(3), 'black', 'diamond', 'filled', 'SizeData', 100)
 legend([sun, Jupiter_orbit, Comet_orbit, Asteroid_orbit, legend_0, legend_25, legend_5], {'Sun', 'Jupiter', 'Comet', 'Asteroid', 't = 0P_J','t = 0.25P_J', 't = 0.5P_J'})
 title('Locations of Jupiter, Asteroid A, and Comet C in the inertial frame at various times')
-% xlim([-10e8 10e8])
-% ylim([-10e8 10e8])
+xlim([-1.2e9 1.2e9])
+ylim([-1.2e9 1.2e9])
 axis square
 hold off
 Jupiter_orbit.LineWidth = 2;
@@ -135,12 +134,12 @@ xlabel('Distance [km]')
 ylabel('Distance [km]')
 
 % Plot 0.75 and 1 positions in inertial frame
-fig1 = figure('Name', 'Positions');
+fig1 = figure('Name', 'inertial Positions');
 sun = scatter(x_Sun, y_Sun, 'red', 'filled', 'SizeData', 200);
 hold on
 Jupiter_orbit = plot(inertial_table, 'Jupiter_X', 'Jupiter_Y');
-Comet_orbit = plot(inertial_table, "Comet X", "Comet Y");
-Asteroid_orbit = plot(inertial_table, "Asteroid X", "Asteroid Y");
+Comet_orbit = plot(inertial_table, "Comet_X", "Comet_Y");
+Asteroid_orbit = plot(inertial_table, "Asteroid_X", "Asteroid_Y");
 legend_75 = scatter(inertial_select.Jupiter_X(4), inertial_select.Jupiter_Y(4), 'black', 'square', 'filled', 'SizeData', 100);
 scatter(inertial_select.Comet_X(4), inertial_select.Comet_Y(4), 'black', 'square', 'filled', 'SizeData', 100)
 scatter(inertial_select.Asteroid_X(4), inertial_select.Asteroid_Y(4), 'black', 'square', 'filled', 'SizeData', 100)
@@ -149,8 +148,8 @@ scatter(inertial_select.Comet_X(5), inertial_select.Comet_Y(5), 'black', 'o', 'f
 scatter(inertial_select.Asteroid_X(5), inertial_select.Asteroid_Y(5), 'black', 'o', 'filled', 'SizeData', 100)
 legend([sun, Jupiter_orbit, Comet_orbit, Asteroid_orbit, legend_75, legend_1], {'Sun', 'Jupiter', 'Comet', 'Asteroid', 't = 0.75P_J','t = 1P_J'})
 title('Locations of Jupiter, Asteroid A, and Comet C in the inertial frame at various times')
-% xlim([-10e8 10e8])
-% ylim([-10e8 10e8])
+xlim([-1.2e9 1.2e9])
+ylim([-1.2e9 1.2e9])
 axis square
 hold off
 Jupiter_orbit.LineWidth = 2;
@@ -184,7 +183,7 @@ rotational_table = array2table(rotational_results, 'VariableNames', {'Orbit', 'C
 % disp(rotational_table)
 
 % Now, let's just get the positions when we're at 0, 0.25, 0.5 times Jupiter's period
-rotational_results_select = zeros(0,7)
+rotational_results_select = zeros(0,5)
 for i = 0:0.25:1
     t = i*Period_Jupiter;
     theta_comet = mean_motion_Comet*t;
@@ -196,7 +195,7 @@ for i = 0:0.25:1
     x_asteroid = a_asteroid * cos(theta_asteroid) - (a_asteroid*e);
     y_asteroid = b_asteroid * sin(theta_asteroid);
     asteroid_rotational = TM*[x_asteroid; y_asteroid];
-    rotational_results_select(end+1,:) = [rad2deg(i*2*pi) rad2deg(theta_comet) rad2deg(theta_asteroid) comet_rotational(1) comet_rotational(2) asteroid_rotational(1) asteroid_rotational(2)];
+    rotational_results_select(end+1,:) = [rad2deg(i*2*pi) comet_rotational(1) comet_rotational(2) asteroid_rotational(1) asteroid_rotational(2)];
 end
 rotational_select = array2table(rotational_results_select, 'VariableNames', {'Orbit', 'Comet_X', 'Comet_Y', 'Asteroid_X', 'Asteroid_Y'});
 disp(rotational_select)
@@ -206,12 +205,12 @@ fig1 = figure('Name', 'rotational orbits');
 sun = scatter(x_Sun, y_Sun, 'red', 'filled', 'SizeData', 200);
 hold on
 Jupiter_orbit = scatter(x_Jupiter,y_Jupiter);
-Comet_orbit = plot(inertial_table, "Comet X", "Comet Y");
-Asteroid_orbit = plot(inertial_table, "Asteroid X", "Asteroid Y");
+Comet_orbit = plot(rotational_table, "Comet_X", "Comet_Y");
+Asteroid_orbit = plot(rotational_table, "Asteroid_X", "Asteroid_Y");
 legend('Sun', 'Jupiter', 'Comet', 'Asteroid')
 title('Orbits of Asteroid A and Comet C relative to the rotating frame')
-xlim([-10e8 10e8])
-ylim([-10e8 10e8])
+xlim([-1.2e9 1.2e9])
+ylim([-1.2e9 1.2e9])
 axis square
 hold off
 Jupiter_orbit.LineWidth = 2;
@@ -222,23 +221,22 @@ xlabel('Distance [km]')
 ylabel('Distance [km]')
 
 % Plot 0, 0.25, and 0.5.
-fig1 = figure('Name', '0 and 0.25');
+fig1 = figure('Name', 'rotational positions');
 sun = scatter(x_Sun, y_Sun, 'red', 'filled', 'SizeData', 200);
 hold on
 Jupiter_orbit = scatter(x_Jupiter,y_Jupiter);
-Comet_orbit = plot(t2, "Comet X", "Comet Y");
-Asteroid_orbit = plot(t2, "Asteroid X", "Asteroid Y");
-legend_0 = scatter(t3.Comet_X(1), t3.Comet_Y(1), 'black', 'square', 'filled', 'SizeData', 100);
-scatter(t3.Asteroid_X(1), t3.Asteroid_Y(1), 'black', 'square', 'filled', 'SizeData', 100)
-legend_25 = scatter(t3.Comet_X(2), t3.Comet_Y(2), 'black', 'o', 'filled', 'SizeData', 100);
-scatter(t3.Asteroid_X(2), t3.Asteroid_Y(2), 'black', 'o', 'filled', 'SizeData', 100)
-legend_5 = scatter(t3.Comet_X(3), t3.Comet_Y(3), 'black', 'diamond', 'filled', 'SizeData', 100);
-scatter(t3.Asteroid_X(3), t3.Asteroid_Y(3), 'black', 'diamond', 'filled', 'SizeData', 100)
+Comet_orbit = plot(rotational_table, "Comet_X", "Comet_Y");
+Asteroid_orbit = plot(rotational_table, "Asteroid_X", "Asteroid_Y");
+legend_0 = scatter(rotational_select.Comet_X(1), rotational_select.Comet_Y(1), 'black', 'square', 'filled', 'SizeData', 100);
+scatter(rotational_select.Asteroid_X(1), rotational_select.Asteroid_Y(1), 'black', 'square', 'filled', 'SizeData', 100)
+legend_25 = scatter(rotational_select.Comet_X(2), rotational_select.Comet_Y(2), 'black', 'o', 'filled', 'SizeData', 100);
+scatter(rotational_select.Asteroid_X(2), rotational_select.Asteroid_Y(2), 'black', 'o', 'filled', 'SizeData', 100)
+legend_5 = scatter(rotational_select.Comet_X(3), rotational_select.Comet_Y(3), 'black', 'diamond', 'filled', 'SizeData', 100);
+scatter(rotational_select.Asteroid_X(3), rotational_select.Asteroid_Y(3), 'black', 'diamond', 'filled', 'SizeData', 100)
 legend([sun, Jupiter_orbit, Comet_orbit, Asteroid_orbit, legend_0, legend_25, legend_5], {'Sun', 'Jupiter', 'Comet', 'Asteroid', 't = 0P_J','t = 0.25P_J', 't = 0.5P_J'})
-% legend('Sun', 'Jupiter', 'Comet', 'Asteroid')
-title('Locations of Asteroid A and Comet C relative to the rotating frame')
-xlim([-10e8 10e8])
-ylim([-10e8 10e8])
+title('Orbits of Asteroid A and Comet C relative to the rotating frame')
+xlim([-1.2e9 1.2e9])
+ylim([-1.2e9 1.2e9])
 axis square
 hold off
 Jupiter_orbit.LineWidth = 2;
@@ -248,48 +246,26 @@ fontsize(14, 'points')
 xlabel('Distance [km]')
 ylabel('Distance [km]')
 
-
-% Try plotting 0.5 and 0.75 together
-% fig1 = figure('Name', '0.5 and 0.75');
-% scatter(x_Sun, y_Sun, 'red', 'filled', 'SizeData', 200)
-% hold on
-% Jupiter_orbit = plot(x_Jupiter,y_Jupiter);
-% Comet_orbit = plot(x_comet,y_comet);
-% Asteroid_orbit = plot(x_asteroid,y_asteroid);
-% legend_5 = scatter(x_Jupiter_2, y_Jupiter_2, 'black', 'diamond', 'filled', 'SizeData', 100);
-% scatter(x_comet_2, y_comet_2, 'black', 'diamond', 'filled', 'SizeData', 100)
-% scatter(x_asteroid_2, y_asteroid_2, 'black', 'diamond', 'filled', 'SizeData', 100)
-% legend_75 = scatter(x_Jupiter_3, y_Jupiter_3, 'black', 'o', 'filled', 'SizeData', 100);
-% scatter(x_comet_3, y_comet_3, 'black', 'o', 'filled', 'SizeData', 100)
-% scatter(x_asteroid_3, y_asteroid_3, 'black', 'o', 'filled', 'SizeData', 100)
-% legend([Jupiter_orbit, Comet_orbit, Asteroid_orbit, legend_5, legend_75], {'Jupiter', 'Comet', 'Asteroid', 't = 0.5P_J','t = 0.75P_J'})
-% title({'Locations of Jupiter, Asteroid A, and Comet C'; 'when t=0.5Period_{Jupiter} and t=0.75Period_{Jupiter}'})
-% axis square
-% hold off
-% Jupiter_orbit.LineWidth = 2;
-% Comet_orbit.LineWidth = 2;
-% Asteroid_orbit.LineWidth = 2;
-% fontsize(14, 'points')
-% xlabel('Distance [km]')
-% ylabel('Distance [km]')
-
-% % Plot 1
-% fig1 = figure('Name', '1');
-% scatter(x_Sun, y_Sun, 'red', 'filled', 'SizeData', 200)
-% hold on
-% Jupiter_orbit = plot(x_Jupiter,y_Jupiter);
-% Comet_orbit = plot(x_comet,y_comet);
-% Asteroid_orbit = plot(x_asteroid,y_asteroid);
-% for_legend = scatter(x_Jupiter_4, y_Jupiter_4, 'black', 'o', 'filled', 'SizeData', 100);
-% scatter(x_comet_4, y_comet_4, 'black', 'o', 'filled', 'SizeData', 100)
-% scatter(x_asteroid_4, y_asteroid_4, 'black', 'o', 'filled', 'SizeData', 100)
-% legend([Jupiter_orbit, Comet_orbit, Asteroid_orbit, for_legend], {'Jupiter', 'Comet', 'Asteroid', 't = 1P_J'})
-% title({'Locations of Jupiter, Asteroid A, and Comet C'; 'when t=1Period_{Jupiter}'})
-% axis square
-% hold off
-% Jupiter_orbit.LineWidth = 2;
-% Comet_orbit.LineWidth = 2;
-% Asteroid_orbit.LineWidth = 2;
-% fontsize(14, 'points')
-% xlabel('Distance [km]')
-% ylabel('Distance [km]')
+% Plot 0.75 and 1 in rotational frame.
+fig1 = figure('Name', 'rotational positions');
+sun = scatter(x_Sun, y_Sun, 'red', 'filled', 'SizeData', 200);
+hold on
+Jupiter_orbit = scatter(x_Jupiter,y_Jupiter);
+Comet_orbit = plot(rotational_table, "Comet_X", "Comet_Y");
+Asteroid_orbit = plot(rotational_table, "Asteroid_X", "Asteroid_Y");
+legend_75 = scatter(rotational_select.Comet_X(1), rotational_select.Comet_Y(1), 'black', 'square', 'filled', 'SizeData', 100);
+scatter(rotational_select.Asteroid_X(1), rotational_select.Asteroid_Y(1), 'black', 'square', 'filled', 'SizeData', 100)
+legend_1 = scatter(rotational_select.Comet_X(2), rotational_select.Comet_Y(2), 'black', 'o', 'filled', 'SizeData', 100);
+scatter(rotational_select.Asteroid_X(2), rotational_select.Asteroid_Y(2), 'black', 'o', 'filled', 'SizeData', 100)
+legend([sun, Jupiter_orbit, Comet_orbit, Asteroid_orbit, legend_75, legend_1], {'Sun', 'Jupiter', 'Comet', 'Asteroid', 't = 0.75P_J','t = 1P_J'})
+title('Locations of Asteroid A and Comet C relative to the rotating frame')
+xlim([-1.2e9 1.2e9])
+ylim([-1.2e9 1.2e9])
+axis square
+hold off
+Jupiter_orbit.LineWidth = 2;
+Comet_orbit.LineWidth = 2;
+Asteroid_orbit.LineWidth = 2;
+fontsize(14, 'points')
+xlabel('Distance [km]')
+ylabel('Distance [km]')
