@@ -15,7 +15,7 @@ mean_motion_Asteroid = (3/2)*mean_motion_Jupiter;
 % Determine the mean motion of comet C.
 mean_motion_Comet = (3/4)*mean_motion_Jupiter;
 
-a_comet = ((mu_Sun+mu_comet)/mean_motion_Comet^2)^(1/3);
+a_comet = -((mu_Sun+mu_comet)/mean_motion_Comet^2)^(1/3);
 a_asteroid = ((mu_Sun+mu_asteroid)/mean_motion_Asteroid^2)^(1/3);
 
 % Calculate the theta value for the asteroid and comet based on Jupiter's position
