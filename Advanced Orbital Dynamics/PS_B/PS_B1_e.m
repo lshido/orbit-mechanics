@@ -159,7 +159,7 @@ fontsize(14, 'points')
 xlabel('Distance [km]')
 ylabel('Distance [km]')
 
-%=================PLOT THE ROTATIONAL FRAME===============================
+%=================PLOT THE ROTATING FRAME===============================
 % Equations for Jupiter (Jupiter is now stationary in the rotating frame)
 x_Jupiter = a_Jupiter*cos(0);
 y_Jupiter = b_Jupiter*sin(0);
