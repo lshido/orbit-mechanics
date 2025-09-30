@@ -1,0 +1,131 @@
+% Matlab Code for Numerical Integration
+% Problem B4 part (d)
+% Author: Lillian Shido
+% Date: September 27, 2025
+
+% Use an integrator to solve the rotating frame EOMs
+clear all
+% Initial conditions
+r0_vector = [-0.270 -0.420];
+v0_vector = [0.300 -1.000];
+w0 = [r0_vector(1);r0_vector(2);v0_vector(1);v0_vector(2)];
+
+% Gravitational Parameters [km^3/s^2]
+mu_Earth = 398600.4415;
+mu_Moon = 4902.8005821478;
+
+% mu = mu_Moon/(mu_Earth + mu_Moon);
+mu = 1.2151e-02;
+
+% Characteristic Length [km]
+a_Moon = 384400; % around Earth
+l_char = a_Moon;
+
+% Calculate characteristic time
+t_char = sqrt(l_char^3/(mu_Earth+mu_Moon));
+fprintf("characteristic time: %d sec\n", t_char)
+
+% Calculate dimensional time
+mean_motion = sqrt((mu_Earth+mu_Moon)/(a_Moon)^3);
+fprintf("Mean Motion: %d rad/sec\n", mean_motion)
+Period = 2*pi/mean_motion;
+fprintf("Period: %d sec\n", Period)
+fprintf("Period: %d days\n", Period/3600/24)
+% For 4 revolutions, multiply period by 4
+time_dim = Period*4;
+fprintf("Dimensional Time: %d sec\n", time_dim)
+fprintf("Dimensional Time: %d months\n", time_dim/3600/24/30)
+% For non-dimensional time divide time_dim by characteristic time
+time_nondim = time_dim/t_char;
+fprintf("Non-dimensional Time: %d rad\n", time_nondim)
+fprintf("Non-dimensional Time: %d 2pi\n", time_nondim/(2*pi))
+time_nondim_check = time_dim*mean_motion;
+fprintf("check Non-dimensional Time: %d rad\n", time_nondim_check)
+
+% Location of L1
+x_L1 = 8.3692e-01;
+y_L1 = 0;
+% Location of L2
+x_L2 = 1.1557e+00;
+y_L2 = 0;
+
+% tspan should be calculated with non-dim time
+t_final = 8*pi;
+tspan = [0 t_final];
+
+% Setting up the ODE
+ode = @(t,w) [...
+w(3);...
+w(4);...
+2*w(4) + w(1) - (1 - mu) * (w(1) + mu) / ((w(1) + mu)^2 + w(2)^2)^(3/2)...
+- mu * (w(1) - 1 + mu) / ((w(1) - 1 + mu)^2 + w(2)^2)^(3/2);...
+-2*w(3) + w(2) - (1 - mu) * w(2) / ((w(1) + mu)^2 + w(2)^2)^(3/2) - mu * w(2)/((w(1) - 1 + mu)^2 + w(2)^2)^(3/2)...
+];
+options = odeset('RelTol',1e-8,'AbsTol', 1e-10);
+[t,w] = ode45(ode, tspan, w0, options); 
+
+% Retrieving the results from the integrator
+% Position
+x = w(:,1);
+y = w(:,2);
+% Velocity
+v_x = w(:,3);
+v_y = w(:,4);
+
+% Calculate the Jacobi Constant C
+d = sqrt((x+mu).^2 + y.^2);
+r = sqrt((x-1+mu).^2 + y.^2);
+x_y_sq = (x.^2+y.^2)./2;
+term_1 = (1-mu)./d;
+term_2 = mu./r;
+pseudo_U = term_1 + term_2 + x_y_sq;
+v_squared = w(:,3).^2 + w(:,4).^2;
+C = 2*pseudo_U - v_squared;
+
+% Position of primary bodies
+x_Earth = -mu;
+x_Moon = 1-mu;
+
+% Plot the Spacecraft orbit
+fig1 = figure('Name','Orbit');
+sc = plot(x,y);
+hold on
+earth = scatter(x_Earth, 0, 'blue', 'filled', 'SizeData', 200);
+moon = scatter(x_Moon, 0, 'black', 'filled', 'SizeData', 100);
+L1_plot = scatter(x_L1, y_L1, 'red', 'filled', 'SizeData', 50);
+L2_plot = scatter(x_L2, y_L2, 'green', 'filled', 'SizeData', 50);
+
+% For fun: Marker to animate the spacecraft motion
+sc_marker = scatter(NaN,NaN,[], "magenta", "filled");
+
+% Grid lines crossing at barycenter
+xline(0, 'Color', 'k', 'LineWidth', 1)
+yline(0, 'Color', 'k', 'LineWidth', 1)
+
+% Arrow showing the direction at the final point of the sim
+final_dir = quiver(w(end,1),w(end,2),w(end,3),w(end,4),'red');
+final_dir.MaxHeadSize = 4;
+final_dir.LineWidth = 1;
+
+% Plot configuration
+hold off
+xlim([-1.2 1.2])
+ylim([-1.2 1.2])
+axis square
+fontsize(14, "points")
+sc.LineWidth = 2;
+direction.LineWidth = 2;
+legend([sc, final_dir, earth, moon, L1_plot, L2_plot], {'Spacecraft', 'SC Direction' 'Earth', 'Moon', 'L1', 'L2'})
+title({"Trajectory of spacecraft in the Earth-Moon system";"Problem B4(d.ii), Lillian Shido"})
+xlabel("Non-dimensional X")
+ylabel("Non-dimensional Y")
+
+%=============ANIMATE THE POSITIONS!==========================
+for k = 1:10:numel(t)
+    sc_marker.XData = w(k,1);
+    sc_marker.YData = w(k,2);
+    drawnow
+
+    % Turn it into a gif!
+    % exportgraphics(gca,"sc.gif",Append=true)
+end

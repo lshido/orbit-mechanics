@@ -1,9 +1,15 @@
 % Calculate C for the given position and velocity.
-mu_Earth_Moon = 1.2151e-02;
+% Gravitational Parameters [km^3/s^2]
+mu_Earth = 398600.4415;
+mu_Moon = 4902.8005821478;
+
+mu_Earth_Moon = mu_Moon/(mu_Earth + mu_Moon);
+
+% mu_Earth_Moon = 1.2151e-02;
 
 % position and velocity in NON-DIMENSIONAL units
 r_vector = [-0.270 -0.420];
-v_vector = [0.300 1.000];
+v_vector = [0.300 -1.000];
 
 x = r_vector(1);
 y = r_vector(2);

@@ -15,7 +15,7 @@ fprintf("characteristic time: %d sec\n", t_char)
 
 % position and velocity in NON-DIMENSIONAL units
 r_vector = [-0.270 -0.420];
-v_vector = [0.300 1.000];
+v_vector = [0.300 -1.000];
 
 r_dim_vector = r_vector * l_char *1000;
 fprintf("dimensional position: %7e m\n", r_dim_vector)
