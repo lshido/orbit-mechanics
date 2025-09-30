@@ -283,7 +283,13 @@ comet_25_legend = scatter(rotational_select.Comet_X(2), rotational_select.Comet_
 asteroid_25 = scatter(rotational_select.Asteroid_X(2), rotational_select.Asteroid_Y(2), 'black', 'o', 'filled', 'SizeData', 100);
 comet_5_legend = scatter(rotational_select.Comet_X(3), rotational_select.Comet_Y(3), 'black', 'diamond', 'filled', 'SizeData', 100);
 asteroid_5 = scatter(rotational_select.Asteroid_X(3), rotational_select.Asteroid_Y(3), 'black', 'diamond', 'filled', 'SizeData', 100);
-legend([sun, Jupiter_orbit, Comet_orbit, Asteroid_orbit, comet_0_legend, comet_25_legend, comet_5_legend], {'Sun', 'Jupiter', 'Comet', 'Asteroid', 't = 0P_J','t = 0.25P_J', 't = 0.5P_J'})
+Comet_orbit = plot(rotational_table, "Comet_X", "Comet_Y");
+Asteroid_orbit = plot(rotational_table, "Asteroid_X", "Asteroid_Y");
+comet_75_legend = scatter(rotational_select.Comet_X(4), rotational_select.Comet_Y(4), 'black', '*', 'SizeData', 100);
+asteroid_75 = scatter(rotational_select.Asteroid_X(4), rotational_select.Asteroid_Y(4), 'black', '*', 'SizeData', 100);
+comet_1_legend = scatter(rotational_select.Comet_X(5), rotational_select.Comet_Y(5), 'black', 'pentagram', 'filled', 'SizeData', 100);
+asteroid_1 = scatter(rotational_select.Asteroid_X(5), rotational_select.Asteroid_Y(5), 'black', 'pentagram', 'filled', 'SizeData', 100);
+legend([sun, Jupiter_orbit, Comet_orbit, Asteroid_orbit, comet_0_legend, comet_25_legend, comet_5_legend, comet_75_legend, comet_1_legend], {'Sun', 'Jupiter', 'Comet', 'Asteroid', 't = 0P_J','t = 0.25P_J', 't = 0.5P_J', 't = 0.75P_J','t = 1P_J'})
 title({'Orbits of Asteroid A and Comet C';['relative to the rotating frame with e=',num2str(e)]})
 xlim([-1.5e9 1.5e9])
 ylim([-1.5e9 1.5e9])

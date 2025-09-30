@@ -5,7 +5,7 @@ mu_Sun = 132712440017.99; % km^3/s^2
 mu_Jupiter = 126712767.8578; % km^3/s^2
 mu_comet = 0; % assume massless
 mu_asteroid = 0; % assume massless
-e = 0.55;
+e = 0.15;
 
 % Determine the mean motion of Jupiter
 mean_motion_Jupiter = sqrt((mu_Jupiter+mu_Sun)/a_Jupiter^3);
@@ -13,7 +13,7 @@ Period_Jupiter = 2*pi/mean_motion_Jupiter;
 % Determine the mean motion of asteroid A.
 mean_motion_Asteroid = (3/2)*mean_motion_Jupiter;
 % Determine the mean motion of comet C.
-mean_motion_Comet = (3/4)*mean_motion_Jupiter;
+mean_motion_Comet = (3/5)*mean_motion_Jupiter;
 
 a_comet = -((mu_Sun+mu_comet)/mean_motion_Comet^2)^(1/3);
 a_asteroid = ((mu_Sun+mu_asteroid)/mean_motion_Asteroid^2)^(1/3);
@@ -283,7 +283,11 @@ comet_25_legend = scatter(rotational_select.Comet_X(2), rotational_select.Comet_
 asteroid_25 = scatter(rotational_select.Asteroid_X(2), rotational_select.Asteroid_Y(2), 'black', 'o', 'filled', 'SizeData', 100);
 comet_5_legend = scatter(rotational_select.Comet_X(3), rotational_select.Comet_Y(3), 'black', 'diamond', 'filled', 'SizeData', 100);
 asteroid_5 = scatter(rotational_select.Asteroid_X(3), rotational_select.Asteroid_Y(3), 'black', 'diamond', 'filled', 'SizeData', 100);
-legend([sun, Jupiter_orbit, Comet_orbit, Asteroid_orbit, comet_0_legend, comet_25_legend, comet_5_legend], {'Sun', 'Jupiter', 'Comet', 'Asteroid', 't = 0P_J','t = 0.25P_J', 't = 0.5P_J'})
+comet_75_legend = scatter(rotational_select.Comet_X(4), rotational_select.Comet_Y(4), 'black', '*', 'SizeData', 100);
+asteroid_75 = scatter(rotational_select.Asteroid_X(4), rotational_select.Asteroid_Y(4), 'black', '*', 'SizeData', 100);
+comet_1_legend = scatter(rotational_select.Comet_X(5), rotational_select.Comet_Y(5), 'black', 'pentagram', 'filled', 'SizeData', 100);
+asteroid_1 = scatter(rotational_select.Asteroid_X(5), rotational_select.Asteroid_Y(5), 'black', 'pentagram', 'filled', 'SizeData', 100);
+legend([sun, Jupiter_orbit, Comet_orbit, Asteroid_orbit, comet_0_legend, comet_25_legend, comet_5_legend, comet_75_legend, comet_1_legend], {'Sun', 'Jupiter', 'Comet', 'Asteroid', 't = 0P_J','t = 0.25P_J', 't = 0.5P_J', 't = 0.75P_J','t = 1P_J'})
 title({'Orbits of Asteroid A and Comet C';['relative to the rotating frame with e=',num2str(e)]})
 xlim([-1.5e9 1.5e9])
 ylim([-1.5e9 1.5e9])
