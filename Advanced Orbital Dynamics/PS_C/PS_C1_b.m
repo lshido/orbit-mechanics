@@ -113,7 +113,9 @@ for x = linspace(0,1.21) % Find the curve for 0 < x < 1.21
         end
     end
 end
-for x = linspace(0,-1.21) %  Find the curve for -1.21 < x < 0
+for x = [linspace(0,-1.21), ] %  Find the curve for -1.21 < x < 0
+    % It would be nice to set some initial values for x and y 
+    % based on which part of the curve we are trying to find. 
     % Step 2: use last y
     % Step 3
     counter = 0;
