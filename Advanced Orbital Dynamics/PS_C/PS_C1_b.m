@@ -23,6 +23,26 @@ v_squared = norm(v_vector)^2;
 C = 2*pseudo_U - v_squared;
 fprintf("Jacobi Constant C: %d\n", C)
 
+% Position of primary bodies
+x_Earth = -mu;
+x_Moon = 1-mu;
+
+% Locations of L1 and L2
+x_L1 = 8.3692e-01;
+y_L1 = 0;
+
+x_L2 = 1.1557e+00;
+y_L2 = 0;
+
+x_L3 = -1.0051;
+y_L3 = 0;
+
+x_L4 = cosd(60) - mu;
+y_L4 = sind(60);
+
+x_L5 = cosd(60) - mu;
+y_L5 = -sind(60);
+
 % To plot the ZVC for z = 0:
 % Step 1: For a given x
 % Step 2: Guess a y
@@ -61,14 +81,14 @@ fprintf("Jacobi Constant C: %d\n", C)
 % zvc_table = array2table(zvc_result, 'VariableNames', {'x','-x', 'y', '% Error of C','Iterations'});
 % disp(zvc_table)
 
-
-
 zvc_result = zeros(0,5);
 tolerance = 1e-12;
 
 % Step 1
+% To find the inner curve,
+% use x=(L1,L3) as the bounds (0=>1.2, 0=>-1.2)
 y = 0.3;
-for x = linspace(0,1.21)
+for x = linspace(0,1.21) % Find the curve for 0 < x < 1.21
     % Step 2: use last y
     % Step 3
     counter = 0;
@@ -93,8 +113,7 @@ for x = linspace(0,1.21)
         end
     end
 end
-zvc_result(end+1,:) = [NaN NaN NaN NaN NaN]
-for x = linspace(0,-1.21)
+for x = linspace(0,-1.21) %  Find the curve for -1.21 < x < 0
     % Step 2: use last y
     % Step 3
     counter = 0;
@@ -119,30 +138,53 @@ for x = linspace(0,-1.21)
         end
     end
 end
-
+for y = linspace(0,1.21) % Find the curve for 0 < y < 1.21
+    while 1
+        counter = counter + 1;
+        d = sqrt((x+mu)^2 + y^2);
+        r = sqrt((x-1+mu)^2 + y^2);
+        f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
+        f_prime_x = 2*x - 2*(1-mu)*(x+mu)/d^3 - 2*mu*(x-1+mu)/r^3;
+        delta = f/f_prime_x;
+        % Step 4:
+        if abs(f) > tolerance
+            x = x - delta;
+            continue
+        else
+            fprintf("current x: %d, current y: %d\n", x, y)
+            new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
+            error_C = abs(new_C - C)/C*100;
+            zvc_result(end+1,:) = [x y -y error_C counter];
+            counter = 0;
+            break
+        end
+    end
+end
+for y = linspace(0,-1.21) % Find the curve for -1.21 < y < 0
+    while 1
+        counter = counter + 1;
+        d = sqrt((x+mu)^2 + y^2);
+        r = sqrt((x-1+mu)^2 + y^2);
+        f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
+        f_prime_x = 2*x - 2*(1-mu)*(x+mu)/d^3 - 2*mu*(x-1+mu)/r^3;
+        delta = f/f_prime_x;
+        % Step 4:
+        if abs(f) > tolerance
+            x = x - delta;
+            continue
+        else
+            fprintf("current x: %d, current y: %d\n", x, y)
+            new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
+            error_C = abs(new_C - C)/C*100;
+            zvc_result(end+1,:) = [x y -y error_C counter];
+            counter = 0;
+            break
+        end
+    end
+end
 
 zvc_table = array2table(zvc_result, 'VariableNames', {'x','y', '-y', '% Error of C','Iterations'});
 disp(zvc_table)
-
-% Position of primary bodies
-x_Earth = -mu;
-x_Moon = 1-mu;
-
-% Locations of L1 and L2
-x_L1 = 8.3692e-01;
-y_L1 = 0;
-
-x_L2 = 1.1557e+00;
-y_L2 = 0;
-
-x_L3 = -1.0051;
-y_L3 = 0;
-
-x_L4 = cosd(60) - mu;
-y_L4 = sind(60);
-
-x_L5 = cosd(60) - mu;
-y_L5 = -sind(60);
 
 % Locations of points when x=0 and y=0
 x_1 = 0;
@@ -163,8 +205,8 @@ L4_plot = scatter(x_L4, y_L4, 'magenta', 'filled', 'SizeData', 50);
 L5_plot = scatter(x_L5, y_L5, 'magenta', 'filled', 'SizeData', 50);
 p1_plot = scatter(x_1, y_1, 'magenta', 'filled', 'SizeData', 50);
 p2_plot = scatter(x_2, y_2, 'magenta', 'filled', 'SizeData', 50);
-scatter(zvc_table, 'x', 'y')
-scatter(zvc_table, 'x', '-y')
+scatter(zvc_table, 'x', 'y', 'SizeData', 20)
+scatter(zvc_table, 'x', '-y', 'SizeData', 20)
 hold off
 xlim([-1.5 1.5])
 ylim([-1.5 1.5])
@@ -173,3 +215,4 @@ xlabel("Non-dimensional X")
 ylabel("Non-dimensional Y")
 box on
 grid on
+
