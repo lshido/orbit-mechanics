@@ -2,6 +2,8 @@
 % Author: Lillian Shido
 % Date: September 27, 2025
 
+clear all
+
 % Characteristic length [km]
 a_Earth = 149597898;
 a_Moon = 384400; % around Earth
@@ -42,7 +44,7 @@ tolerance = 1e-12;
 counter = 0;
 rows = height(system_data);
 for row = 1:rows
-    name = System(row,:);
+    name = System(row,1);
     mu = system_data{row,2};
     a = system_data{row,3};
     % Step 1
@@ -70,7 +72,7 @@ for row = 1:rows
             accel = -(1-mu)/d^3*d_x - mu/r^3*r_x;
             % Add check for partial wrt gamma
             partial = (1-mu)/(1-gamma)^2 - mu/(gamma)^2 - (1-mu-gamma);
-            L1_results(end+1,:) = [name mu gamma gamma*a gamma*100 x x*a accel partial];
+            L1_results(end+1,:) = [string(name) mu gamma gamma*a gamma*100 x x*a accel partial];
             counter = 0;
             break
         end
@@ -112,7 +114,7 @@ for row = 1:rows
             accel = -(1-mu)/d^3*d_x - mu/r^3*r_x;
             % Add check for partial wrt gamma
             partial = -((1-mu)/gamma^2) - (mu/(gamma+1)^2) + (mu+gamma);
-            L3_results(end+1,:) = [name mu gamma gamma*a gamma*100 x x*a accel partial];
+            L3_results(end+1,:) = [string(name) mu gamma gamma*a gamma*100 x x*a accel partial];
             counter = 0;
             break
         end
