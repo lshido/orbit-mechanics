@@ -8,19 +8,18 @@ mu_Moon = 4902.8005821478;
 mu = mu_Moon/(mu_Earth + mu_Moon);
 fprintf("mu %d\n", mu)
 
-% mu_Earth_Moon = 1.2151e-02;
-
 % position and velocity in NON-DIMENSIONAL units
 r_vector = [-0.270 -0.420];
 v_vector = [0.300 -1.000];
 
-x_0 = r_vector(1);
-y_0 = r_vector(2);
-d_0 = sqrt((x_0+mu)^2 + y_0^2);
-r_0 = sqrt((x_0-1+mu)^2 + y_0^2);
-pseudo_U = (1-mu)/d_0 + mu/r_0 + (x_0^2+y_0^2)/2;
-v_squared = norm(v_vector)^2;
-C = 2*pseudo_U - v_squared;
+% x_0 = r_vector(1);
+% y_0 = r_vector(2);
+% d_0 = sqrt((x_0+mu)^2 + y_0^2);
+% r_0 = sqrt((x_0-1+mu)^2 + y_0^2);
+% pseudo_U = (1-mu)/d_0 + mu/r_0 + (x_0^2+y_0^2)/2;
+% v_squared = norm(v_vector)^2;
+% C = 2*pseudo_U - v_squared;
+C = 3.2; % Where there are 3 distinct ZVCs
 fprintf("Jacobi Constant C: %d\n", C)
 
 % Position of primary bodies
@@ -43,21 +42,59 @@ y_L4 = sind(60);
 x_L5 = cosd(60) - mu;
 y_L5 = -sind(60);
 
+% step = 1e-3;
 % To plot the ZVC for z = 0:
-% Step 1: For a given x
-% Step 2: Guess a y
+% Step 1: For y = 0,
+% Step 2: Guess an x
 % Step 3: Calculate Jacobi constant result
 % Step 4: If Jacobi constant result is less than tolerance, break
-% Step 5: If not, update y with Newton Raphson
-% Step 6: Repeat
+% Step  : If not, update with NR. 
+
+% Step 5: Check delta (f/f_prime) for both x and y.
+% Step 5a: If dx is bigger than dy, switch to the smaller one (to y) and step in the direction of the grad.
+% Step 5b: If not, step x in the direction of the grad.
+% Step   : Repeat. 
 
 zvc_result = zeros(0,5);
 tolerance = 1e-12;
+step = 1e-3;
 
 %===================Calculate the "inside" curve=====================
-% Give an initial guess for y that's "inside"
-for y = [-0.1, 0.1];
-    for x = [linspace(0,-1.21,5e3), linspace(0,1.21,5e3)] %  Find the curve for -1.21 < x < 0
+% Give an initial guess for y that's around the Earth
+y = 0;
+x = x_Earth+step;
+% Find first point at y=0
+counter = 0;
+while 1
+    counter = counter + 1;
+    d = sqrt((x+mu)^2 + y^2);
+    r = sqrt((x-1+mu)^2 + y^2);
+    f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
+    f_prime_x = 2*x - 2*(1-mu)*(x+mu)/d^3 - 2*mu*(x-1+mu)/r^3;
+    delta_x = f/f_prime_x;
+    if abs(f) > tolerance
+        x = x - delta_x;
+        continue
+    else
+        new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
+        error_C = abs(new_C - C)/C*100;
+        zvc_result(end+1,:) = [x y new_C error_C counter];
+        counter = 0;
+        break
+    end
+end
+fprintf("Initial x: %d, Initial y: %d\n", x, y)
+
+y = 0.1;
+while x >= -1.21 && x <= 1.21 %  Find the curve for -1.21 < x < 1.21
+    fprintf("x: %d, y: %d\n", x, y)
+    d = sqrt((x+mu)^2 + y^2);
+    r = sqrt((x-1+mu)^2 + y^2);
+    f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
+    f_prime_x = 2*x - 2*(1-mu)*(x+mu)/d^3 - 2*mu*(x-1+mu)/r^3;
+    f_prime_y = 2*y*( 1 - (1-mu)/d^3 - mu/r^3);
+    if abs(f_prime_x) > abs(f_prime_y)
+        y = y + sign(f_prime_y)*step;
         counter = 0;
         while 1
             counter = counter + 1;
@@ -65,9 +102,9 @@ for y = [-0.1, 0.1];
             r = sqrt((x-1+mu)^2 + y^2);
             f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
             f_prime_y = 2*y*( 1 - (1-mu)/d^3 - mu/r^3);
-            delta = f/f_prime_y;
+            delta_y = f/f_prime_y;
             if abs(f) > tolerance
-                y = y - delta;
+                y = y - delta_y;
                 continue
             else
                 new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
@@ -77,77 +114,19 @@ for y = [-0.1, 0.1];
                 break
             end
         end
-    end
-end
-
-% Give an initial guess for x that starts "inside"
-for x = [-0.1, 0.1]; % Try starting from the "outside" of the outer boundary
-    for y = [linspace(0,-1.21,5e3), linspace(0,1.21,5e3)] % Find the curve for 0 < y < 1.21
-        while 1
-            counter = counter + 1;
-            d = sqrt((x+mu)^2 + y^2);
-            r = sqrt((x-1+mu)^2 + y^2);
-            f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
-            f_prime_x = 2*x - 2*(1-mu)*(x+mu)/d^3 - 2*mu*(x-1+mu)/r^3;
-            delta = f/f_prime_x;
-            % Step 4:
-            if abs(f) > tolerance
-                x = x - delta;
-                continue
-            % elseif counter > 1e3
-            %     break
-            else
-                new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
-                error_C = abs(new_C - C)/C*100;
-                zvc_result(end+1,:) = [x y new_C error_C counter];
-                counter = 0;
-                break
-            end
-        end
-    end
-end
-
-%===================Calculate the "outside" curve=====================
-% Give an initial guess for y that starts "outside"
-for y = [-1.5, 1.5]; % Try starting from the "outside" of the outer boundary
-    for x = [linspace(-1.21,0,1e3), linspace(0,1.21,1e3)] %  Find the curve for -1.21 < x < 0
+    else
+        x = x + sign(f_prime_x)*step;
         counter = 0;
         while 1
             counter = counter + 1;
             d = sqrt((x+mu)^2 + y^2);
             r = sqrt((x-1+mu)^2 + y^2);
             f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
-            f_prime_y = 2*y*( 1 - (1-mu)/d^3 - mu/r^3);
-            delta = f/f_prime_y;
-            if abs(f) > tolerance
-                y = y - delta;
-                continue
-            else
-                new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
-                error_C = abs(new_C - C)/C*100;
-                zvc_result(end+1,:) = [x y new_C error_C counter];
-                counter = 0;
-                break
-            end
-        end
-    end
-end
-
-% Give an initial guess for x that starts "outside"
-for x = [-1.5, 1.5]; % Try starting from the "outside" of the outer boundary
-    for y = [linspace(-1.21,0,1e3), linspace(0,1.21,1e3)] % Find the curve for 0 < y < 1.21
-        while 1
-            counter = counter + 1;
-            d = sqrt((x+mu)^2 + y^2);
-            r = sqrt((x-1+mu)^2 + y^2);
-            f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
             f_prime_x = 2*x - 2*(1-mu)*(x+mu)/d^3 - 2*mu*(x-1+mu)/r^3;
-            delta = f/f_prime_x;
+            delta_x = f/f_prime_x;
             if abs(f) > tolerance
-                x = x - delta;
+                x = x - delta_x;
                 continue
-            % elseif counter > 1e3
-            %     break
             else
                 new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
                 error_C = abs(new_C - C)/C*100;
@@ -160,7 +139,7 @@ for x = [-1.5, 1.5]; % Try starting from the "outside" of the outer boundary
 end
 
 zvc_table = array2table(zvc_result, 'VariableNames', {'x','y', 'JC', '% Error of C','Iterations'});
-format short
+format longE
 disp(zvc_table)
 
 % Find the max error of JC

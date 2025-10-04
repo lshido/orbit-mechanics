@@ -56,8 +56,8 @@ tolerance = 1e-12;
 
 %===================Calculate the "inside" curve=====================
 % Give an initial guess for y that's "inside"
-for y = [-0.1, 0.1];
-    for x = [linspace(0,-1.21,5e3), linspace(0,1.21,5e3)] %  Find the curve for -1.21 < x < 0
+for y = [-0.3, 0.3];
+    for x = [linspace(0,-1.21), linspace(0,1.21)] %  Find the curve for -1.21 < x < 0
         counter = 0;
         while 1
             counter = counter + 1;
@@ -81,8 +81,8 @@ for y = [-0.1, 0.1];
 end
 
 % Give an initial guess for x that starts "inside"
-for x = [-0.1, 0.1]; % Try starting from the "outside" of the outer boundary
-    for y = [linspace(0,-1.21,5e3), linspace(0,1.21,5e3)] % Find the curve for 0 < y < 1.21
+for x = [-0.3, 0.3]; % Try starting from the "outside" of the outer boundary
+    for y = [linspace(0,-1.21), linspace(0,1.21)] % Find the curve for 0 < y < 1.21
         while 1
             counter = counter + 1;
             d = sqrt((x+mu)^2 + y^2);
@@ -94,8 +94,8 @@ for x = [-0.1, 0.1]; % Try starting from the "outside" of the outer boundary
             if abs(f) > tolerance
                 x = x - delta;
                 continue
-            % elseif counter > 1e3
-            %     break
+            elseif counter > 1e3
+                break
             else
                 new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
                 error_C = abs(new_C - C)/C*100;
@@ -109,8 +109,8 @@ end
 
 %===================Calculate the "outside" curve=====================
 % Give an initial guess for y that starts "outside"
-for y = [-1.5, 1.5]; % Try starting from the "outside" of the outer boundary
-    for x = [linspace(-1.21,0,1e3), linspace(0,1.21,1e3)] %  Find the curve for -1.21 < x < 0
+for y = [-inf, inf]; % Try starting from the "outside" of the outer boundary
+    for x = [linspace(-1.21,0), linspace(0,1.21)] %  Find the curve for -1.21 < x < 0
         counter = 0;
         while 1
             counter = counter + 1;
@@ -134,8 +134,8 @@ for y = [-1.5, 1.5]; % Try starting from the "outside" of the outer boundary
 end
 
 % Give an initial guess for x that starts "outside"
-for x = [-1.5, 1.5]; % Try starting from the "outside" of the outer boundary
-    for y = [linspace(-1.21,0,1e3), linspace(0,1.21,1e3)] % Find the curve for 0 < y < 1.21
+for x = [-inf, inf]; % Try starting from the "outside" of the outer boundary
+    for y = [linspace(-1.21,0), linspace(0,1.21)] % Find the curve for 0 < y < 1.21
         while 1
             counter = counter + 1;
             d = sqrt((x+mu)^2 + y^2);
@@ -146,8 +146,8 @@ for x = [-1.5, 1.5]; % Try starting from the "outside" of the outer boundary
             if abs(f) > tolerance
                 x = x - delta;
                 continue
-            % elseif counter > 1e3
-            %     break
+            elseif counter > 1e3
+                break
             else
                 new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
                 error_C = abs(new_C - C)/C*100;
@@ -163,10 +163,6 @@ zvc_table = array2table(zvc_result, 'VariableNames', {'x','y', 'JC', '% Error of
 format short
 disp(zvc_table)
 
-% Find the max error of JC
-max_error = max(abs(zvc_result(:,4)));
-fprintf("max error: %d\n", max_error)
-
 % Locations of points when x=0 and y=0
 x_1 = 0;
 y_1 = 1.2722;
@@ -180,13 +176,13 @@ earth = scatter(x_Earth, 0, 'blue', 'filled', 'SizeData', 200);
 hold on
 moon = scatter(x_Moon, 0, 'black', 'filled', 'SizeData', 100);
 L1_plot = scatter(x_L1, y_L1, 'red', 'filled', 'SizeData', 50);
-scatter(x_L2, y_L2, 'red', 'filled', 'SizeData', 50)
-scatter(x_L3, y_L3, 'red', 'filled', 'SizeData', 50)
-scatter(x_L4, y_L4, 'red', 'filled', 'SizeData', 50)
-scatter(x_L5, y_L5, 'red', 'filled', 'SizeData', 50)
-% p1_plot = scatter(x_1, y_1, 'magenta', 'filled', 'SizeData', 50);
-% p2_plot = scatter(x_2, y_2, 'magenta', 'filled', 'SizeData', 50);
-zvc_plot = scatter(zvc_table, 'x', 'y', 'filled', 'SizeData', 10);
+L2_plot = scatter(x_L2, y_L2, 'green', 'filled', 'SizeData', 50);
+L3_plot = scatter(x_L3, y_L3, 'magenta', 'filled', 'SizeData', 50);
+L4_plot = scatter(x_L4, y_L4, 'magenta', 'filled', 'SizeData', 50);
+L5_plot = scatter(x_L5, y_L5, 'magenta', 'filled', 'SizeData', 50);
+p1_plot = scatter(x_1, y_1, 'magenta', 'filled', 'SizeData', 50);
+p2_plot = scatter(x_2, y_2, 'magenta', 'filled', 'SizeData', 50);
+scatter(zvc_table, 'x', 'y', 'filled', 'SizeData', 10)
 % plot(zvc_table, 'x', 'y')
 hold off
 xlim([-1.5 1.5])
@@ -194,8 +190,5 @@ ylim([-1.5 1.5])
 axis square
 xlabel("Non-dimensional X")
 ylabel("Non-dimensional Y")
-legend([earth, moon, L1_plot, zvc_plot], {'Earth', 'Moon', 'Eq. Points', 'ZVC'})
-title({'The Zero Velocity Curves at z=0';['in the Earth-Moon System for Jacobi Constant = ', num2str(C)]})
 box on
 grid on
-fontsize(14, 'points')
