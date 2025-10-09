@@ -5,22 +5,59 @@ mu_Sun = 132712440017.99;
 mu_Earth = 398600.4415;
 mu_Moon = 4902.8005821478;
 
+% Characteristic Length [km]
+a = 384400; % around Earth
+l_char = a;
+fprintf("Characteristic Length: %f km \n", l_char)
+% Calculate characteristic time
+t_char = sqrt(a^3/(mu_Earth+mu_Moon));
+fprintf("characteristic time: %d sec\n", t_char)
+
 % Earth-Moon System
 mu = mu_Moon/(mu_Earth + mu_Moon);
 fprintf("Mu of Earth-Moon: %f\n", mu)
 % Position of primary bodies
 x_Earth = -mu;
 x_Moon = 1-mu;
-% Location of Earth-Moon L1 point
-x_L1 = 8.3692e-01; % From Problem Set B
+% Calculate location of Earth-Moon L1 point
+% Step 1
+L1_results = zeros(0,9);
+L1_tolerance = 1e-12;
+L1_counter = 0;
+gamma = 0.2; % initial guess
+while 1
+    L1_counter = L1_counter + 1;
+    % Step 2
+    f = 1-mu-gamma-((1-mu)/(1-gamma)^2)+(mu/gamma^2);
+    f_prime = -1-(2*(1-mu)/(1-gamma)^3)-(2*mu/gamma^3);
+    % result = 1-mu-gamma-((1-mu)/(1-gamma)^2)+(mu/gamma^2);
+    % Step 3
+    if abs(f) > L1_tolerance
+        % Step 4
+        gamma = gamma - f/f_prime;
+        % gamma = gamma - ((1-mu-gamma-((1-mu)/(1-gamma)^2)+(mu/gamma^2))/((-2*(1-mu)/(1-gamma)^3)-(2*mu/gamma^3)-1));
+        continue
+    else
+        % Step 5
+        x = 1 - mu - gamma;
+        % Add check for accleration
+        d_x = x*a+mu;
+        r_x = x*a-1+mu;
+        d = ((x*a+mu)^2)^(1/2);
+        r = ((x*a-1+mu)^2)^(1/2);
+        accel = -(1-mu)/d^3*d_x - mu/r^3*r_x;
+        % Add check for partial wrt gamma
+        partial = (1-mu)/(1-gamma)^2 - mu/(gamma)^2 - (1-mu-gamma);
+        L1_results(end+1,:) = [x];
+        L1_counter = 0;
+        break
+    end
+end
+
+x_L1 = L1_results(1);
+% x_L1 = 8.3692e-01; % From Problem Set B
 y_L1 = 0;
-% Characteristic Length [km]
-a_Moon = 384400; % around Earth
-l_char = a_Moon;
-fprintf("Characteristic Length: %f km \n", l_char)
-% Calculate characteristic time
-t_char = sqrt(a_Moon^3/(mu_Earth+mu_Moon));
-fprintf("characteristic time: %d sec\n", t_char)
+fprintf("L1: %f\n", x_L1)
 
 % Location of the other Earth-Moon Libration points
 x_L2 = 1.1557e+00;
@@ -36,7 +73,7 @@ x_L5 = cosd(60) - mu;
 y_L5 = -sind(60);
 
 % Perturbations
-xi_0 = 0.01;
+xi_0 = 5e-6;
 xi_0_dim = xi_0*l_char;
 fprintf("Dimensional xi_0: %f km\n", xi_0_dim)
 eta_0 = 0;
@@ -45,8 +82,8 @@ y_0 = 0 + eta_0;
 
 % The solution to the perturbed orbit:
 t_0 = 0; % non-dim time
-t_end = 8*pi; % non-dim time
-orbit_results = zeros(0,3);
+t_end = 1*pi; % non-dim time
+orbit_results = zeros(0,4);
 % d, r, and partials all evaluated @ L1
 d = sqrt((x_L1+mu)^2 + y_L1^2);
 r = sqrt((x_L1-1+mu)^2 + y_L1^2);
@@ -68,9 +105,9 @@ for t = t_0:0.1:t_end
     x = xi + x_L1;
     eta = eta_0*cos(s*(t-t_0)) - B_3*xi_0*sin(s*(t-t_0)); 
     y = eta + y_L1; 
-    orbit_results(end+1,:) = [t x y];
+    orbit_results(end+1,:) = [t x y x-x_L1];
 end
-orbit_table = array2table(orbit_results, 'VariableNames', {'time', 'x', 'y'});
+orbit_table = array2table(orbit_results, 'VariableNames', {'time', 'x', 'y', 'xi'});
 disp(t)
 
 % Calculate the roots of the L1 point
@@ -124,7 +161,7 @@ fprintf("Jacobi Constant C: %d\n", C)
 % Step 5: If not, update y with Newton Raphson
 % Step 6: Repeat
 
-zvc_result = zeros(0,6);
+zvc_result = zeros(0,7);
 tolerance = 1e-12;
 max_iterations = 1000;
 
@@ -144,80 +181,80 @@ function error = calc_error(actual, ideal)
 end
 
 % Give an initial guess for y that is around the Earth)
-for x = linspace(-1.5,1.5,5e3) %  Find the curve for -1.5 < x < 1.5
-    for y = 0:0.1:1.5 % These are my guesses
-        counter = 0;
-        while 1
-            counter = counter + 1;
-            d = sqrt((x+mu)^2 + y^2);
-            r = sqrt((x-1+mu)^2 + y^2);
-            f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
-            f_prime_y = 2*y*( 1 - (1-mu)/d^3 - mu/r^3);
-            delta = f/f_prime_y;
-            if abs(f) > tolerance
-                if counter > max_iterations % check for max iterations
-                    new_C = find_JC(x, y, mu);
-                    C_error = calc_error(new_C, C);
-                    if C_error < 1e-12
-                        zvc_result(end+1,:) = [x y -y new_C error_C counter];
-                    else
-                        break
-                    end
-                elseif d == 0 || r == 0 % check for dividing by 0
-                    break
-                elseif abs(f_prime_y) <= tolerance % check for zero derivative
-                    break
-                else
-                    y = y - delta;
-                    continue
-                end
-            else
-                new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
-                error_C = abs(new_C - C)/C*100;
-                zvc_result(end+1,:) = [x y -y new_C error_C counter];
-                break
-            end
-        end
-    end
-end
-for y = linspace(-1.5,1.5,5e3) % Find the curve for 0 < y < 1.21
-    for x = -1.5:0.1:1.5 % These are my guesses for x
-        counter = 0;
-        while 1
-           counter = counter + 1;
-           d = sqrt((x+mu)^2 + y^2);
-           r = sqrt((x-1+mu)^2 + y^2);
-           f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
-           f_prime_x = 2*x - 2*(1-mu)*(x+mu)/d^3 - 2*mu*(x-1+mu)/r^3;
-           delta = f/f_prime_x;
-           if abs(f) > tolerance
-                if counter > max_iterations % check for max iterations
-                    new_C = find_JC(x, y, mu);
-                    C_error = calc_error(new_C, C);
-                    if C_error < 1e-12
-                        zvc_result(end+1,:) = [x y -y new_C error_C counter];
-                    else
-                        break
-                    end
-                elseif d == 0 || r == 0 % check for dividing by 0
-                    break
-                elseif abs(f_prime_x) <= tolerance % check for zero derivative
-                    break
-                else
-                    x = x - delta;
-                    continue
-                end
-            else
-                new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
-                error_C = abs(new_C - C)/C*100;
-                zvc_result(end+1,:) = [x y -y new_C error_C counter];
-                break
-            end
-        end
-    end
-end
+% for x = linspace(-1.5,1.5,5e3) %  Find the curve for -1.5 < x < 1.5
+%     for y = 0:0.1:1.5 % These are my guesses
+%         counter = 0;
+%         while 1
+%             counter = counter + 1;
+%             d = sqrt((x+mu)^2 + y^2);
+%             r = sqrt((x-1+mu)^2 + y^2);
+%             f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
+%             f_prime_y = 2*y*( 1 - (1-mu)/d^3 - mu/r^3);
+%             delta = f/f_prime_y;
+%             if abs(f) > tolerance
+%                 if counter > max_iterations % check for max iterations
+%                     new_C = find_JC(x, y, mu);
+%                     C_error = calc_error(new_C, C);
+%                     if C_error < 1e-12
+%                         zvc_result(end+1,:) = [x y -y x-x_L1 new_C error_C counter];
+%                     else
+%                         break
+%                     end
+%                 elseif d == 0 || r == 0 % check for dividing by 0
+%                     break
+%                 elseif abs(f_prime_y) <= tolerance % check for zero derivative
+%                     break
+%                 else
+%                     y = y - delta;
+%                     continue
+%                 end
+%             else
+%                 new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
+%                 error_C = abs(new_C - C)/C*100;
+%                 zvc_result(end+1,:) = [x y -y x-x_L1 new_C error_C counter];
+%                 break
+%             end
+%         end
+%     end
+% end
+% for y = linspace(-1.5,1.5,5e3) % Find the curve for 0 < y < 1.21
+%     for x = -1.5:0.1:1.5 % These are my guesses for x
+%         counter = 0;
+%         while 1
+%            counter = counter + 1;
+%            d = sqrt((x+mu)^2 + y^2);
+%            r = sqrt((x-1+mu)^2 + y^2);
+%            f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
+%            f_prime_x = 2*x - 2*(1-mu)*(x+mu)/d^3 - 2*mu*(x-1+mu)/r^3;
+%            delta = f/f_prime_x;
+%            if abs(f) > tolerance
+%                 if counter > max_iterations % check for max iterations
+%                     new_C = find_JC(x, y, mu);
+%                     C_error = calc_error(new_C, C);
+%                     if C_error < 1e-12
+%                         zvc_result(end+1,:) = [x y -y x-x_L1 new_C error_C counter];
+%                     else
+%                         break
+%                     end
+%                 elseif d == 0 || r == 0 % check for dividing by 0
+%                     break
+%                 elseif abs(f_prime_x) <= tolerance % check for zero derivative
+%                     break
+%                 else
+%                     x = x - delta;
+%                     continue
+%                 end
+%             else
+%                 new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
+%                 error_C = abs(new_C - C)/C*100;
+%                 zvc_result(end+1,:) = [x y -y x-x_L1 new_C error_C counter];
+%                 break
+%             end
+%         end
+%     end
+% end
 
-zvc_table = array2table(zvc_result, 'VariableNames', {'x','y', '-y', 'JC', '% Error of C','Iterations'});
+zvc_table = array2table(zvc_result, 'VariableNames', {'x','y', '-y', 'xi', 'JC', '% Error of C','Iterations'});
 format short
 disp(zvc_table)
 
@@ -241,13 +278,16 @@ w(4);...
 - mu * (w(1) - 1 + mu) / ((w(1) - 1 + mu)^2 + w(2)^2)^(3/2);...
 -2*w(3) + w(2) - (1 - mu) * w(2) / ((w(1) + mu)^2 + w(2)^2)^(3/2) - mu * w(2)/((w(1) - 1 + mu)^2 + w(2)^2)^(3/2)...
 ];
-options = odeset('RelTol',1e-12,'AbsTol', 1e-14);
-[t,w] = ode45(ode, tspan, w0, options); 
+options = odeset('RelTol',1e-12,'AbsTol', 1e-14,'MaxStep', 1e-3);
+[t,w] = ode113(ode, tspan, w0, options); 
 
 % Retrieving the results from the integrator
-% Position
+% Position (dimensional)
 x_nl = w(:,1);
 y_nl = w(:,2);
+% Position (non-dimensional)
+xi_nl = w(:,1)-x_L1;
+eta_nl = w(:,2)-0;
 % Velocity
 v_x_nl = w(:,3);
 v_y_nl = w(:,4);
@@ -272,8 +312,9 @@ L1_plot = scatter(x_L1, y_L1, 'red', 'filled', 'SizeData', 10);
 linear_orbit = plot(orbit_table, 'x', 'y');
 nonlinear_orbit = plot(x_nl, y_nl);
 hold off
-xlim([-0.5 1.5])
-ylim([-1 1])
+limit = 5*xi_0;
+xlim([-limit limit])
+ylim([-limit limit])
 axis square
 xlabel("Non-dimensional X")
 ylabel("Non-dimensional Y")
@@ -315,6 +356,25 @@ hold off
 xlabel("Time [rad]")
 ylabel("Jacobi Constant Error")
 title('Error of the Jacobi Constant over time')
+box on
+grid on
+fontsize(14, 'points')
+
+fig3 = figure('Name', 'non-dim');
+L1_plot = scatter(0, 0, 'red', 'filled', 'SizeData', 10);
+hold on
+% zvc_plot = scatter(zvc_table, 'xi', 'y', 'filled', 'SizeData', 2, 'MarkerFaceColor','#53A1C9', 'MarkerEdgeColor', '#53A1C9');
+% scatter(zvc_table, 'xi', '-y', 'filled', 'SizeData', 2, 'MarkerFaceColor','#53A1C9', 'MarkerEdgeColor', '#53A1C9')
+linear_orbit = plot(orbit_table, 'xi', 'y', 'Color', '#800080');
+nonlinear_orbit = plot(xi_nl, eta_nl, 'Color', '#008000');
+hold off
+xlim([-limit limit])
+ylim([-limit limit])
+axis square
+xlabel("\xi [non-dim]")
+ylabel("\eta [non-dim]")
+legend([L1_plot, zvc_plot, linear_orbit, nonlinear_orbit], {'L1', 'ZVC', 'Linear Orbit', 'Non-Linear Orbit'})
+title({'The orbit around the L1 point in'; ['the Earth-Moon System for \xi = ', num2str(xi_0)]})
 box on
 grid on
 fontsize(14, 'points')
