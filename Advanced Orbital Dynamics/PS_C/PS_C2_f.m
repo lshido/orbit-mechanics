@@ -18,63 +18,44 @@ function [lambda_1, lambda_2, lambda_3, lambda_4] = calc_eigenvalues(mu, x_L, y_
     lambda_4 = -sqrt(big_Lambda_2); % imaginary
 end
 
-% Calculate the Linear Orbit about the collinear points (A1=A2=0)
-function orbit_table = calc_collinear_linear_orbit(mu, t0, t_end, x_L, y_L, xi_0, eta_0)
+% Calculate the coefficients A1, A2 (A3=A4=0)
+function [A1, A2] = calc_As(mu, x_L, y_L, lambda_1, lambda_2, xi_0, eta_0) 
+    d = sqrt((x_L+mu)^2 + y_L^2);
+    r = sqrt((x_L-1+mu)^2 + y_L^2);
+    U_xx = 1 - (1-mu)/d^3 - mu/r^3 + 3*(1-mu)*(x_L+mu)^2/d^5 + 3*mu*(x_L-1+mu)^2/r^5;
+    alpha1 = (lambda_1^2 - U_xx)/(2*lambda_1);
+    alpha2 = (lambda_2^2 - U_xx)/(2*lambda_2);
+    A1 = (eta_0 - alpha2*xi_0)/(alpha1 - alpha2);
+    A2 = xi_0 - A1;
+end
+
+% Calculate the initial velocities (A3=A4=0)
+function [v_xi_0, v_eta_0] = calc_initial_velocities(mu, x_L, y_L, A1, A2, lambda_1, lambda_2);
+    d = sqrt((x_L+mu)^2 + y_L^2);
+    r = sqrt((x_L-1+mu)^2 + y_L^2);
+    U_xx = 1 - (1-mu)/d^3 - mu/r^3 + 3*(1-mu)*(x_L+mu)^2/d^5 + 3*mu*(x_L-1+mu)^2/r^5;
+    alpha1 = (lambda_1^2 - U_xx)/(2*lambda_1);
+    alpha2 = (lambda_2^2 - U_xx)/(2*lambda_2);
+    v_xi_0 = lambda_1*A1 + lambda_2*A2;
+    v_eta_0 = alpha1*lambda_1*A1 + alpha2*lambda_2*A2;
+end
+
+% Calculate the Linear result about the collinear points (A3=A4=0)
+function orbit_table = calc_collinear_linear_orbit(mu, lambda_1, t0, t_end, x_L, y_L, xi_0, eta_0)
     orbit_results = zeros(0,4);
     % d, r, and partials all evaluated @ L1
     d = sqrt((x_L+mu)^2 + y_L^2);
     r = sqrt((x_L-1+mu)^2 + y_L^2);
     U_xx = 1 - (1-mu)/d^3 - mu/r^3 + 3*(1-mu)*(x_L+mu)^2/d^5 + 3*mu*(x_L-1+mu)^2/r^5;
-    U_yy = 1 - (1-mu)/d^3 - mu/r^3;
-    B_1 = 2 - (U_xx + U_yy)/2;
-    B_2_squared = -U_xx*U_yy;
-    s = (B_1 + (B_1^2 + B_2_squared)^(1/2))^(1/2);
-    B_3 = (s^2 + U_xx)/(2*s);
-    for t = t0:0.1:t_end
-        xi = xi_0*cos(s*(t-t0)) + (eta_0/B_3)*sin(s*(t-t0));
+    alpha1 = (lambda_1^2 - U_xx)/(2*lambda_1);
+    for t = t0:0.01:t_end
+        xi = xi_0*cosh(lambda_1*(t-t0)) + (eta_0/alpha1)*sinh(lambda_1*(t-t0));
+        eta = eta_0*cosh(lambda_1*(t-t0)) + xi_0*alpha1*sinh(lambda_1*(t-t0));
         x = xi + x_L;
-        eta = eta_0*cos(s*(t-t0)) - B_3*xi_0*sin(s*(t-t0)); 
         y = eta + y_L; 
         orbit_results(end+1,:) = [t x y x-x_L];
     end
     orbit_table = array2table(orbit_results, 'VariableNames', {'time', 'x', 'y', 'xi'});
-end
-
-% Calculate the initial velocities for the collinear points (A1=A2=0)
-function [xi_dot_0, eta_dot_0] = calc_initial_velocities(mu, x_L, y_L, xi_0, eta_0)
-    d = sqrt((x_L+mu)^2 + y_L^2);
-    r = sqrt((x_L-1+mu)^2 + y_L^2);
-    U_xx = 1 - (1-mu)/d^3 - mu/r^3 + 3*(1-mu)*(x_L+mu)^2/d^5 + 3*mu*(x_L-1+mu)^2/r^5;
-    U_yy = 1 - (1-mu)/d^3 - mu/r^3;
-    B_1 = 2 - (U_xx + U_yy)/2;
-    B_2_squared = -U_xx*U_yy;
-    s = (B_1 + (B_1^2 + B_2_squared)^(1/2))^(1/2);
-    B_3 = (s^2 + U_xx)/(2*s);
-    xi_dot_0 = eta_0*s/B_3;
-    eta_dot_0 = -B_3*xi_0*s;
-end
-
-% Calculate B_3 for the collinear points (A1=A2=0)
-function B_3 = calc_B3(mu, x_L, y_L)
-    d = sqrt((x_L+mu)^2 + y_L^2);
-    r = sqrt((x_L-1+mu)^2 + y_L^2);
-    U_xx = 1 - (1-mu)/d^3 - mu/r^3 + 3*(1-mu)*(x_L+mu)^2/d^5 + 3*mu*(x_L-1+mu)^2/r^5;
-    U_yy = 1 - (1-mu)/d^3 - mu/r^3;
-    B_1 = 2 - (U_xx + U_yy)/2;
-    B_2_squared = -U_xx*U_yy;
-    s = (B_1 + (B_1^2 + B_2_squared)^(1/2))^(1/2);
-    B_3 = (s^2 + U_xx)/(2*s);
-end
-
-% Calculate s (frequency of the imaginary component) for the collinear points (A1=A2=0)
-function s = calc_s(mu, x_L, y_L)
-    d = sqrt((x_L+mu)^2 + y_L^2);
-    r = sqrt((x_L-1+mu)^2 + y_L^2);
-    U_xx = 1 - (1-mu)/d^3 - mu/r^3 + 3*(1-mu)*(x_L+mu)^2/d^5 + 3*mu*(x_L-1+mu)^2/r^5;
-    U_yy = 1 - (1-mu)/d^3 - mu/r^3;
-    B_1 = 2 - (U_xx + U_yy)/2;
-    B_2_squared = -U_xx*U_yy;
-    s = (B_1 + (B_1^2 + B_2_squared)^(1/2))^(1/2);
 end
 
 % Calculate the location of L1
@@ -253,7 +234,7 @@ fprintf("L5 x: %f, y: %f\n", x_L5, y_L5)
 %=========================DEFINE PROBLEM=====================================
 % Initial Perturbations
 % WRT L1 frame
-xi_0 = 5e-6;
+xi_0 = 0.01;
 eta_0 = 0;
 % WRT the Earth-Moon Frame
 x_0 = x_L1 + xi_0;
@@ -285,29 +266,18 @@ fprintf("L3_lambda_2: %f + %fi\n", real(L3_lambda_2), imag(L3_lambda_2))
 fprintf("L3_lambda_3: %f + %fi\n", real(L3_lambda_3), imag(L3_lambda_3))
 fprintf("L3_lambda_4: %f + %fi\n", real(L3_lambda_4), imag(L3_lambda_4))
 
+[A1, A2] = calc_As(mu, x_L1, y_L1, lambda_1, lambda_2, xi_0, eta_0);
+fprintf("A1: %f, A2: %f\n", A1, A2)
+
 % Calculate the stable linear orbit about L1
 t0 = 0;
 t_end = 3*pi;
 fprintf("Time of simulation: %f [days]\n", t_end*t_char/3600/24)
-orbit_table = calc_collinear_linear_orbit(mu, t0, t_end, x_L1, y_L1, xi_0, eta_0);
+orbit_table = calc_collinear_linear_orbit(mu, lambda_1, t0, t_end, x_L1, y_L1, xi_0, eta_0);
 % orbit_table: 'VariableNames', {'time', 'x', 'y', 'xi'}
 
-% Max distance from L1
-% Where y is maximum
-B_3 = calc_B3(mu, x_L1, y_L1);
-y_max = eta_0*cosd(90) - B_3*xi_0*sind(90) + y_L1;
-fprintf('Max distance from L1 (non-dim): %f\n', y_max)
-fprintf('Max distance from L1 (dim): %f\n', y_max*l_char)
-
-% Period of the orbit around L1
-s = calc_s(mu, x_L1, y_L1);
-P_around_L1 = 2*pi/s;
-fprintf('Period around L1 (non-dim relative to the larger system): %f\n', P_around_L1)
-fprintf('Period around L1 (dim): %f sec\n', P_around_L1*t_char)
-fprintf('Period around L1 (dim): %f days\n', P_around_L1*t_char/3600/24)
-
 % Initial velocities
-[v_xi_0, v_eta_0] = calc_initial_velocities(mu, x_L1, y_L1, xi_0, eta_0);
+[v_xi_0, v_eta_0] = calc_initial_velocities(mu, x_L1, y_L1, A1, A2, lambda_1, lambda_2);
 fprintf("initial velocity x-comp: %f\n", v_xi_0)
 fprintf("initial velocity y-comp: %f\n", v_eta_0)
 v_x0_dim = v_xi_0 * l_char / t_char * 1000;
