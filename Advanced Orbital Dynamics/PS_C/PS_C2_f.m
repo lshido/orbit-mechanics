@@ -19,7 +19,7 @@ function [lambda_1, lambda_2, lambda_3, lambda_4] = calc_eigenvalues(mu, x_L, y_
 end
 
 % Calculate the coefficients A1, A2 (A3=A4=0)
-function [A1, A2] = calc_As(mu, x_L, y_L, lambda_1, lambda_2, xi_0, eta_0) 
+function [A1, A2, alpha1, alpha2] = calc_As(mu, x_L, y_L, lambda_1, lambda_2, xi_0, eta_0) 
     d = sqrt((x_L+mu)^2 + y_L^2);
     r = sqrt((x_L-1+mu)^2 + y_L^2);
     U_xx = 1 - (1-mu)/d^3 - mu/r^3 + 3*(1-mu)*(x_L+mu)^2/d^5 + 3*mu*(x_L-1+mu)^2/r^5;
@@ -56,6 +56,25 @@ function orbit_table = calc_collinear_linear_orbit(mu, lambda_1, t0, t_end, x_L,
         orbit_results(end+1,:) = [t x y x-x_L];
     end
     orbit_table = array2table(orbit_results, 'VariableNames', {'time', 'x', 'y', 'xi'});
+end
+
+% Calculate the linear orbit for tau only (A3=A4=0)
+function tau_table = calc_tau_points(mu, lambda_1, t0, t_end, x_L, y_L, xi_0, eta_0)
+    tau = 1/lambda_1;
+    tau_results = zeros(0,4);
+    % d, r, and partials all evaluated @ L1
+    d = sqrt((x_L+mu)^2 + y_L^2);
+    r = sqrt((x_L-1+mu)^2 + y_L^2);
+    U_xx = 1 - (1-mu)/d^3 - mu/r^3 + 3*(1-mu)*(x_L+mu)^2/d^5 + 3*mu*(x_L-1+mu)^2/r^5;
+    alpha1 = (lambda_1^2 - U_xx)/(2*lambda_1);
+    for t = t0:tau:t_end
+        xi = xi_0*cosh(lambda_1*(t-t0)) + (eta_0/alpha1)*sinh(lambda_1*(t-t0));
+        eta = eta_0*cosh(lambda_1*(t-t0)) + xi_0*alpha1*sinh(lambda_1*(t-t0));
+        x = xi + x_L;
+        y = eta + y_L; 
+        tau_results(end+1,:) = [t x y x-x_L];
+    end
+    tau_table = array2table(tau_results, 'VariableNames', {'time', 'x', 'y', 'xi'});
 end
 
 % Calculate the location of L1
@@ -266,15 +285,26 @@ fprintf("L3_lambda_2: %f + %fi\n", real(L3_lambda_2), imag(L3_lambda_2))
 fprintf("L3_lambda_3: %f + %fi\n", real(L3_lambda_3), imag(L3_lambda_3))
 fprintf("L3_lambda_4: %f + %fi\n", real(L3_lambda_4), imag(L3_lambda_4))
 
-[A1, A2] = calc_As(mu, x_L1, y_L1, lambda_1, lambda_2, xi_0, eta_0);
+[A1, A2, alpha1, alpha2] = calc_As(mu, x_L1, y_L1, lambda_1, lambda_2, xi_0, eta_0);
 fprintf("A1: %f, A2: %f\n", A1, A2)
+fprintf("alpha1: %f, alpha2: %f\n", alpha1, alpha2)
+
+% Calculate the time constant tau:
+tau = 1/lambda_1;
+fprintf("Non-dim Tau: %f\n", tau)
+fprintf("Dim Tau: %f [sec]\n", tau*t_char)
+fprintf("Dim Tau: %f [hours]\n", tau*t_char/3600)
+fprintf("Dim Tau: %f [days]\n", tau*t_char/3600/24)
 
 % Calculate the stable linear orbit about L1
 t0 = 0;
-t_end = 3*pi;
+t_end = 1.5*pi;
 fprintf("Time of simulation: %f [days]\n", t_end*t_char/3600/24)
 orbit_table = calc_collinear_linear_orbit(mu, lambda_1, t0, t_end, x_L1, y_L1, xi_0, eta_0);
 % orbit_table: 'VariableNames', {'time', 'x', 'y', 'xi'}
+
+% Calculate the points for tau
+tau_table = calc_tau_points(mu, lambda_1, t0, t_end, x_L1, y_L1, xi_0, eta_0)
 
 % Initial velocities
 [v_xi_0, v_eta_0] = calc_initial_velocities(mu, x_L1, y_L1, A1, A2, lambda_1, lambda_2);
@@ -394,6 +424,7 @@ fprintf("max error: %d\n", max_error)
 
 % Initial Conditions
 w0 = [x_0;y_0;v_xi_0;v_eta_0];
+fprintf("ICs: %f\n", w0)
 
 % tspan should be calculated with non-dim time
 tspan = [0 t_end];
@@ -409,6 +440,9 @@ w(4);...
 options = odeset('RelTol',1e-12,'AbsTol', 1e-14,'MaxStep', 1e-3);
 [t,w] = ode113(ode, tspan, w0, options); 
 
+tspan_tau = 0:tau:t_end;
+[t_tau,w_tau] = ode113(ode, tspan_tau, w0, options); 
+
 % Retrieving the results from the integrator
 % Position (dimensional)
 x_nl = w(:,1);
@@ -420,6 +454,10 @@ eta_nl = w(:,2)-0;
 v_x_nl = w(:,3);
 v_y_nl = w(:,4);
 
+% Position Tau (non-dimensional)
+xi_nl_tau = w_tau(:,1)-x_L1;
+eta_nl_tau = w_tau(:,2)-0;
+
 % Calculate the Jacobi Constant C
 d = sqrt((x_nl+mu).^2 + y_nl.^2);
 r = sqrt((x_nl-1+mu).^2 + y_nl.^2);
@@ -430,6 +468,9 @@ pseudo_U = term_1 + term_2 + x_y_sq;
 v_squared = w(:,3).^2 + w(:,4).^2;
 C_table = 2*pseudo_U - v_squared;
 error_table = abs(C_table - C)./C; 
+
+%======================Analyze the differences between the linear and nonlinear results
+% x_diff = x_nl - x_
 
 %===================Plot the orbit===============
 fig1 = figure("Name", "1:orbit");
@@ -490,18 +531,21 @@ fontsize(14, 'points')
 fig4 = figure('Name', '4:non-dim');
 L1_plot = scatter(0, 0, 'red', 'filled', 'SizeData', 10);
 hold on
+moon = scatter(x_Moon-x_L1, 0, 'black', 'filled', 'SizeData', 100);
 % zvc_plot = scatter(zvc_table, 'xi', 'y', 'filled', 'SizeData', 2, 'MarkerFaceColor','#53A1C9', 'MarkerEdgeColor', '#53A1C9');
 % scatter(zvc_table, 'xi', '-y', 'filled', 'SizeData', 2, 'MarkerFaceColor','#53A1C9', 'MarkerEdgeColor', '#53A1C9')
 linear_orbit = plot(orbit_table, 'xi', 'y', 'Color', '#800080');
+tau = scatter(tau_table, 'xi', 'y', 'Marker', '*');
 nonlinear_orbit = plot(xi_nl, eta_nl, 'Color', '#008000');
+tau_orbit = scatter(xi_nl_tau, eta_nl_tau, 'Marker', '*');
 hold off
-limit = 5*xi_0;
-xlim([-limit limit])
-ylim([-limit limit])
+limit = 1000*xi_0;
+ylim([-0.15 0.15])
+xlim([-0.05 0.35])
 axis square
 xlabel("\xi [non-dim]")
 ylabel("\eta [non-dim]")
-legend([L1_plot, zvc_plot, linear_orbit, nonlinear_orbit], {'L1', 'ZVC', 'Linear Orbit', 'Non-Linear Orbit'})
+legend([L1_plot, moon, linear_orbit, nonlinear_orbit, tau], {'L1', 'Moon', 'Linear Orbit', 'Non-Linear Orbit', 'Time Constant'})
 title({'The orbit around the L1 point in'; ['the Earth-Moon System for \xi = ', num2str(xi_0)]})
 box on
 grid on
