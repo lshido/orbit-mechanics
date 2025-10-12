@@ -1,0 +1,157 @@
+clear all
+
+%=========================FUNCTION DEFINITIONS============================%
+% Calculate the location of L4
+function [x_L4, y_L4] = calc_L4(mu)
+    x_L4 = cosd(60) - mu;
+    y_L4 = sind(60);
+end
+
+% Calculate Uxx, Uyy, Uxy(=Uyx)
+function [U_xx, U_yy, U_xy] = calc_U(mu, x_L, y_L)
+    d = sqrt((x_L+mu)^2 + y_L^2);
+    r = sqrt((x_L-1+mu)^2 + y_L^2);
+    U_xx = 1 - (1-mu)/d^3 - mu/r^3 + 3*(1-mu)*(x_L+mu)^2/d^5 + 3*mu*(x_L-1+mu)^2/r^5;
+    U_yy = 1 - (1-mu)/d^3 - mu/r^3 + 3*(1-mu)*y_L^2/d^5 + 3*mu*y_L^2/r^5;
+    U_xy = 3*(1-mu)*(x_L+mu)*y_L/d^5 + 3*mu*(x_L-1+mu)*y_L/r^5;
+end
+
+% Calculate the linear orbit for the equilateral points:
+function linear_table = calc_equilateral_linear(t0, t_end, alpha_1, alpha_2, alpha_3, alpha_4, beta_1, beta_2, beta_3, beta_4, s1, s2, x_L, y_L)
+    orbit_results = zeros(0,5);
+    for t = t0:0.01:t_end
+        xi = alpha_1*cos(s1*t) + alpha_2*sin(s1*t) + alpha_3*cos(s2*t) + alpha_4*sin(s2*t);
+        eta = beta_1*cos(s1*t) + beta_2*sin(s1*t) + beta_3*cos(s2*t) + beta_4*sin(s2*t);
+        x = xi + x_L;
+        y = eta + y_L; 
+        orbit_results(end+1,:) = [t x y xi eta];
+    end
+    linear_table = array2table(orbit_results, 'VariableNames', {'time', 'x', 'y', 'xi', 'eta'});
+end
+
+% Calculate eigenvalues for equilateral points:
+function [lambda_1, lambda_2, lambda_3, lambda_4] = calc_eigenvalues_equilateral(mu)
+    big_lambda_1 = 1/2*(-1 + (1 - 27*mu*(1-mu))^(1/2));
+    big_lambda_2 = 1/2*(-1 - (1 - 27*mu*(1-mu))^(1/2));
+    lambda_1 = sqrt(big_lambda_1);
+    lambda_2 = -lambda_1;
+    lambda_3 = sqrt(big_lambda_2);
+    lambda_4 = -lambda_3;
+end
+
+% Calculate alpha_2 and beta_2 for equilateral points:
+function [alpha_2, beta_2] = calc_alpha2_beta2(U_xx, U_yy, U_xy, xi_0, eta_0, s1)
+    alpha_2 = (U_xy*xi_0 + U_yy*eta_0 + eta_0*s1^2)/(2*s1);
+    beta_2 = (U_xx*xi_0 + U_xy*eta_0 + xi_0*s1^2)/(-2*s1);
+end
+
+% Calculate alpha_4 and beta_4 for equilateral points:
+function [alpha_4, beta_4] = calc_alpha4_beta4(U_xx, U_yy, U_xy, xi_0, eta_0, s2)
+    alpha_4 = (U_xy*xi_0 + U_yy*eta_0 + eta_0*s2^2)/(2*s2);
+    beta_4 = (U_xx*xi_0 + U_xy*eta_0 + xi_0*s2^2)/(-2*s2);
+end
+
+%===========================END FUNCTION DEFINITIONS===============================
+
+%==========================DEFINE SYSTEM==================================
+
+% Earth-Moon System
+% Gravitational Parameters [km^3/s^2]
+mu_Earth = 398600.4415;
+mu_Moon = 4902.8005821478;
+
+% Characteristic Length [km]
+a = 384400; % around Earth
+l_char = a;
+fprintf("Characteristic Length: %f km \n", l_char)
+% Calculate characteristic time
+t_char = sqrt(a^3/(mu_Earth+mu_Moon));
+fprintf("characteristic time: %d sec\n", t_char)
+
+% Earth-Moon System
+mu = mu_Moon/(mu_Earth + mu_Moon);
+fprintf("Mu of Earth-Moon: %f\n", mu)
+% Position of primary bodies
+x_Earth = -mu;
+x_Moon = 1-mu;
+
+% Calc L4 Libration point
+[x_L4, y_L4] = calc_L4(mu);
+fprintf("x_L4: %f, y_L4: %f\n", x_L4, y_L4)
+
+%============================END DEFINE SYSTEM================================
+
+%===========================DEFINE PROBLEM=============================
+% Find a set of ICs that include both short and long periods for the motion. 
+% Maybe we should take the long and short period ICs and add them?
+% Perturbations
+xi_0 = 0.01;
+eta_0 = 0;
+
+% Calc Partials of Pseudo-potential
+[U_xx, U_yy, U_xy] = calc_U(mu, x_L4, y_L4);
+fprintf("U_xx: %f\n", U_xx)
+fprintf("U_yy: %f\n", U_yy)
+fprintf("U_xy: %f\n", U_xy)
+
+% Calc eigenvalues for L4
+[lambda_1, lambda_2, lambda_3, lambda_4] = calc_eigenvalues_equilateral(mu);
+fprintf("lambda_1: %f + %fi\n", real(lambda_1), imag(lambda_1))
+fprintf("lambda_2: %f + %fi\n", real(lambda_2), imag(lambda_2))
+fprintf("lambda_3: %f + %fi\n", real(lambda_3), imag(lambda_3))
+fprintf("lambda_4: %f + %fi\n", real(lambda_4), imag(lambda_4))
+
+% Calc s
+s1 = imag(lambda_1);
+s2 = imag(lambda_3);
+fprintf("s1: %f, s2: %f\n", s1, s2)
+fprintf("s1/s2 ratio: %f\n", s1/s2)
+fprintf("s2/s1 ratio: %f\n", s2/s1)
+
+% Set combined alphas:
+alpha_1 = xi_0;
+beta_1 = eta_0;
+[alpha_2, beta_2] = calc_alpha2_beta2(U_xx, U_yy, U_xy, xi_0, eta_0, s1);
+alpha_3 = xi_0;
+beta_3 = eta_0;
+[alpha_4, beta_4] = calc_alpha4_beta4(U_xx, U_yy, U_xy, xi_0, eta_0, s2)
+fprintf("alpha_1: %f, beta_1: %f\n", alpha_1, beta_1)
+fprintf("alpha_2: %f, beta_2: %f\n", alpha_2, beta_2)
+fprintf("alpha_3: %f, beta_3: %f\n", alpha_3, beta_3)
+fprintf("alpha_4: %f, beta_4: %f\n", alpha_4, beta_4)
+
+t0 = 0;
+t_end = 50*pi;
+linear_table = calc_equilateral_linear(t0, t_end, alpha_1, alpha_2, alpha_3, alpha_4, beta_1, beta_2, beta_3, beta_4, s1, s2, x_L4, y_L4);
+% orbit_table: 'VariableNames', {'time', 'x', 'y', 'xi', 'eta'}
+
+% Calc initial conditions now
+xi_0 = alpha_1 + alpha_3;
+eta_0 = beta_1 + beta_3;
+xi_dot_0 = alpha_2*s1 + alpha_4*s2;
+eta_dot_0 = beta_2*s1 + beta_4*s2;
+fprintf("xi_0: %f, eta_0: %f [non-dim]\n", xi_0, eta_0)
+fprintf("xi_0: %f, eta_0: %f [km]\n", xi_0*l_char, eta_0*l_char)
+fprintf("xi_dot_0: %f, eta_dot_0: %f [non-dim]\n", xi_dot_0, eta_dot_0)
+fprintf("xi_dot_0: %f, eta_dot_0: %f [m/s]\n", xi_dot_0*l_char/t_char*1000, eta_dot_0*l_char/t_char*1000)
+
+%===========================END DEFINE PROBLEM=============================
+
+%===========================CONFIGURE PLOTS================================
+fig4 = figure('Name', '1 :non-dim');
+L4_plot = scatter(0, 0, 'red', 'filled', 'SizeData', 10);
+hold on
+linear_orbit = plot(linear_table, 'xi', 'eta', 'Color', '#800080');
+hold off
+% limit = 5*xi_0;
+% ylim([-limit limit])
+% xlim([-limit limit])
+axis square
+xlabel("\xi [non-dim]")
+ylabel("\eta [non-dim]")
+% xticks(-limit:.01:limit)
+legend([L4_plot, linear_orbit], {'L4', 'Linear Orbit'})
+title({'Mixed Period orbit around the L4 point in'; 'the Earth-Moon System (Lillian Shido)'})
+box on
+grid on
+fontsize(14, 'points')
