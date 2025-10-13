@@ -34,6 +34,7 @@ r_0 = sqrt((x_0-1+mu)^2 + y_0^2);
 pseudo_U = (1-mu)/d_0 + mu/r_0 + (x_0^2+y_0^2)/2;
 v_squared = norm(v_vector)^2;
 C = 2*pseudo_U - v_squared;
+% C = 2.987987;
 fprintf("Jacobi Constant C: %d\n", C)
 
 % Position of primary bodies
@@ -88,7 +89,7 @@ function error = calc_error(actual, ideal)
 end
 
 % Give an initial guess for y that is around the Earth)
-for x = linspace(-1.5,1.5,5e3) %  Find the curve for -1.5 < x < 1.5
+for x = linspace(-1.5,1.5,5e2) %  Find the curve for -1.5 < x < 1.5
     for y = 0:0.1:1.5 % These are my guesses
         counter = 0;
         while 1
@@ -124,7 +125,7 @@ for x = linspace(-1.5,1.5,5e3) %  Find the curve for -1.5 < x < 1.5
         end
     end
 end
-for y = linspace(-1.5,1.5,5e3) % Find the curve for 0 < y < 1.21
+for y = linspace(-1.5,1.5,5e2) % Find the curve for 0 < y < 1.21
     for x = -1.5:0.1:1.5 % These are my guesses for x
         counter = 0;
         while 1

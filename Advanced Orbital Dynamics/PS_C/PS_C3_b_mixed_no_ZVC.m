@@ -78,10 +78,6 @@ fprintf("x_L4: %f, y_L4: %f\n", x_L4, y_L4)
 %===========================DEFINE PROBLEM=============================
 % Find a set of ICs that include both short and long periods for the motion. 
 % Maybe we should take the long and short period ICs and add them?
-% Define Perturbations to find short period ICs
-xi_0 = 0.01;
-eta_0 = 0;
-
 % Calc Partials of Pseudo-potential
 [U_xx, U_yy, U_xy] = calc_U(mu, x_L4, y_L4);
 fprintf("U_xx: %f\n", U_xx)
@@ -120,6 +116,16 @@ t0 = 0;
 t_end = 15*pi;
 linear_table = calc_equilateral_linear(t0, t_end, alpha_1, alpha_2, alpha_3, alpha_4, beta_1, beta_2, beta_3, beta_4, s1, s2, x_L4, y_L4);
 % orbit_table: 'VariableNames', {'time', 'x', 'y', 'xi', 'eta'}
+
+% Calc initial conditions now
+xi_0 = alpha_1 + alpha_3;
+eta_0 = beta_1 + beta_3;
+xi_dot_0 = alpha_2*s1 + alpha_4*s2;
+eta_dot_0 = beta_2*s1 + beta_4*s2;
+fprintf("xi_0: %f, eta_0: %f [non-dim]\n", xi_0, eta_0)
+fprintf("xi_0: %f, eta_0: %f [km]\n", xi_0*l_char, eta_0*l_char)
+fprintf("xi_dot_0: %f, eta_dot_0: %f [non-dim]\n", xi_dot_0, eta_dot_0)
+fprintf("xi_dot_0: %f, eta_dot_0: %f [m/s]\n", xi_dot_0*l_char/t_char*1000, eta_dot_0*l_char/t_char*1000)
 
 %===========================END DEFINE PROBLEM=============================
 
