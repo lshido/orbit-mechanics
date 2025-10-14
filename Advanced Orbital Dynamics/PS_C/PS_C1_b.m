@@ -1,3 +1,8 @@
+% Problem C1 part(b)
+% Matlab Code: ZVC Plotting Algorithm
+% Author: Lillian Shido
+% Date: 10/6/2025
+
 clear all
 
 % Calculate C for the given position and velocity.
@@ -43,6 +48,18 @@ y_L4 = sind(60);
 x_L5 = cosd(60) - mu;
 y_L5 = -sind(60);
 
+% Find Jacobi Constant C
+function C = JC_check(mu, x, y)
+    d = sqrt((x+mu)^2 + y^2);
+    r = sqrt((x-1+mu)^2 + y^2);
+    C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
+end
+
+% Calc error
+function error = calc_error(actual, ideal)
+    error =  abs(actual - ideal)/ideal;
+end
+
 % To plot the ZVC for z = 0:
 % Step 1: For a given x
 % Step 2: Guess a y
@@ -51,13 +68,15 @@ y_L5 = -sind(60);
 % Step 5: If not, update y with Newton Raphson
 % Step 6: Repeat
 
-zvc_result = zeros(0,5);
+% Calc ZVCs
+zvc_result = zeros(0,6);
 tolerance = 1e-12;
-
-%===================Calculate the "inside" curve=====================
-% Give an initial guess for y that's "inside"
-for y = [-0.1, 0.1];
-    for x = [linspace(0,-1.21,5e3), linspace(0,1.21,5e3)] %  Find the curve for -1.21 < x < 0
+max_iterations = 100;
+% Give an initial guess for y that is around the Earth
+% for x = linspace(-1.5,1.5,1e3) %  Find the curve for -1.5 < x < 1.5
+for x = linspace(-1.5,1.5,1e3) %  Find the curve for -1.5 < x < 1.5
+    fprintf("x sweep: %f\n", x)
+    for y = 0:0.1:1.5 % These are my guesses
         counter = 0;
         while 1
             counter = counter + 1;
@@ -67,101 +86,73 @@ for y = [-0.1, 0.1];
             f_prime_y = 2*y*( 1 - (1-mu)/d^3 - mu/r^3);
             delta = f/f_prime_y;
             if abs(f) > tolerance
-                y = y - delta;
-                continue
+                if counter > max_iterations % check for max iterations
+                    new_C = JC_check(mu, x, y);
+                    C_error = calc_error(new_C, C);
+                    if C_error < 1e-12
+                        zvc_result(end+1,:) = [x y -y new_C error_C counter];
+                    else
+                        break
+                    end
+                elseif d == 0 || r == 0 % check for dividing by 0
+                    break
+                elseif abs(f_prime_y) <= tolerance % check for zero derivative
+                    break
+                else
+                    y = y - delta;
+                    continue
+                end
             else
                 new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
                 error_C = abs(new_C - C)/C*100;
-                zvc_result(end+1,:) = [x y new_C error_C counter];
-                counter = 0;
+                zvc_result(end+1,:) = [x y -y new_C error_C counter];
                 break
             end
         end
     end
 end
-
-% Give an initial guess for x that starts "inside"
-for x = [-0.1, 0.1]; % Try starting from the "outside" of the outer boundary
-    for y = [linspace(0,-1.21,5e3), linspace(0,1.21,5e3)] % Find the curve for 0 < y < 1.21
-        while 1
-            counter = counter + 1;
-            d = sqrt((x+mu)^2 + y^2);
-            r = sqrt((x-1+mu)^2 + y^2);
-            f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
-            f_prime_x = 2*x - 2*(1-mu)*(x+mu)/d^3 - 2*mu*(x-1+mu)/r^3;
-            delta = f/f_prime_x;
-            % Step 4:
-            if abs(f) > tolerance
-                x = x - delta;
-                continue
-            % elseif counter > 1e3
-            %     break
-            else
-                new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
-                error_C = abs(new_C - C)/C*100;
-                zvc_result(end+1,:) = [x y new_C error_C counter];
-                counter = 0;
-                break
-            end
-        end
+% for y = linspace(-1.5,1.5,1e3) % Find the curve for 0 < y < 1.21
+for y = linspace(-1.5,1.5,1e3) % Find the curve for 0 < y < 1.21
+    fprintf("y sweep: %f\n", y)
+    if y == 0.752505
+        fprintf("y = 0.752505!!\n")
     end
-end
-
-%===================Calculate the "outside" curve=====================
-% Give an initial guess for y that starts "outside"
-for y = [-1.5, 1.5]; % Try starting from the "outside" of the outer boundary
-    for x = [linspace(-1.21,0,1e3), linspace(0,1.21,1e3)] %  Find the curve for -1.21 < x < 0
+    for x = -1.5:0.1:1.5 % These are my guesses for x
         counter = 0;
         while 1
-            counter = counter + 1;
-            d = sqrt((x+mu)^2 + y^2);
-            r = sqrt((x-1+mu)^2 + y^2);
-            f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
-            f_prime_y = 2*y*( 1 - (1-mu)/d^3 - mu/r^3);
-            delta = f/f_prime_y;
-            if abs(f) > tolerance
-                y = y - delta;
-                continue
+        counter = counter + 1;
+        d = sqrt((x+mu)^2 + y^2);
+        r = sqrt((x-1+mu)^2 + y^2);
+        f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
+        f_prime_x = 2*x - 2*(1-mu)*(x+mu)/d^3 - 2*mu*(x-1+mu)/r^3;
+        delta = f/f_prime_x;
+        if abs(f) > tolerance
+                if counter > max_iterations % check for max iterations
+                    new_C = JC_check(mu, x, y);
+                    C_error = calc_error(new_C, C);
+                    if C_error < 1e-12
+                        zvc_result(end+1,:) = [x y -y new_C error_C counter];
+                    else
+                        break
+                    end
+                elseif d == 0 || r == 0 % check for dividing by 0
+                    break
+                elseif abs(f_prime_x) <= tolerance % check for zero derivative
+                    break
+                else
+                    x = x - delta;
+                    continue
+                end
             else
                 new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
                 error_C = abs(new_C - C)/C*100;
-                zvc_result(end+1,:) = [x y new_C error_C counter];
-                counter = 0;
+                zvc_result(end+1,:) = [x y -y new_C error_C counter];
                 break
             end
         end
     end
 end
-
-% Give an initial guess for x that starts "outside"
-for x = [-1.5, 1.5]; % Try starting from the "outside" of the outer boundary
-    for y = [linspace(-1.21,0,1e3), linspace(0,1.21,1e3)] % Find the curve for 0 < y < 1.21
-        while 1
-            counter = counter + 1;
-            d = sqrt((x+mu)^2 + y^2);
-            r = sqrt((x-1+mu)^2 + y^2);
-            f = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r) - C;
-            f_prime_x = 2*x - 2*(1-mu)*(x+mu)/d^3 - 2*mu*(x-1+mu)/r^3;
-            delta = f/f_prime_x;
-            if abs(f) > tolerance
-                x = x - delta;
-                continue
-            % elseif counter > 1e3
-            %     break
-            else
-                new_C = x^2 + y^2 + (2*(1-mu)/d) + (2*mu/r);
-                error_C = abs(new_C - C)/C*100;
-                zvc_result(end+1,:) = [x y new_C error_C counter];
-                counter = 0;
-                break
-            end
-        end
-    end
-end
-
-zvc_table = array2table(zvc_result, 'VariableNames', {'x','y', 'JC', '% Error of C','Iterations'});
-format short
-disp(zvc_table)
+zvc_table = array2table(zvc_result, 'VariableNames', {'x','y', '-y', 'JC', '% Error of C','Iterations'});
 
 % Find the max error of JC
 max_error = max(abs(zvc_result(:,4)));
@@ -179,15 +170,13 @@ fig1 = figure('Name','ZVC');
 earth = scatter(x_Earth, 0, 'blue', 'filled', 'SizeData', 200);
 hold on
 moon = scatter(x_Moon, 0, 'black', 'filled', 'SizeData', 100);
-L1_plot = scatter(x_L1, y_L1, 'red', 'filled', 'SizeData', 50);
-scatter(x_L2, y_L2, 'red', 'filled', 'SizeData', 50)
-scatter(x_L3, y_L3, 'red', 'filled', 'SizeData', 50)
-scatter(x_L4, y_L4, 'red', 'filled', 'SizeData', 50)
-scatter(x_L5, y_L5, 'red', 'filled', 'SizeData', 50)
-% p1_plot = scatter(x_1, y_1, 'magenta', 'filled', 'SizeData', 50);
-% p2_plot = scatter(x_2, y_2, 'magenta', 'filled', 'SizeData', 50);
-zvc_plot = scatter(zvc_table, 'x', 'y', 'filled', 'SizeData', 10);
-% plot(zvc_table, 'x', 'y')
+L1_plot = scatter(x_L1, y_L1, 'red', 'filled', 'SizeData', 10);
+scatter(x_L2, y_L2, 'red', 'filled', 'SizeData', 10)
+scatter(x_L3, y_L3, 'red', 'filled', 'SizeData', 10)
+scatter(x_L4, y_L4, 'red', 'filled', 'SizeData', 10)
+scatter(x_L5, y_L5, 'red', 'filled', 'SizeData', 10)
+zvc_plot = scatter(zvc_table, 'x', 'y', 'SizeData', 2, 'MarkerFaceColor', '#53A1C9', 'MarkerEdgeColor', '#53A1C9');
+scatter(zvc_table, 'x', '-y', 'SizeData', 2, 'MarkerFaceColor', '#53A1C9', 'MarkerEdgeColor', '#53A1C9');
 hold off
 xlim([-1.5 1.5])
 ylim([-1.5 1.5])
