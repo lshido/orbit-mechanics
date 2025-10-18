@@ -87,8 +87,7 @@ function d_sv = odefun(t,sv,mu)
     d_sv(20) = U_xy*sv(8) + U_yy*sv(12) - 2*sv(16);
 end
 
-% sv0 = [r_vector(1);r_vector(2);v_vector(1);v_vector(2);1;0;0;0;0;1;0;0;0;0;1;0;0;0;0;1];
-sv0 = transpose([1:20]);
+sv0 = [r_vector(1);r_vector(2);v_vector(1);v_vector(2);1;0;0;0;0;1;0;0;0;0;1;0;0;0;0;1];
 % set up the STM ODE
 options = odeset('Events', @(t,sv) crossxEvent(t,sv), 'RelTol',1e-12,'AbsTol', 1e-14);
 [t,sv, te, sve, ie] = ode45(@(t,sv) odefun(t,sv,mu), tspan, sv0, options);
@@ -99,11 +98,30 @@ y = sv(:,2);
 v_x = sv(:,3);
 v_y = sv(:,4);
 
-error = calc_error(sv(2), 1e-12);
+error = calc_error(tail(y,1), 1e-12);
 
 d_sv = odefun(t, sv0, mu);
-
 %==========================END INTEGRATE THE EOM + STM===============================
+
+%==========================STM at t_final==============================
+last_propagation = tail(sv,1);
+last_stm = last_propagation(5:20);
+stm_tf = transpose(reshape(last_stm,[4 4]));
+%=====================END STM at t_final===============================
+
+%====================Use Phi Matrix====================================
+% Predict the change in final x for change in initial v_y
+change = 0.01;
+dv_y = change*v_vector(2);
+dx = stm_tf(1,4)*dv_y;
+x_f = r_vector(1) + dx;
+
+% Predict the change in final y for change in initial v_x
+dv_x = change*v_vector(1);
+dy = stm_tf(2,3)*dv_x; 
+y_f = r_vector(2) + dy;
+%====================End Use Phi Matrix====================================
+
 
 %====================PRINT IMPORTANT NUMBERS==========================
 fprintf("mu %d\n", mu)
@@ -116,7 +134,13 @@ fprintf("Initial v_y: %f m/s\n", v_vector(2)*l_char/t_char*1000)
 fprintf("Non-dimensional event time: %d\n", te)
 fprintf("Dimensional event time: %d sec\n", te*t_char)
 fprintf("Dimensional event time: %d days\n", te*t_char/3600/24)
-fprintf("Error of x-axis cross: %f\n", error)
+fprintf("Last value of y: %f\n", tail(y,1))
+fprintf("%f\t%f\t%f\t%f\n", stm_tf)
+fprintf("Predict some states\n")
+fprintf("%f%% change or %f (%f km/s)change in v_y predicts %f (%f km) change in x\n", change*100, dv_y, dv_y*l_char/t_char, dx, dx*l_char)
+fprintf("%f%% change or %f (%f km/s)change in v_x predicts %f (%f km) change in y\n", change*100, dv_x, dv_x*l_char/t_char, dy, dy*l_char)
+fprintf("The predicted final states for x and y are %f and %f [non-dim]\n", x_f, y_f)
+fprintf("The predicted final states for x and y are %f and %f km\n", x_f*l_char, y_f*l_char)
 %================END PRINT IMPORTANT NUMBERS==========================
 
 %=====================Configure Plot==================================
@@ -129,11 +153,11 @@ hold off
 axis square
 xlabel("x [non-dim]")
 ylabel("y [non-dim]")
-xlim([-1.5 1.5])
-ylim([-1.5 1.5])
+xlim([-0.5 1])
+ylim([-0.5 1])
 % xticks(-limit:.01:limit)
 legend([earth, moon, nonlinear_orbit], {'Earth', 'Moon', 'Nonlinear Orbit'})
-title({'Trajectory in Earth-Moon (x-y) (Lillian Shido)'})
+title({'Trajectory in Earth-Moon (x-y)';['Sim time: ', num2str(te), ' (Lillian Shido)']})
 box on
 grid on
 fontsize(14, 'points')
