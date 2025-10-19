@@ -40,8 +40,7 @@ t_final = 1.5*pi;
 tspan = [0 t_final];
 
 % position and velocity in NON-DIMENSIONAL units
-r_vector = [0.488 0.200];
-v_vector = [-0.880 0.200];
+orig_IC_vector = [0.488 0.200 -0.880 0.200];
 
 %====================DEFINE SYSTEM====================================
 
@@ -87,7 +86,8 @@ function d_sv = odefun(t,sv,mu)
     d_sv(20) = U_xy*sv(8) + U_yy*sv(12) - 2*sv(16);
 end
 
-sv0 = [r_vector(1);r_vector(2);v_vector(1);v_vector(2);1;0;0;0;0;1;0;0;0;0;1;0;0;0;0;1];
+% Original ICs
+sv0 = [orig_IC_vector(1);orig_IC_vector(2);orig_IC_vector(3);orig_IC_vector(4);1;0;0;0;0;1;0;0;0;0;1;0;0;0;0;1];
 % set up the STM ODE
 options = odeset('Events', @(t,sv) crossxEvent(t,sv), 'RelTol',1e-12,'AbsTol', 1e-14);
 [t,sv, te, sve, ie] = ode45(@(t,sv) odefun(t,sv,mu), tspan, sv0, options);
@@ -98,28 +98,37 @@ y = sv(:,2);
 v_x = sv(:,3);
 v_y = sv(:,4);
 
-error = calc_error(tail(y,1), 1e-12);
-
-d_sv = odefun(t, sv0, mu);
 %==========================END INTEGRATE THE EOM + STM===============================
 
 %==========================STM at t_final==============================
 last_propagation = tail(sv,1);
 last_stm = last_propagation(5:20);
-stm_tf = transpose(reshape(last_stm,[4 4]));
+stm_tf = transpose(reshape(last_stm,[4 4]))
 %=====================END STM at t_final===============================
 
-%====================Use Phi Matrix====================================
-% Predict the change in final x for change in initial v_y
-change = 0.1;
-dv_y = change*v_vector(2);
-dx = stm_tf(1,4)*dv_y;
-x_f = r_vector(1) + dx;
+%====================Use Phi Matrix to predict====================================
 
-% Predict the change in final y for change in initial v_x
-dv_x = change*v_vector(1);
-dy = stm_tf(2,3)*dv_x; 
-y_f = r_vector(2) + dy;
+state = ["x", "y", "x_dot", "y_dot"];
+% Change the adjusmtent to 1% and 10%
+change = [0.01, 0.1];
+for change = [0.01, 0.1]
+    fprintf("==========Percentage change: %d%%===========\n", change*100)
+    % Change [x, vx, vy]
+    for n = [1, 3, 4]
+        fprintf("======Change in %s: %d[non-dim]======\n",state(n),orig_IC_vector(n))
+        delta_IC = orig_IC_vector(n)*change;
+        for m = [1, 2, 3, 4]
+            delta_f = stm_tf(m,n)*delta_IC; 
+            % Calc the final values in x,y,vx,vy
+            final = orig_IC_vector(m) + delta_f;
+            if m<3
+                fprintf("%s: delta: %f[non-dim] %f[km], final: %f[non-dim] %f[km]\n", state(m), delta_f, delta_f*l_char, final, final*l_char)
+            else
+                fprintf("%s: delta: %f[non-dim] %f[km/s], final: %f[non-dim] %f[km/s]\n", state(m), delta_f, delta_f*l_char/t_char, final, final*l_char/t_char)
+            end
+        end
+    end
+end
 %====================End Use Phi Matrix====================================
 
 
@@ -127,20 +136,25 @@ y_f = r_vector(2) + dy;
 fprintf("mu %d\n", mu)
 fprintf("characteristic time: %f sec\n", t_char)
 fprintf("characteristic length: %f sec\n", l_char)
-fprintf("Initial x: %f km\n", r_vector(1)*l_char)
-fprintf("Initial y: %f km\n", r_vector(2)*l_char)
-fprintf("Initial v_x: %f m/s\n", v_vector(1)*l_char/t_char*1000)
-fprintf("Initial v_y: %f m/s\n", v_vector(2)*l_char/t_char*1000)
+fprintf("Initial x: %f non-dim\n", sv0(1))
+fprintf("Initial y: %f non-dim\n", sv0(2))
+fprintf("Initial v_x: %f non-dim\n", sv0(3))
+fprintf("Initial v_y: %f non-dim\n", sv0(4))
+fprintf("Initial x: %f km\n", sv0(1)*l_char)
+fprintf("Initial y: %f km\n", sv0(2)*l_char)
+fprintf("Initial v_x: %f km/s\n", sv0(3)*l_char/t_char)
+fprintf("Initial v_y: %f km/s\n", sv0(4)*l_char/t_char)
 fprintf("Non-dimensional event time: %d\n", te)
 fprintf("Dimensional event time: %d sec\n", te*t_char)
 fprintf("Dimensional event time: %d days\n", te*t_char/3600/24)
 fprintf("Last value of y: %f\n", tail(y,1))
-fprintf("%f\t%f\t%f\t%f\n", stm_tf)
-fprintf("Predict some states\n")
-fprintf("%f%% change or %f (%f km/s)change in v_y predicts %f (%f km) change in x\n", change*100, dv_y, dv_y*l_char/t_char, dx, dx*l_char)
-fprintf("%f%% change or %f (%f km/s)change in v_x predicts %f (%f km) change in y\n", change*100, dv_x, dv_x*l_char/t_char, dy, dy*l_char)
-fprintf("The predicted final states for x and y are %f and %f [non-dim]\n", x_f, y_f)
-fprintf("The predicted final states for x and y are %f and %f km\n", x_f*l_char, y_f*l_char)
+% fprintf("%f\t%f\t%f\t%f\n", stm_tf)
+fprintf("Final states x y v_x v_y\n")
+fprintf("Final x: %f km\n", sve(1)*l_char)
+fprintf("Final y: %f km\n", sve(2)*l_char)
+fprintf("Final v_x %f km/s\n", sve(3)*l_char/t_char)
+fprintf("Final v_y %f km/s\n", sve(4)*l_char/t_char)
+
 %================END PRINT IMPORTANT NUMBERS==========================
 
 %=====================Configure Plot==================================
