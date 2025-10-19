@@ -1,10 +1,12 @@
 
 import pdb
+import copy
 from constants import mu_Earth, mu_Moon, a_Moon
 import numpy as np
 import pandas as pd
 from math import pi, sqrt
 from scipy.integrate import solve_ivp
+import matplotlib.pyplot as plt
 
 mu = mu_Moon/(mu_Earth + mu_Moon)
 
@@ -61,17 +63,23 @@ def crossxEvent(t, sv, mu):
     return sv[1] # Return value of y
 crossxEvent.terminal = True
 
-# Initial Conditions
+# Trjaectory Initial Conditions
+original_IC = [
+    0.488, 0.200, # x and y
+    -0.880, 0.200 # x_dot and y_dot
+    ]
+
+# ODE Initial Conditions
 sv0 = [
-    0.488, # x
-    0.200, # y
-    -0.880, # x_dot
-    0.200, # y_dot
+    original_IC[0], # x
+    original_IC[1], # y
+    original_IC[2], # x_dot
+    original_IC[3], # y_dot
     1,0,0,0, # Identity matrix for phi ICs
     0,1,0,0,
     0,0,1,0,
     0,0,0,1
-]
+    ]
 
 # Set the span of the integrator
 t_final = 1.5*pi;
@@ -120,5 +128,67 @@ case_2a_data = df.loc[df['% Change']==1.0].loc[df['Changed State']=='y_dot']
 case_2b_data = df.loc[df['% Change']==10.0].loc[df['Changed State']=='y_dot']
 case_3a_data = df.loc[df['% Change']==1.0].loc[df['Changed State']=='x_dot']
 case_3b_data = df.loc[df['% Change']==10.0].loc[df['Changed State']=='x_dot']
+
+def build_new_ICs(case_data, original_IC, states):
+    IC = copy.deepcopy(original_IC)
+    state_to_change = states.index(case_data['Changed State'].to_list()[0])
+    update_value = case_data['Changed IC'].to_list()[0]
+    IC[state_to_change] = update_value
+    return IC
+
+case_1_IC = build_new_ICs(case_1_data, original_IC, state)
+case_2a_IC = build_new_ICs(case_2a_data, original_IC, state)
+case_2b_IC = build_new_ICs(case_2b_data, original_IC, state)
+case_3a_IC = build_new_ICs(case_3a_data, original_IC, state)
+case_3b_IC = build_new_ICs(case_3b_data, original_IC, state)
+
+def eoms(t,sv,mu):
+    
+    # Set up the EOM ODEs
+    eoms = [
+        sv[2],
+        sv[3],
+        2*sv[3] + sv[0] - (1 - mu) * (sv[0] + mu) / ((sv[0] + mu)**2 + sv[1]**2)**(3/2)-\
+        mu * (sv[0] - 1 + mu) / ((sv[0] - 1 + mu)**2 + sv[1]**2)**(3/2),
+        -2*sv[2] + sv[1] - (1 - mu) * sv[1] / ((sv[0] + mu)**2 + sv[1]**2)**(3/2) -\
+        mu * sv[1]/((sv[0] - 1 + mu)**2 + sv[1]**2)**(3/2)
+    ]
+    return eoms
+
+fig, ax = plt.subplots()
+ax.plot(sol.y[0],sol.y[1], label='nominal')
+df_actual = pd.DataFrame(
+    columns=['IC','delta_x','delta_y','delta_xdot','delta_ydot']
+    )
+nominal_final = sol.y[0:4,-1]
+for enum, IC in enumerate([case_1_IC, case_2a_IC, case_2b_IC, case_3a_IC, case_3b_IC]):
+    actual = solve_ivp(eoms, [0, 0.47753], IC, args=(mu,), rtol=1e-12,atol=1e-14)
+    ax.plot(actual.y[0],actual.y[1], label=f'actual_[{enum}]')
+    final = actual.y[0:4,-1]
+    delta_x = final[0] - nominal_final[0]
+    delta_y = final[1] - nominal_final[1]
+    delta_xdot = final[2] - nominal_final[2]
+    delta_ydot = final[3] - nominal_final[3]
+    delta_x_dim = delta_x*l_char
+    delta_y_dim = delta_y*l_char
+    delta_xdot_dim = delta_xdot*l_char/t_char
+    delta_ydot_dim = delta_ydot*l_char/t_char
+    new_actual_data = pd.DataFrame({
+        'IC':[IC],
+        'delta_x':[delta_x_dim],
+        'delta_y':[delta_y_dim],
+        'delta_xdot':[delta_xdot_dim],
+        'delta_ydot':[delta_ydot_dim]
+    })
+    df_actual = pd.concat([df_actual,new_actual_data],ignore_index=True)
+
+ax.scatter(x_Earth,0)
+ax.scatter(x_Moon,0)
+ax.legend()
+plt.axis('square')
+plt.xlim(-0.3,0.5)
+plt.ylim(-0.3,0.5)
+plt.show()
+
 
 pdb.set_trace()
