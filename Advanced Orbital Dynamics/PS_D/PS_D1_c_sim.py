@@ -18,6 +18,9 @@ def system_properties(mu_major,mu_minor, a):
     t_char = sqrt(l_char**3/(mu_major+mu_minor))
     return mu,l_char, t_char, x_major, x_minor
 
+def calc_error(actual, ideal):
+    return abs(actual-ideal)/abs(ideal)
+
 def ode(t,sv,mu):
     
     # Set up the EOM ODEs
@@ -161,8 +164,15 @@ df_actual = pd.DataFrame(
     columns=['IC','delta_x','delta_y','delta_xdot','delta_ydot']
     )
 nominal_final = sol.y[0:4,-1]
+case_dict = {
+    0:case_1_data,
+    1:case_2a_data,
+    2:case_2b_data,
+    3:case_3a_data,
+    4:case_3b_data
+    }
 for enum, IC in enumerate([case_1_IC, case_2a_IC, case_2b_IC, case_3a_IC, case_3b_IC]):
-    actual = solve_ivp(eoms, [0, 0.47753], IC, args=(mu,), rtol=1e-12,atol=1e-14)
+    actual = solve_ivp(eoms, [0, sol.t_events[0][0]], IC, args=(mu,), rtol=1e-12,atol=1e-14)
     ax.plot(actual.y[0],actual.y[1], label=f'actual_[{enum}]')
     final = actual.y[0:4,-1]
     delta_x = final[0] - nominal_final[0]
@@ -173,15 +183,32 @@ for enum, IC in enumerate([case_1_IC, case_2a_IC, case_2b_IC, case_3a_IC, case_3
     delta_y_dim = delta_y*l_char
     delta_xdot_dim = delta_xdot*l_char/t_char
     delta_ydot_dim = delta_ydot*l_char/t_char
+    error_delta_x = calc_error(case_dict[enum]['delta[dim]'].to_list()[0], delta_x_dim)*100
+    error_delta_y = calc_error(case_dict[enum]['delta[dim]'].to_list()[1], delta_y_dim)*100
+    error_delta_xdot = calc_error(case_dict[enum]['delta[dim]'].to_list()[2], delta_xdot_dim)*100
+    error_delta_ydot = calc_error(case_dict[enum]['delta[dim]'].to_list()[3], delta_ydot_dim)*100
+    error_delta_x_km = abs(case_dict[enum]['delta[dim]'].to_list()[0] - delta_x_dim)
+    error_delta_y_km = abs(case_dict[enum]['delta[dim]'].to_list()[1] - delta_y_dim)
+    error_delta_xdot_km = abs(case_dict[enum]['delta[dim]'].to_list()[2] - delta_xdot_dim)
+    error_delta_ydot_km = abs(case_dict[enum]['delta[dim]'].to_list()[3] - delta_ydot_dim)
     new_actual_data = pd.DataFrame({
         'IC':[IC],
         'delta_x':[delta_x_dim],
         'delta_y':[delta_y_dim],
         'delta_xdot':[delta_xdot_dim],
-        'delta_ydot':[delta_ydot_dim]
+        'delta_ydot':[delta_ydot_dim],
+        'error_delta_x':[error_delta_x],
+        'error_delta_y':[error_delta_y],
+        'error_delta_xdot':[error_delta_xdot],
+        'error_delta_ydot':[error_delta_ydot],
+        'error_delta_x_km':[error_delta_x_km],
+        'error_delta_y_km':[error_delta_y_km],
+        'error_delta_xdot_km':[error_delta_xdot_km],
+        'error_delta_ydot_km':[error_delta_ydot_km]
     })
     df_actual = pd.concat([df_actual,new_actual_data],ignore_index=True)
 
+pdb.set_trace()
 ax.scatter(x_Earth,0)
 ax.scatter(x_Moon,0)
 ax.legend()
@@ -191,4 +218,3 @@ plt.ylim(-0.3,0.5)
 plt.show()
 
 
-pdb.set_trace()
