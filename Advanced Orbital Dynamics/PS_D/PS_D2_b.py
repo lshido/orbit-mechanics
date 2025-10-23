@@ -121,23 +121,30 @@ for rf_target in rf_target_list:
         # Step 1: Using ICs, propagate EOM+STM until tf, get STM from tf and rf
         prop = solve_ivp(ode, [0, tf], sv0, args=(mu,), rtol=1e-13,atol=1e-14)
         stm = prop.y[4:20,-1].reshape(4,4) # turn into 4x4 phi matrix
-        phi_rv = np.array([
-            [stm[0,2], stm[0,3]],
-            [stm[1,2], stm[1,3]]
+        # Pull out phi_14 and phi_24 into a vector
+        phi_14_24 = np.array([
+            [stm[0,3]],
+            [stm[1,3]]
         ])
-        pdb.set_trace()
         rf = prop.y[0:2,-1].reshape(2,1) # position at tf, turn into 2x1 vector
         vf = prop.y[2:4,-1].reshape(2,1) # velocity at tf, turn into 2x1 vector
         # Step 2: Compare rf with rf_target
         error = rf_target - rf
         # Check if the error is within acceptable margins
         if (abs(error) > tolerance).all(): # If not, recalculate the delta_v0 and try again
-            # Step 3: Calc new delta_v0
-            delta_v0 = np.linalg.inv(phi_rv) @ error # multiply the matrices together (dot product)
+            # Step 3: Calc new delta_vy0 and delta_t
+            phi_vf = np.c_[phi_14_24, vf] # form phi and vf matrix
+            deltas_vy0_tf = np.linalg.inv(phi_vf) @ error # multiply the matrices together (dot product)
+            delta_vy0 = deltas_vy0_tf[0,0] # Pull out delta_vy0
+            delta_tf = deltas_vy0_tf[1,0] # Pull out delta_tf
             # print(f"delta_v0: {delta_v0[0,0]}, {delta_v0[1,0]}, Iteration: {counter}")
-            # Step 4: Use new delta_v0 to calc new ICs
-            v0 = v0 + delta_v0
+            # Step 4: Use new deltas_ydot_t to calc new ICs
+            v0 = np.array([
+                [v0[0,0]], # vx0 remains unchanged
+                [v0[1,0] + delta_vy0] # new vy0
+            ])
             r0 = r0 # Initial position is constant; we only vary velocity in this problem
+            tf = tf + delta_tf # new tf
             # Rebuild the ICs for combined EOM+STM ODEs (sv0)
             sv0 = [
                 r0[0,0], # x
