@@ -1,3 +1,7 @@
+# Problem D1 part(b)
+# Code for Numerical Integrator with STM generator
+# Author: Lillian Shido
+# Date: 10/20/2025
 
 import pdb
 import copy
@@ -91,29 +95,29 @@ tspan = [0, t_final];
 sol = solve_ivp(ode, tspan, sv0, events=crossxEvent, args=(mu,), rtol=1e-12,atol=1e-14)
 
 stm_tf = sol.y[4:20,-1].reshape(4,4)
-
+sv_tf = sol.y[0:4,-1]
 mu,l_char, t_char, x_Earth, x_Moon = system_properties(mu_Earth, mu_Moon, a_Moon)
 
-# def predict_w_STM(adjustment):
 state = ['x','y','x_dot','y_dot']
-df = pd.DataFrame(
-    columns=['% Change','Changed State','Changed IC','Predicted State','delta[non-dim]','delta[dim]','final[non-dim]','final[dim]']
+# Predict outcomes to state based on certain changes:
+df_predicted = pd.DataFrame(
+    columns=['% Change','Changed State','Changed IC','Predicted State','delta[non-dim]','delta[dim]','final_state[non-dim]','final_state[dim]']
     )
-for change in [0.01, 0.1]:
+for change in [0.01, 0.1]: # For 1% and 10% changes
     # Change [x, vx, vy]
-    for n in [0, 2, 3]:
-        delta_IC = sv0[n]*change
-        changed_IC = sv0[n] + delta_IC
-        for m in [0, 1, 2, 3]:
-            delta_f = stm_tf[m,n]*delta_IC 
+    for n in [0, 2, 3]: # Iterate through the initial states that changed (i.e. x, xdot, ydot)
+        delta_IC = sv0[n]*change # The initial delta is the initial state times the % change  
+        changed_IC = sv0[n] + delta_IC # The changed state is the initial state + the initial delta
+        for m in [0, 1, 2, 3]: # Evaluate the deltas and final states for each of the states
+            delta_f = stm_tf[m,n]*delta_IC # The final delta is the phi element times the initial delta 
             # Calc the final values in x,y,vx,vy
-            final = sv0[m] + delta_f
-            if m<2:
-                dim_delta_f = delta_f*l_char
-                dim_final = final*l_char
-            else:
+            final_state = sv_tf[m] + delta_f # The final state is the nominal final state + the final delta 
+            if m<2: # For x and y dimensionalize by multiplying by char. length
+                dim_delta_f = delta_f*l_char 
+                dim_final_state = final_state*l_char
+            else: # For xdot and ydot dimensionalize by multiplying by char. length and dividing by char. time
                 dim_delta_f = delta_f*l_char/t_char
-                dim_final = final*l_char/t_char;
+                dim_final_state = final_state*l_char/t_char;
             new_data = pd.DataFrame({
                 "% Change":[change*100],
                 "Changed State":[state[n]],
@@ -121,16 +125,45 @@ for change in [0.01, 0.1]:
                 "Predicted State":[state[m]],
                 "delta[non-dim]":[delta_f],
                 "delta[dim]":[dim_delta_f],
-                "final[non-dim]":[final],
-                "final[dim]":[dim_final]
+                "final_state[non-dim]":[final_state],
+                "final_state[dim]":[dim_final_state]
             })
-            df = pd.concat([df, new_data], ignore_index=True)
+            df_predicted = pd.concat([df_predicted, new_data], ignore_index=True)
 
-case_1_data = df.loc[df['% Change']==1.0].loc[df['Changed State']=='x']
-case_2a_data = df.loc[df['% Change']==1.0].loc[df['Changed State']=='y_dot']
-case_2b_data = df.loc[df['% Change']==10.0].loc[df['Changed State']=='y_dot']
-case_3a_data = df.loc[df['% Change']==1.0].loc[df['Changed State']=='x_dot']
-case_3b_data = df.loc[df['% Change']==10.0].loc[df['Changed State']=='x_dot']
+case_1_data = df_predicted.loc[df_predicted['% Change']==1.0].loc[df_predicted['Changed State']=='x']
+case_2a_data = df_predicted.loc[df_predicted['% Change']==1.0].loc[df_predicted['Changed State']=='y_dot']
+case_2b_data = df_predicted.loc[df_predicted['% Change']==10.0].loc[df_predicted['Changed State']=='y_dot']
+case_3a_data = df_predicted.loc[df_predicted['% Change']==1.0].loc[df_predicted['Changed State']=='x_dot']
+case_3b_data = df_predicted.loc[df_predicted['% Change']==10.0].loc[df_predicted['Changed State']=='x_dot']
+
+# Build easier-to-use predicted state table
+df_easy_predict = pd.DataFrame(
+    columns=['% Change', 'Changed State', 'delta_x', 'delta_y', 'delta_xdot', 'delta_ydot',\
+    'delta_x_km', 'delta_y_km', 'delta_xdot_km/s', 'delta_ydot_km/s']
+)
+for case in [case_1_data, case_2a_data, case_2b_data, case_3a_data, case_3b_data]:
+    delta_x_predicted_nd = case['delta[non-dim]'].tolist()[0]
+    delta_y_predicted_nd = case['delta[non-dim]'].tolist()[1]
+    delta_xdot_predicted_nd = case['delta[non-dim]'].tolist()[2]
+    delta_ydot_predicted_nd = case['delta[non-dim]'].tolist()[3]
+    delta_x_predicted_dim = case['delta[dim]'].tolist()[0]
+    delta_y_predicted_dim = case['delta[dim]'].tolist()[1]
+    delta_xdot_predicted_dim = case['delta[dim]'].tolist()[2]
+    delta_ydot_predicted_dim = case['delta[dim]'].tolist()[3]
+
+    new_easy_data = pd.DataFrame({
+        '% Change':[case['% Change'].to_list()[0]],
+        'Changed State':[case['Changed State'].to_list()[0]],
+        'delta_x':[delta_x_predicted_nd],
+        'delta_y':[delta_y_predicted_nd],
+        'delta_xdot':[delta_xdot_predicted_nd],
+        'delta_ydot':[delta_ydot_predicted_nd],
+        'delta_x_km':[delta_x_predicted_dim],
+        'delta_y_km':[delta_y_predicted_dim],
+        'delta_xdot_km/s':[delta_xdot_predicted_dim],
+        'delta_ydot_km/s':[delta_ydot_predicted_dim]
+    })
+    df_easy_predict = pd.concat([df_easy_predict, new_easy_data], ignore_index=True)
 
 def build_new_ICs(case_data, original_IC, states):
     IC = copy.deepcopy(original_IC)
@@ -161,8 +194,15 @@ def eoms(t,sv,mu):
 fig, ax = plt.subplots()
 ax.plot(sol.y[0],sol.y[1], label='nominal')
 df_actual = pd.DataFrame(
-    columns=['IC','delta_x','delta_y','delta_xdot','delta_ydot']
+    columns=['IC', '% Change', 'Changed State', 'delta_x','delta_y','delta_xdot','delta_ydot',\
+    'delta_x_km', 'delta_y_km', 'delta_xdot_km/s', 'delta_ydot_km/s']
     )
+df_error_deltas = pd.DataFrame(
+    columns=['% Change', 'Changed State', 'error_delta_x', 'error_delta_y', 'error_delta_xdot', 'error_delta_ydot']
+)
+df_error_deltas_dim = pd.DataFrame(
+    columns=['% Change', 'Changed State', 'error_delta_x_km', 'error_delta_y_km', 'error_delta_xdot_km/s', 'error_delta_ydot_km/s']
+)
 nominal_final = sol.y[0:4,-1]
 case_dict = {
     0:case_1_data,
@@ -171,42 +211,69 @@ case_dict = {
     3:case_3a_data,
     4:case_3b_data
     }
+# Calculate the actual result using numerical integration, propagating, simulating, etc etc
+# For each of these cases
 for enum, IC in enumerate([case_1_IC, case_2a_IC, case_2b_IC, case_3a_IC, case_3b_IC]):
+    # Change the ICs and propagate until the nominal tf
+    percent_change = case_dict[enum]['% Change'].to_list()[0]
+    changed_state = case_dict[enum]['Changed State'].to_list()[0]
     actual = solve_ivp(eoms, [0, sol.t_events[0][0]], IC, args=(mu,), rtol=1e-12,atol=1e-14)
     ax.plot(actual.y[0],actual.y[1], label=f'actual_[{enum}]')
-    final = actual.y[0:4,-1]
-    delta_x = final[0] - nominal_final[0]
-    delta_y = final[1] - nominal_final[1]
-    delta_xdot = final[2] - nominal_final[2]
-    delta_ydot = final[3] - nominal_final[3]
-    delta_x_dim = delta_x*l_char
-    delta_y_dim = delta_y*l_char
-    delta_xdot_dim = delta_xdot*l_char/t_char
-    delta_ydot_dim = delta_ydot*l_char/t_char
-    error_delta_x = calc_error(case_dict[enum]['delta[dim]'].to_list()[0], delta_x_dim)*100
-    error_delta_y = calc_error(case_dict[enum]['delta[dim]'].to_list()[1], delta_y_dim)*100
-    error_delta_xdot = calc_error(case_dict[enum]['delta[dim]'].to_list()[2], delta_xdot_dim)*100
-    error_delta_ydot = calc_error(case_dict[enum]['delta[dim]'].to_list()[3], delta_ydot_dim)*100
+    # Grab the last row of data from the sim we just propagated
+    actual_final = actual.y[0:4,-1]
+    delta_x = actual_final[0] - nominal_final[0] # The actual delta_x is the actual final x minus the nominal final x
+    delta_y = actual_final[1] - nominal_final[1] # The actual delta_y is the actual final y minus the nominal final y
+    delta_xdot = actual_final[2] - nominal_final[2] # The actual delta_xdot is the actual final xdot minus the nominal final xdot
+    delta_ydot = actual_final[3] - nominal_final[3] # The actual delta_ydot is the actual final ydot minus the nominal final ydot
+    delta_x_dim = delta_x*l_char # To get the dimensional delta x, multiply by characteristic length
+    delta_y_dim = delta_y*l_char # To get the dimensional delta y, multiply by characteristic length
+    delta_xdot_dim = delta_xdot*l_char/t_char # To get the dimensional delta xdot , multiply by char. length, divide by char. time
+    delta_ydot_dim = delta_ydot*l_char/t_char # To get the dimensional delta ydot , multiply by char. length, divide by char. time
+
+    new_actual_data = pd.DataFrame({
+        'IC':[IC],
+        '% Change':[percent_change],
+        'Changed State':[changed_state],
+        'delta_x':[delta_x],
+        'delta_y':[delta_y],
+        'delta_xdot':[delta_xdot],
+        'delta_ydot':[delta_ydot],
+        'delta_x_km':[delta_x_dim],
+        'delta_y_km':[delta_y_dim],
+        'delta_xdot_km/s':[delta_xdot_dim],
+        'delta_ydot_km/s':[delta_ydot_dim]
+    })
+    df_actual = pd.concat([df_actual,new_actual_data],ignore_index=True)
+
+    # Calc the dimensional error
     error_delta_x_km = abs(case_dict[enum]['delta[dim]'].to_list()[0] - delta_x_dim)
     error_delta_y_km = abs(case_dict[enum]['delta[dim]'].to_list()[1] - delta_y_dim)
     error_delta_xdot_km = abs(case_dict[enum]['delta[dim]'].to_list()[2] - delta_xdot_dim)
     error_delta_ydot_km = abs(case_dict[enum]['delta[dim]'].to_list()[3] - delta_ydot_dim)
-    new_actual_data = pd.DataFrame({
-        'IC':[IC],
-        'delta_x':[delta_x_dim],
-        'delta_y':[delta_y_dim],
-        'delta_xdot':[delta_xdot_dim],
-        'delta_ydot':[delta_ydot_dim],
-        'error_delta_x':[error_delta_x],
-        'error_delta_y':[error_delta_y],
-        'error_delta_xdot':[error_delta_xdot],
-        'error_delta_ydot':[error_delta_ydot],
+    new_error_data_dim = pd.DataFrame({
+        '% Change':[percent_change],
+        'Changed State':[changed_state],
         'error_delta_x_km':[error_delta_x_km],
         'error_delta_y_km':[error_delta_y_km],
-        'error_delta_xdot_km':[error_delta_xdot_km],
-        'error_delta_ydot_km':[error_delta_ydot_km]
+        'error_delta_xdot_km/s':[error_delta_xdot_km],
+        'error_delta_ydot_km/s':[error_delta_ydot_km]
     })
-    df_actual = pd.concat([df_actual,new_actual_data],ignore_index=True)
+    df_error_deltas_dim = pd.concat([df_error_deltas_dim, new_error_data_dim], ignore_index=True)
+
+    # Calc the non-dimensional error
+    error_delta_x = calc_error(case_dict[enum]['delta[non-dim]'].to_list()[0], delta_x)
+    error_delta_y = calc_error(case_dict[enum]['delta[non-dim]'].to_list()[1], delta_y)
+    error_delta_xdot = calc_error(case_dict[enum]['delta[non-dim]'].to_list()[2], delta_xdot)
+    error_delta_ydot = calc_error(case_dict[enum]['delta[non-dim]'].to_list()[3], delta_ydot)
+    new_error_data = pd.DataFrame({
+        '% Change':[percent_change],
+        'Changed State':[changed_state],
+        'error_delta_x':[error_delta_x*100],
+        'error_delta_y':[error_delta_y*100],
+        'error_delta_xdot':[error_delta_xdot*100],
+        'error_delta_ydot':[error_delta_ydot*100]
+    })
+    df_error_deltas = pd.concat([df_error_deltas,new_error_data],ignore_index=True) 
 
 pdb.set_trace()
 ax.scatter(x_Earth,0)
@@ -216,5 +283,3 @@ plt.axis('square')
 plt.xlim(-0.3,0.5)
 plt.ylim(-0.3,0.5)
 plt.show()
-
-

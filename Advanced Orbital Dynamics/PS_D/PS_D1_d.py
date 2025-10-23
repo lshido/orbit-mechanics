@@ -7,7 +7,7 @@ import pandas as pd
 from math import pi, sqrt
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
-from great_tables import GT, md, html
+from great_tables import GT, md, html, style, loc
 
 
 mu = mu_Moon/(mu_Earth + mu_Moon)
@@ -92,8 +92,8 @@ def eval_kinematic(x0,y0,xdot_0,ydot_0,a_x, a_y,t_span):
     # Evaluate the kinematic equations with the time
     xdot = xdot_0 + a_x*t_span
     ydot = ydot_0 + a_y*t_span
-    x = x0 + xdot_0*t_span + (1/2)*a_x*t_span**2
-    y = y0 + ydot_0*t_span + (1/2)*a_y*t_span**2
+    x = x0 + xdot_0*t_span
+    y = y0 + ydot_0*t_span
     return x,y,xdot,ydot
 
 # Trjaectory Initial Conditions
@@ -121,14 +121,15 @@ tspan = [0, t_final];
 sol = solve_ivp(combined_ode, tspan, sv0, events=crossxEvent, args=(mu,), rtol=1e-12,atol=1e-14)
 
 stm_tf = sol.y[4:20,-1].reshape(4,4)
-
+sv_tf = sol.y[0:4,-1]
 mu,l_char, t_char, x_Earth, x_Moon = system_properties(mu_Earth, mu_Moon, a_Moon)
 
 original_time = sol.t_events[0][0]
 # "Predict" the states given the change in tf
 states_crossX = sol.y[0:4,-1] # The states at tf in the original problem
 df_predicted_states = pd.DataFrame(
-    columns = ['% change','delta_t','t_final','x_predict','y_predict','xdot_predict','ydot_predict']
+    columns = ['% change','delta_t','t_final','x_predict','y_predict','xdot_predict','ydot_predict',\
+    'x_predict_dim','y_predict_dim','xdot_predict_dim','ydot_predict_dim']
 ) 
 for change in [0.01, 0.1]:
     t_span = original_time*change
@@ -142,12 +143,16 @@ for change in [0.01, 0.1]:
         'x_predict':[x_new],
         'y_predict':[y_new],
         'xdot_predict':[xdot_new],
-        'ydot_predict':[ydot_new]
+        'ydot_predict':[ydot_new],
+        'x_predict_dim':[x_new*l_char],
+        'y_predict_dim':[y_new*l_char],
+        'xdot_predict_dim':[xdot_new*l_char/t_char],
+        'ydot_predict_dim':[ydot_new*l_char/t_char]
     })
     df_predicted_states = pd.concat([df_predicted_states,predicted_data],ignore_index=True)
 
 df_changed_time = pd.DataFrame(
-    columns=['% change','delta_t','t_final','x','y','xdot','ydot']
+    columns=['% change','delta_t','t_final','x','y','xdot','ydot','x_dim','y_dim','xdot_dim','ydot_dim']
 )
 for change in [0.01, 0.1]:
     new_time = original_time + original_time*change
@@ -163,7 +168,11 @@ for change in [0.01, 0.1]:
         'x':[x],
         'y':[y],
         'xdot':[xdot],
-        'ydot':[ydot]
+        'ydot':[ydot],
+        'x_dim':[x*l_char],
+        'y_dim':[y*l_char],
+        'xdot_dim':[xdot*l_char/t_char],
+        'ydot_dim':[ydot*l_char/t_char]
     })
     df_changed_time = pd.concat([df_changed_time, new_data], ignore_index=True)
 
@@ -185,43 +194,131 @@ for row in [0,1]:
         'error_ydot':[error_ydot]
     })
     df_time_error = pd.concat([df_time_error,error_data],ignore_index=True)
-predicted_table = (
-    GT(df_predicted_states)
+
+# Build dim comparison table
+df_compare_dim = pd.DataFrame(
+    columns=['% change', 'delta_t', 't_final', 'x_predict_dim', 'y_predict_dim', 'xdot_predict_dim', 'ydot_predict_dim',\
+    'x_dim','y_dim','xdot_dim','ydot_dim']
+)
+df_compare_dim['% change'] = df_predicted_states['% change']
+df_compare_dim['delta_t'] = df_predicted_states['delta_t']
+df_compare_dim['t_final'] = df_predicted_states['t_final']
+df_compare_dim['x_predict_dim'] = df_predicted_states['x_predict_dim']
+df_compare_dim['y_predict_dim'] = df_predicted_states['y_predict_dim']
+df_compare_dim['xdot_predict_dim'] = df_predicted_states['xdot_predict_dim']
+df_compare_dim['ydot_predict_dim'] = df_predicted_states['ydot_predict_dim']
+df_compare_dim['x_dim'] = df_changed_time['x_dim']
+df_compare_dim['y_dim'] = df_changed_time['y_dim']
+df_compare_dim['xdot_dim'] = df_changed_time['xdot_dim']
+df_compare_dim['ydot_dim'] = df_changed_time['ydot_dim']
+
+# Build final state table
+state_table
+
+# Configure the table showing the predicted values
+compare_table = (
+    GT(df_compare_dim)
     .tab_header(
-        title=md("Predicted States")
+        title=md("Predicted vs Numerical Results (Dimensional)")
     )
     .tab_stub(rowname_col="% change")
     .tab_stubhead(label="% change")
     .tab_spanner(
-        label="Position",
-        columns=["x_predict", "y_predict"]
+        label="Predicted",
+        columns=["x_predict_dim", "y_predict_dim", "xdot_predict_dim", "ydot_predict_dim"]
     )
     .tab_spanner(
-        label="Velocity",
-        columns=["xdot_predict","ydot_predict"]
+        label="Numerical",
+        columns=["x_dim","y_dim","xdot_dim","ydot_dim"]
     )
     .tab_spanner(
         label="Time",
         columns=["% change", "delta_t", "t_final"]
     )
     .cols_label(
-        x_predict=html("x<br>[non-dim]"),
-        y_predict=html("y<br>[non-dim]"),
-        xdot_predict=html("xdot<br>[non-dim]"),
-        ydot_predict=html("ydot<br>[non-dim]")
+        x_predict_dim=html("x<br>[km]"),
+        y_predict_dim=html("y<br>[km]"),
+        xdot_predict_dim=html("x_dot<br>[km/s]"),
+        ydot_predict_dim=html("y_dot<br>[km/s]"),
+        x_dim=html("x<br>[km]"),
+        y_dim=html("y<br>[km]"),
+        xdot_dim=html("x_dot<br>[km/s]"),
+        ydot_dim=html("y_dot<br>[km/s]"),
+    )
+    .tab_style(
+        style=style.borders(
+            sides="right",
+            color="lightgray",
+            style="solid",
+            weight="1px"
+        ),
+        locations=loc.body(columns=[2, 4, 6, 8])
     )
     .fmt_number(
-        columns=["delta_t", "t_final", "x_predict", "y_predict", "xdot_predict", "ydot_predict"],
+        columns=["delta_t", "t_final", "xdot_dim", "ydot_dim", \
+        "xdot_predict_dim", "ydot_predict_dim"],
         decimals=5
+    )
+    .fmt_number(
+        columns=["x_dim", "y_dim","x_predict_dim", "y_predict_dim"],
+        decimals=3
     )
     .cols_align(
         align="center"
     )
     .opt_table_outline()
 )
-# actual_table = GT(df_changed_time)
-# gt_tbl = GT(df_time_error)
-predicted_table.show()
-# actual_table.show()
-# gt_tbl.show()
+compare_table.show()
+
+# Configure Error table
+error_table = (
+    GT(df_time_error)
+    .tab_header(
+        title=md("Percentage Error: Predicted vs Numerical Results")
+    )
+    .tab_stub(rowname_col="% change")
+    .tab_stubhead(label="% change")
+    .tab_spanner(
+        label="Position",
+        columns=["error_x", "error_y"]
+    )
+    .tab_spanner(
+        label="Velocity",
+        columns=["error_xdot", "error_ydot"]
+    )
+    .tab_spanner(
+        label="Time",
+        columns=["% change", "delta_t", "t_final"]
+    )
+    .cols_label(
+        error_x=html("x<br>[%]"),
+        error_y=html("y<br>[%]"),
+        error_xdot=html("x_dot<br>[%]"),
+        error_ydot=html("y_dot<br>[%]"),
+    )
+    .opt_horizontal_padding(scale=3)
+    # .tab_style(
+    #     style=style.borders(
+    #         sides="right",
+    #         color="lightgray",
+    #         style="solid",
+    #         weight="1px"
+    #     ),
+    #     locations=loc.body(columns=[2, 4, 6, 8])
+    # )
+    .fmt_number(
+        columns=["delta_t", "t_final"],
+        decimals=5
+    )
+    .fmt_number(
+        columns=["error_x", "error_y", "error_xdot", "error_ydot"],
+        decimals=4
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+)
+error_table.show()
+
 pdb.set_trace()
