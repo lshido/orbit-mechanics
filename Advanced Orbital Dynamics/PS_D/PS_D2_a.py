@@ -11,6 +11,8 @@ import pandas as pd
 from math import pi, sqrt
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
+from great_tables import GT, md, html, style, loc
+
 
 mu = mu_Moon/(mu_Earth + mu_Moon)
 
@@ -88,7 +90,6 @@ sv0_IC = [
     0,0,0,1
     ]
 
-
 # Set the span of the integrator
 t_final = 1.5*pi;
 tspan = [0, t_final];
@@ -105,6 +106,13 @@ v0_IC = np.array([
     [original_IC[2]],
     [original_IC[3]]
 ])
+
+# Set up dataframes for report
+# Question 5
+df_delta_v0 = pd.DataFrame(
+    columns = ["Case", "delta_v0_mag", "delta_v0_x", "delta_v0_y", "delta_v0_mag_dim", "delta_v0_x_dim", "delta_v0_y_dim"]
+)
+
 # Run the targeter for a set of targets
 rf_target_list = [
     np.array([[-0.3], [0.05]]),
@@ -112,7 +120,8 @@ rf_target_list = [
     np.array([[-0.35],[-.1]])
 ]
 tolerance = 1e-12 # Set tolerance
-for rf_target in rf_target_list:
+print(f"Tolerance: {tolerance} [nd], {tolerance*l_char} [km]")
+for case, rf_target in enumerate(rf_target_list):
     r0 = copy.deepcopy(r0_IC)
     v0 = copy.deepcopy(v0_IC)
     sv0 = copy.deepcopy(sv0_IC)
@@ -151,9 +160,66 @@ for rf_target in rf_target_list:
             ]
             continue
         else: # If error is within acceptable margins, break out of iterative loop
-            delta_v = v0 - v0_IC
-            print(f"Position: {rf[0,0]}, {rf[1,0]}, delta_v0: {delta_v[0,0]}, {delta_v[1,0]}, mag_dv: {np.linalg.norm(delta_v)}, Iterations: {counter}\n")
+            delta_v0 = v0 - v0_IC
+            delta_v0_x = delta_v0[0,0]
+            delta_v0_y = delta_v0[1,0]
+            delta_v0_mag = np.linalg.norm(delta_v0)
+            delta_v0_data = pd.DataFrame({
+                "Case":[case],
+                'delta_v0_mag':[delta_v0_mag],
+                'delta_v0_x':[delta_v0_x],
+                'delta_v0_y':[delta_v0_y],
+                'delta_v0_mag_dim':[delta_v0_mag*l_char/t_char],
+                'delta_v0_x_dim':[delta_v0_x*l_char/t_char],
+                'delta_v0_y_dim':[delta_v0_y*l_char/t_char]
+            })
+            df_delta_v0 = pd.concat([df_delta_v0, delta_v0_data], ignore_index=True)
             break
     continue
+
+# Configure the table for Question #5:
+    # columns = ["Case", "delta_v0_mag", "delta_v0_x", "delta_v0_y", "delta_v0_mag_dim", "delta_v0_x_dim", "delta_v0_y_dim"]
+delta_v0_table = (
+    GT(df_delta_v0)
+    .tab_header(
+        title=md("Change in Initial Velocity")
+    )
+    .tab_stub(rowname_col="Case")
+    .tab_stubhead(label="Case")
+    .tab_spanner(
+        label="Non-Dimensional",
+        columns=["delta_v0_mag","delta_v0_x","delta_v0_y"]
+    )
+    .tab_spanner(
+        label="Dimensional",
+        columns=["delta_v0_mag_dim","delta_v0_x_dim","delta_v0_y_dim"]
+    )
+    .cols_label(
+        delta_v0_mag=html("delta_v0_mag"),
+        delta_v0_x=html("delta_v0_x"),
+        delta_v0_y=html("delta_v0_y"),
+        delta_v0_mag_dim=html("delta_v0_mag<br>[km/s]"),
+        delta_v0_x_dim=html("delta_v0_x<br>[km/s]"),
+        delta_v0_y_dim=html("delta_v0_y<br>[km/s]")
+    )
+    # .tab_style(
+    #     style=style.borders(
+    #         sides="right",
+    #         color="lightgray",
+    #         style="solid",
+    #         weight="1px"
+    #     ),
+    #     locations=loc.body(columns=[2, 4, 6, 8])
+    # )
+    .fmt_number(
+        columns=["delta_v0_mag", "delta_v0_x", "delta_v0_y", "delta_v0_mag_dim", "delta_v0_x_dim", "delta_v0_y_dim"],
+        decimals=5
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+)
+delta_v0_table.show()
 
 pdb.set_trace()
