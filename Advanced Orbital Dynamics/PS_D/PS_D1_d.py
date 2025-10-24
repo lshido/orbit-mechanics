@@ -127,13 +127,20 @@ mu,l_char, t_char, x_Earth, x_Moon = system_properties(mu_Earth, mu_Moon, a_Moon
 original_time = sol.t_events[0][0]
 # "Predict" the states given the change in tf
 states_crossX = sol.y[0:4,-1] # The states at tf in the original problem
+x_f,y_f,xdot_f,ydot_f = states_crossX[0], states_crossX[1], states_crossX[2], states_crossX[3]
+
+# Calc predicted
 df_predicted_states = pd.DataFrame(
     columns = ['% change','delta_t','t_final','x_predict','y_predict','xdot_predict','ydot_predict',\
     'x_predict_dim','y_predict_dim','xdot_predict_dim','ydot_predict_dim']
-) 
+)
+df_predicted_deltas = pd.DataFrame(
+    columns = ['% change','delta_t','t_final', 'delta_x_predict', 'delta_y_predict','delta_xdot_predict','delta_ydot_predict',\
+    'delta_x_predict_dim','delta_y_predict_dim','delta_xdot_predict_dim','delta_ydot_predict_dim']
+)
 for change in [0.01, 0.1]:
     t_span = original_time*change
-    x_f,y_f,xdot_f,ydot_f = states_crossX[0], states_crossX[1], states_crossX[2], states_crossX[3]
+    # x_f,y_f,xdot_f,ydot_f = states_crossX[0], states_crossX[1], states_crossX[2], states_crossX[3]
     a_x, a_y = eval_acceleration(x_f,y_f,xdot_f,ydot_f)
     x_new, y_new, xdot_new, ydot_new = eval_kinematic(x_f,y_f,xdot_f,ydot_f,a_x,a_y,t_span)
     predicted_data = pd.DataFrame({
@@ -150,9 +157,32 @@ for change in [0.01, 0.1]:
         'ydot_predict_dim':[ydot_new*l_char/t_char]
     })
     df_predicted_states = pd.concat([df_predicted_states,predicted_data],ignore_index=True)
+    # Calc predicted deltas
+    delta_x_predict = x_new - x_f
+    delta_y_predict = y_new - y_f
+    delta_xdot_predict = xdot_new - xdot_f
+    delta_ydot_predict = ydot_new - ydot_f
+    predicted_delta_data = pd.DataFrame({
+        '% change':[change*100],
+        'delta_t':[t_span],
+        't_final':[original_time + t_span],
+        'delta_x_predict':[delta_x_predict],
+        'delta_y_predict':[delta_y_predict],
+        'delta_xdot_predict':[delta_xdot_predict],
+        'delta_ydot_predict':[delta_ydot_predict],
+        'delta_x_predict_dim':[delta_x_predict*l_char],
+        'delta_y_predict_dim':[delta_y_predict*l_char],
+        'delta_xdot_predict_dim':[delta_xdot_predict*l_char/t_char],
+        'delta_ydot_predict_dim':[delta_ydot_predict*l_char/t_char]
+    })
+    df_predicted_deltas = pd.concat([df_predicted_deltas,predicted_delta_data],ignore_index=True)
 
-df_changed_time = pd.DataFrame(
+# Calc actual
+df_actual_states = pd.DataFrame(
     columns=['% change','delta_t','t_final','x','y','xdot','ydot','x_dim','y_dim','xdot_dim','ydot_dim']
+)
+df_actual_deltas = pd.DataFrame(
+    columns=['% change','delta_t','t_final','delta_x','delta_y','delta_xdot','delta_ydot','delta_x_dim','delta_y_dim','delta_xdot_dim','delta_ydot_dim']
 )
 for change in [0.01, 0.1]:
     new_time = original_time + original_time*change
@@ -174,16 +204,43 @@ for change in [0.01, 0.1]:
         'xdot_dim':[xdot*l_char/t_char],
         'ydot_dim':[ydot*l_char/t_char]
     })
-    df_changed_time = pd.concat([df_changed_time, new_data], ignore_index=True)
+    df_actual_states = pd.concat([df_actual_states, new_data], ignore_index=True)
+    # Calc deltas
+    delta_x = x - x_f
+    delta_y = y - y_f
+    delta_xdot = xdot - xdot_f
+    delta_ydot = ydot - ydot_f    
+    new_delta_data = pd.DataFrame({
+        '% change':[change*100],
+        'delta_t':[t_span],
+        't_final':[original_time + t_span],
+        'delta_x':[delta_x],
+        'delta_y':[delta_y],
+        'delta_xdot':[delta_xdot],
+        'delta_ydot':[delta_ydot],
+        'delta_x_dim':[delta_x*l_char],
+        'delta_y_dim':[delta_y*l_char],
+        'delta_xdot_dim':[delta_xdot*l_char/t_char],
+        'delta_ydot_dim':[delta_ydot*l_char/t_char]
+    })
+    df_actual_deltas = pd.concat([df_actual_deltas, new_delta_data], ignore_index=True)
 
+# Calc Errors
 df_time_error = pd.DataFrame(
     columns=['% change','delta_t','t_final','error_x','error_y','error_xdot','error_ydot']
 )
+df_delta_error = pd.DataFrame(
+    columns=['% change','delta_t','t_final','error_delta_x','error_delta_y','error_delta_xdot','error_delta_ydot']
+)
 for row in [0,1]:
-    error_x = calc_error(df_predicted_states['x_predict'][row],df_changed_time['x'][row])*100
-    error_y = calc_error(df_predicted_states['y_predict'][row],df_changed_time['y'][row])*100
-    error_xdot = calc_error(df_predicted_states['xdot_predict'][row],df_changed_time['xdot'][row])*100
-    error_ydot = calc_error(df_predicted_states['ydot_predict'][row],df_changed_time['ydot'][row])*100
+    error_x = calc_error(df_predicted_states['x_predict'][row],df_actual_states['x'][row])*100
+    error_y = calc_error(df_predicted_states['y_predict'][row],df_actual_states['y'][row])*100
+    error_xdot = calc_error(df_predicted_states['xdot_predict'][row],df_actual_states['xdot'][row])*100
+    error_ydot = calc_error(df_predicted_states['ydot_predict'][row],df_actual_states['ydot'][row])*100
+    error_delta_x = calc_error(df_predicted_deltas['delta_x_predict'][row],df_actual_deltas['delta_x'][row])*100
+    error_delta_y = calc_error(df_predicted_deltas['delta_y_predict'][row],df_actual_deltas['delta_y'][row])*100
+    error_delta_xdot = calc_error(df_predicted_deltas['delta_xdot_predict'][row],df_actual_deltas['delta_xdot'][row])*100
+    error_delta_ydot = calc_error(df_predicted_deltas['delta_ydot_predict'][row],df_actual_deltas['delta_ydot'][row])*100
     error_data = pd.DataFrame({
         '% change':[df_predicted_states['% change'][row]],
         'delta_t':[df_predicted_states['delta_t'][row]],
@@ -193,7 +250,17 @@ for row in [0,1]:
         'error_xdot':[error_xdot],
         'error_ydot':[error_ydot]
     })
+    error_delta_data = pd.DataFrame({
+        '% change':[df_predicted_deltas['% change'][row]],
+        'delta_t':[df_predicted_deltas['delta_t'][row]],
+        't_final':[df_predicted_deltas['t_final'][row]],
+        'error_delta_x':[error_delta_x],
+        'error_delta_y':[error_delta_y],
+        'error_delta_xdot':[error_delta_xdot],
+        'error_delta_ydot':[error_delta_ydot]
+    })
     df_time_error = pd.concat([df_time_error,error_data],ignore_index=True)
+    df_delta_error = pd.concat([df_delta_error,error_delta_data],ignore_index=True)
 
 # Build dim comparison table
 df_compare_dim = pd.DataFrame(
@@ -207,15 +274,32 @@ df_compare_dim['x_predict_dim'] = df_predicted_states['x_predict_dim']
 df_compare_dim['y_predict_dim'] = df_predicted_states['y_predict_dim']
 df_compare_dim['xdot_predict_dim'] = df_predicted_states['xdot_predict_dim']
 df_compare_dim['ydot_predict_dim'] = df_predicted_states['ydot_predict_dim']
-df_compare_dim['x_dim'] = df_changed_time['x_dim']
-df_compare_dim['y_dim'] = df_changed_time['y_dim']
-df_compare_dim['xdot_dim'] = df_changed_time['xdot_dim']
-df_compare_dim['ydot_dim'] = df_changed_time['ydot_dim']
+df_compare_dim['x_dim'] = df_actual_states['x_dim']
+df_compare_dim['y_dim'] = df_actual_states['y_dim']
+df_compare_dim['xdot_dim'] = df_actual_states['xdot_dim']
+df_compare_dim['ydot_dim'] = df_actual_states['ydot_dim']
+
+# Build dim delta comparison table
+df_compare_delta_dim = pd.DataFrame(
+    columns=['% change', 'delta_t', 't_final', 'delta_x_predict_dim', 'delta_y_predict_dim', 'delta_xdot_predict_dim', 'delta_ydot_predict_dim',\
+    'delta_x_dim','delta_y_dim','delta_xdot_dim','delta_ydot_dim']
+)
+df_compare_delta_dim['% change'] = df_predicted_deltas['% change']
+df_compare_delta_dim['delta_t'] = df_predicted_deltas['delta_t']
+df_compare_delta_dim['t_final'] = df_predicted_deltas['t_final']
+df_compare_delta_dim['delta_x_predict_dim'] = df_predicted_deltas['delta_x_predict_dim']
+df_compare_delta_dim['delta_y_predict_dim'] = df_predicted_deltas['delta_y_predict_dim']
+df_compare_delta_dim['delta_xdot_predict_dim'] = df_predicted_deltas['delta_xdot_predict_dim']
+df_compare_delta_dim['delta_ydot_predict_dim'] = df_predicted_deltas['delta_ydot_predict_dim']
+df_compare_delta_dim['delta_x_dim'] = df_actual_deltas['delta_x_dim']
+df_compare_delta_dim['delta_y_dim'] = df_actual_deltas['delta_y_dim']
+df_compare_delta_dim['delta_xdot_dim'] = df_actual_deltas['delta_xdot_dim']
+df_compare_delta_dim['delta_ydot_dim'] = df_actual_deltas['delta_ydot_dim']
 
 # Build final state table
-state_table
+# state_table
 
-# Configure the table showing the predicted values
+# Configure the table showing the compared dim values
 compare_table = (
     GT(df_compare_dim)
     .tab_header(
@@ -270,6 +354,61 @@ compare_table = (
 )
 compare_table.show()
 
+# Configure the table showing the compared dim values
+delta_compare_table = (
+    GT(df_compare_delta_dim)
+    .tab_header(
+        title=md("Predicted vs Numerical Delta Results (Dimensional)")
+    )
+    .tab_stub(rowname_col="% change")
+    .tab_stubhead(label="% change")
+    .tab_spanner(
+        label="Predicted",
+        columns=["delta_x_predict_dim", "delta_y_predict_dim", "delta_xdot_predict_dim", "delta_ydot_predict_dim"]
+    )
+    .tab_spanner(
+        label="Numerical",
+        columns=["delta_x_dim","delta_y_dim","delta_xdot_dim","delta_ydot_dim"]
+    )
+    .tab_spanner(
+        label="Time",
+        columns=["% change", "delta_t", "t_final"]
+    )
+    .cols_label(
+        delta_x_predict_dim=html("delta_x<br>[km]"),
+        delta_y_predict_dim=html("delta_y<br>[km]"),
+        delta_xdot_predict_dim=html("delta_x_dot<br>[km/s]"),
+        delta_ydot_predict_dim=html("delta_y_dot<br>[km/s]"),
+        delta_x_dim=html("delta_x<br>[km]"),
+        delta_y_dim=html("delta_y<br>[km]"),
+        delta_xdot_dim=html("delta_x_dot<br>[km/s]"),
+        delta_ydot_dim=html("delta_y_dot<br>[km/s]"),
+    )
+    .tab_style(
+        style=style.borders(
+            sides="right",
+            color="lightgray",
+            style="solid",
+            weight="1px"
+        ),
+        locations=loc.body(columns=[2, 4, 6, 8])
+    )
+    .fmt_number(
+        columns=["delta_t", "t_final", "delta_xdot_dim", "delta_ydot_dim", \
+        "delta_xdot_predict_dim", "delta_ydot_predict_dim"],
+        decimals=5
+    )
+    .fmt_number(
+        columns=["delta_x_dim", "delta_y_dim","delta_x_predict_dim", "delta_y_predict_dim"],
+        decimals=3
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+)
+delta_compare_table.show()
+
 # Configure Error table
 error_table = (
     GT(df_time_error)
@@ -291,10 +430,10 @@ error_table = (
         columns=["% change", "delta_t", "t_final"]
     )
     .cols_label(
-        error_x=html("x<br>[%]"),
-        error_y=html("y<br>[%]"),
-        error_xdot=html("x_dot<br>[%]"),
-        error_ydot=html("y_dot<br>[%]"),
+        error_x=html("error_x<br>[%]"),
+        error_y=html("error_y<br>[%]"),
+        error_xdot=html("error_x_dot<br>[%]"),
+        error_ydot=html("error_y_dot<br>[%]"),
     )
     .opt_horizontal_padding(scale=3)
     # .tab_style(
@@ -320,5 +459,56 @@ error_table = (
     .opt_table_outline()
 )
 error_table.show()
+
+# Configure Delta Error table
+delta_error_table = (
+    GT(df_delta_error)
+    .tab_header(
+        title=md("Percentage Error: Predicted vs Numerical Deltas")
+    )
+    .tab_stub(rowname_col="% change")
+    .tab_stubhead(label="% change")
+    .tab_spanner(
+        label="Position",
+        columns=["error_delta_x", "error_delta_y"]
+    )
+    .tab_spanner(
+        label="Velocity",
+        columns=["error_delta_xdot", "error_delta_ydot"]
+    )
+    .tab_spanner(
+        label="Time",
+        columns=["% change", "delta_t", "t_final"]
+    )
+    .cols_label(
+        error_delta_x=html("error_delta_x<br>[%]"),
+        error_delta_y=html("error_delta_y<br>[%]"),
+        error_delta_xdot=html("error_delta_x_dot<br>[%]"),
+        error_delta_ydot=html("error_delta_y_dot<br>[%]"),
+    )
+    .opt_horizontal_padding(scale=3)
+    # .tab_style(
+    #     style=style.borders(
+    #         sides="right",
+    #         color="lightgray",
+    #         style="solid",
+    #         weight="1px"
+    #     ),
+    #     locations=loc.body(columns=[2, 4, 6, 8])
+    # )
+    .fmt_number(
+        columns=["delta_t", "t_final"],
+        decimals=5
+    )
+    .fmt_number(
+        columns=["error_delta_x", "error_delta_y", "error_delta_xdot", "error_delta_ydot"],
+        decimals=4
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+)
+delta_error_table.show()
 
 pdb.set_trace()

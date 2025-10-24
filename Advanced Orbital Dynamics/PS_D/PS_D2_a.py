@@ -77,7 +77,7 @@ original_IC = [
     ]
 
 # ODE Initial Conditions
-sv0 = [
+sv0_IC = [
     original_IC[0], # x
     original_IC[1], # y
     original_IC[2], # x_dot
@@ -93,7 +93,7 @@ sv0 = [
 t_final = 1.5*pi;
 tspan = [0, t_final];
 
-sol = solve_ivp(ode, tspan, sv0, events=crossxEvent, args=(mu,), rtol=1e-12,atol=1e-14)
+sol = solve_ivp(ode, tspan, sv0_IC, events=crossxEvent, args=(mu,), rtol=1e-12,atol=1e-14)
 tf = sol.t_events[0][0]
 
 # Set initial conditions for targeter reference arc
@@ -115,6 +115,7 @@ tolerance = 1e-12 # Set tolerance
 for rf_target in rf_target_list:
     r0 = copy.deepcopy(r0_IC)
     v0 = copy.deepcopy(v0_IC)
+    sv0 = copy.deepcopy(sv0_IC)
     counter = 0
     while True:
         counter = counter + 1
@@ -125,13 +126,12 @@ for rf_target in rf_target_list:
             [stm[0,2], stm[0,3]],
             [stm[1,2], stm[1,3]]
         ])
-        pdb.set_trace()
         rf = prop.y[0:2,-1].reshape(2,1) # position at tf, turn into 2x1 vector
         vf = prop.y[2:4,-1].reshape(2,1) # velocity at tf, turn into 2x1 vector
         # Step 2: Compare rf with rf_target
         error = rf_target - rf
         # Check if the error is within acceptable margins
-        if (abs(error) > tolerance).all(): # If not, recalculate the delta_v0 and try again
+        if (abs(error) > tolerance).any(): # If not, recalculate the delta_v0 and try again
             # Step 3: Calc new delta_v0
             delta_v0 = np.linalg.inv(phi_rv) @ error # multiply the matrices together (dot product)
             # print(f"delta_v0: {delta_v0[0,0]}, {delta_v0[1,0]}, Iteration: {counter}")
@@ -152,7 +152,7 @@ for rf_target in rf_target_list:
             continue
         else: # If error is within acceptable margins, break out of iterative loop
             delta_v = v0 - v0_IC
-            print(f"Position: {rf[0,0]}, {rf[1,0]}, delta_v0: {delta_v[0,0]}, {delta_v[1,0]}\n Iterations: {counter}")
+            print(f"Position: {rf[0,0]}, {rf[1,0]}, delta_v0: {delta_v[0,0]}, {delta_v[1,0]}, mag_dv: {np.linalg.norm(delta_v)}, Iterations: {counter}\n")
             break
     continue
 

@@ -77,7 +77,7 @@ original_IC = [
     ]
 
 # ODE Initial Conditions
-sv0 = [
+sv0_IC = [
     original_IC[0], # x
     original_IC[1], # y
     original_IC[2], # x_dot
@@ -93,8 +93,8 @@ sv0 = [
 t_final = 1.5*pi;
 tspan = [0, t_final];
 
-sol = solve_ivp(ode, tspan, sv0, events=crossxEvent, args=(mu,), rtol=1e-12,atol=1e-14)
-tf = sol.t_events[0][0]
+sol = solve_ivp(ode, tspan, sv0_IC, events=crossxEvent, args=(mu,), rtol=1e-12,atol=1e-14)
+tf_IC = sol.t_events[0][0]
 
 # Set initial conditions for targeter reference arc
 r0_IC = np.array([
@@ -112,15 +112,19 @@ rf_target_list = [
     np.array([[-0.35],[-.1]])
 ]
 tolerance = 1e-12 # Set tolerance
-for rf_target in rf_target_list:
+for n, rf_target in enumerate(rf_target_list):
     r0 = copy.deepcopy(r0_IC)
     v0 = copy.deepcopy(v0_IC)
+    tf = copy.deepcopy(tf_IC)
+    sv0 = copy.deepcopy(sv0_IC)
     counter = 0
     while True:
         counter = counter + 1
         # Step 1: Using ICs, propagate EOM+STM until tf, get STM from tf and rf
         prop = solve_ivp(ode, [0, tf], sv0, args=(mu,), rtol=1e-13,atol=1e-14)
         stm = prop.y[4:20,-1].reshape(4,4) # turn into 4x4 phi matrix
+        # if n==1:
+        #     pdb.set_trace()
         # Pull out phi_14 and phi_24 into a vector
         phi_14_24 = np.array([
             [stm[0,3]],
@@ -131,7 +135,7 @@ for rf_target in rf_target_list:
         # Step 2: Compare rf with rf_target
         error = rf_target - rf
         # Check if the error is within acceptable margins
-        if (abs(error) > tolerance).all(): # If not, recalculate the delta_v0 and try again
+        if (abs(error) > tolerance).any(): # If not, recalculate the delta_v0 and try again
             # Step 3: Calc new delta_vy0 and delta_t
             phi_vf = np.c_[phi_14_24, vf] # form phi and vf matrix
             deltas_vy0_tf = np.linalg.inv(phi_vf) @ error # multiply the matrices together (dot product)
@@ -159,7 +163,10 @@ for rf_target in rf_target_list:
             continue
         else: # If error is within acceptable margins, break out of iterative loop
             delta_v = v0 - v0_IC
-            print(f"Position: {rf[0,0]}, {rf[1,0]}, delta_v0: {delta_v[0,0]}, {delta_v[1,0]}\n Iterations: {counter}")
+            # xf_error = calc_error(rf[0,0], rf_target[0,0])
+            # yf_error = calc_error(rf[1,0], rf_target[1,0])
+            # print(f"Position error: x: {xf_error}, y: {yf_error}\n ")
+            print(f"Position: {rf[0,0]}, {rf[1,0]}, delta_v0: {delta_v[0,0]}, {delta_v[1,0]}, mag_dv: {np.linalg.norm(delta_v)}, Iterations: {counter}\n")
             break
     continue
 
