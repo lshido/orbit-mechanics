@@ -1,4 +1,5 @@
-# Problem D2 part(a)
+# Problem D2 part(c)
+ps = "D2 part c"
 # Code for Numerical Integrator
 # Author: Lillian Shido
 # Date: 10/21/2025
@@ -12,8 +13,9 @@ from math import pi, sqrt
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
+import matplotlib.colors as mcolors
 from great_tables import GT, md, html, style, loc, system_fonts
-
+from pypalettes import load_cmap
 
 mu = mu_Moon/(mu_Earth + mu_Moon)
 
@@ -91,12 +93,13 @@ sv0_IC = [
     0,0,0,1
     ]
 
+
 # Set the span of the integrator
 t_final = 1.5*pi;
 tspan = [0, t_final];
 
 sol = solve_ivp(ode, tspan, sv0_IC, events=crossxEvent, args=(mu,), rtol=1e-12,atol=1e-14)
-tf = sol.t_events[0][0]
+tf_IC = sol.t_events[0][0]
 
 # Set initial conditions for targeter reference arc
 r0_IC = np.array([
@@ -109,41 +112,39 @@ v0_IC = np.array([
 ])
 
 # Set up dataframes for report
-# Question 5
+# Question 4
 df_delta_v0 = pd.DataFrame(
     columns = ["Case", "delta_v0_mag", "delta_v0_x", "delta_v0_y", "delta_v0_mag_dim", "delta_v0_x_dim", "delta_v0_y_dim"]
 )
-# Question 7: For each iteration in each case, list the time interval_dim, delta_x_dim, delta_y_dim, delta_xdot_dim, delta_ydot_dim, delta_v_mag_dim
+# Question 3: For each iteration in each case, list the time interval_dim, delta_x_dim, delta_y_dim, delta_xdot_dim, delta_ydot_dim, delta_v_mag_dim
 df_iterations_per_case = pd.DataFrame(
-    columns = ["Case", "Iteration", "tf_dim", "delta_x_dim", "delta_y_dim", "delta_v0_x_dim", "delta_v0_y_dim", "delta_v0_mag_dim"]
+    columns = ["Case", "Iteration", "tf_dim", "delta_tf_dim", "delta_x_dim", "delta_y_dim", "delta_v0_x_dim", "delta_v0_y_dim", "delta_v0_mag_dim"]
 )
-
-# Question 8: What is the error in the position at arrival?
-df_position_error = pd.DataFrame(
-    columns = ["Case","error_x","error_y","error_x_dim","error_y_dim"]
-    )
-
-# Set up colors and their labels
-colors = ["violet", "indigo", "blue", "green", "yellow", "orange", "red"]
-labels = [f'Iteration {i} ({c})' if i!=1 else f'Reference ({c})' for i, c in enumerate(colors, start=1) ]
-
-# Run the targeter for a set of targets
+# Set up colors for plot and their labels
+# colors = list(mcolors.XKCD_COLORS.keys())
+# colors = load_cmap(name="Classic_Cyclic", cmap_type='discrete').colors
+cmap = load_cmap(name="Classic_Cyclic")
+colors = cmap(np.linspace(0,1,14))
+labels = [f'Iteration {i}' if i!=1 else f'Reference' for i, c in enumerate(colors, start=1) ]
+# Run the targeter for a set of targets. Try scaling.
+scale = 10
 rf_target_list = [
-    np.array([[-0.3], [0.05]]),
-    np.array([[-0.1],[0]]),
-    np.array([[-0.35],[-.1]])
+    np.array([[-0.3*scale], [0.05*scale]])
+    # np.array([[-0.1*scale],[0*scale]])
+    # np.array([[-0.35*scale],[-.1*scale]])
 ]
 tolerance = 1e-12 # Set tolerance
-print(f"Tolerance: {tolerance} [nd], {tolerance*l_char} [km]")
 for case, rf_target in enumerate(rf_target_list):
     r0 = copy.deepcopy(r0_IC)
     v0 = copy.deepcopy(v0_IC)
+    tf = copy.deepcopy(tf_IC)
     sv0 = copy.deepcopy(sv0_IC)
     arc = []
     # Set up plots for report
     fig, ax = plt.subplots(figsize=(6.5, 6.5))
-    plt.xlim(-0.5,1)
-    plt.ylim(-0.5,1)
+    lim = (np.linalg.norm(rf_target-r0))
+    plt.xlim(-lim,lim)
+    plt.ylim(-lim,lim)
     plt.axis('square')
     ax.scatter(x_Earth,0, label='Earth')
     ax.scatter(x_Moon,0, label='Moon')
@@ -155,9 +156,12 @@ for case, rf_target in enumerate(rf_target_list):
         # Step 1: Using ICs, propagate EOM+STM until tf, get STM from tf and rf
         prop = solve_ivp(ode, [0, tf], sv0, args=(mu,), rtol=1e-13,atol=1e-14)
         stm = prop.y[4:20,-1].reshape(4,4) # turn into 4x4 phi matrix
-        phi_rv = np.array([
-            [stm[0,2], stm[0,3]],
-            [stm[1,2], stm[1,3]]
+        # if n==1:
+        #     pdb.set_trace()
+        # Pull out phi_14 and phi_24 into a vector
+        phi_14_24 = np.array([
+            [stm[0,3]],
+            [stm[1,3]]
         ])
         rf = prop.y[0:2,-1].reshape(2,1) # position at tf, turn into 2x1 vector
         vf = prop.y[2:4,-1].reshape(2,1) # velocity at tf, turn into 2x1 vector
@@ -165,16 +169,27 @@ for case, rf_target in enumerate(rf_target_list):
         error = rf_target - rf
         # Add the arc for this iteration
         arc = [np.column_stack([prop.y[0], prop.y[1]])]
-        line_collection = LineCollection(arc, colors=colors[counter-1], label=labels[counter-1], linewidth=0.8)
+        print(f"Iteration: {counter}, tf: {tf}, error: {error[0,0]}\n")
+        try:
+            line_collection = LineCollection(arc, colors=colors[counter-1], label=labels[counter-1], linewidth=0.8)
+        except:
+            pdb.set_trace()
         ax.add_collection(line_collection)
         # Check if the error is within acceptable margins
-        if (abs(error) > tolerance).any(): # If not, recalculate the delta_v0 and try again
-            # Step 3: Calc new delta_v0
-            delta_v0 = np.linalg.inv(phi_rv) @ error # multiply the matrices together (dot product)
+        if (abs(error) > tolerance).any() and counter < 14: # If not, recalculate the delta_v0 and try again
+            # Step 3: Calc new delta_vy0 and delta_t
+            phi_vf = np.c_[phi_14_24, vf] # form phi and vf matrix
+            deltas_vy0_tf = np.linalg.inv(phi_vf) @ error # multiply the matrices together (dot product)
+            delta_vy0 = deltas_vy0_tf[0,0] # Pull out delta_vy0
+            delta_tf = deltas_vy0_tf[1,0] # Pull out delta_tf
             # print(f"delta_v0: {delta_v0[0,0]}, {delta_v0[1,0]}, Iteration: {counter}")
-            # Step 4: Use new delta_v0 to calc new ICs
-            v0 = v0 + delta_v0
+            # Step 4: Use new deltas_ydot_t to calc new ICs
+            v0 = np.array([
+                [v0[0,0]], # vx0 remains unchanged
+                [v0[1,0] + delta_vy0] # new vy0
+            ])
             r0 = r0 # Initial position is constant; we only vary velocity in this problem
+            tf = tf + delta_tf # new tf
             # Rebuild the ICs for combined EOM+STM ODEs (sv0)
             sv0 = [
                 r0[0,0], # x
@@ -186,26 +201,27 @@ for case, rf_target in enumerate(rf_target_list):
                 0,0,1,0,
                 0,0,0,1
             ]
-            # Build data for report Question 7
+            # Build data for report Question 3
             iteration_data = pd.DataFrame({
                 "Case":[f"Case {case+1} | Non-dimensional Targets x: {rf_target[0,0]}, y: {rf_target[1,0]}"],
                 "Iteration":[counter],
                 "tf_dim":[tf*t_char/3600/24],
+                "delta_tf_dim":[delta_tf*t_char/3600/24],
                 "delta_x_dim":[error[0,0]*l_char],
                 "delta_y_dim":[error[1,0]*l_char],
-                "delta_v0_x_dim":[delta_v0[0,0]*l_char/t_char],
-                "delta_v0_y_dim":[delta_v0[1,0]*l_char/t_char],
-                "delta_v0_mag_dim":[np.linalg.norm(delta_v0)*l_char/t_char],
+                "delta_v0_x_dim":[0],
+                "delta_v0_y_dim":[delta_vy0*l_char/t_char],
+                "delta_v0_mag_dim":[np.linalg.norm(delta_vy0)*l_char/t_char], # delta_vx0=0
             })
             df_iterations_per_case = pd.concat([df_iterations_per_case, iteration_data], ignore_index=True)
             continue
         else: # If error is within acceptable margins, break out of iterative loop
-            # Calc final delta_v0s
             delta_v0 = v0 - v0_IC
             delta_v0_x = delta_v0[0,0]
             delta_v0_y = delta_v0[1,0]
             delta_v0_mag = np.linalg.norm(delta_v0)
-            # Build data for report Question 5
+
+            # Build data for report Question 4
             delta_v0_data = pd.DataFrame({
                 "Case":[f"{case+1}"],
                 'delta_v0_mag':[delta_v0_mag],
@@ -216,12 +232,13 @@ for case, rf_target in enumerate(rf_target_list):
                 'delta_v0_y_dim':[delta_v0_y*l_char/t_char]
             })
             df_delta_v0 = pd.concat([df_delta_v0, delta_v0_data], ignore_index=True)
-
-            # Build data for report Question 7
+            
+            # Build data for report Question 3
             iteration_data = pd.DataFrame({
                 "Case":[f"Case {case+1} | Non-dimensional Targets x: {rf_target[0,0]}, y: {rf_target[1,0]}"],
                 "Iteration":[counter],
                 "tf_dim":[tf*t_char/3600/24],
+                "delta_tf_dim":[delta_tf*t_char/3600/24],
                 "delta_x_dim":[error[0,0]*l_char],
                 "delta_y_dim":[error[1,0]*l_char],
                 "delta_v0_x_dim":[delta_v0[0,0]*l_char/t_char],
@@ -229,53 +246,20 @@ for case, rf_target in enumerate(rf_target_list):
                 "delta_v0_mag_dim":[np.linalg.norm(delta_v0)*l_char/t_char],
             })
             df_iterations_per_case = pd.concat([df_iterations_per_case, iteration_data], ignore_index=True)
-
-            # Build data for report Question 8. 
-            position_error_data = pd.DataFrame({
-                "Case":[f"{case+1}"],
-                "error_x":[error[0,0]],
-                "error_y":[error[1,0]],
-                "error_x_dim":[error[0,0]*l_char],
-                "error_y_dim":[error[1,0]*l_char],
-            })
-            df_position_error = pd.concat([df_position_error, position_error_data], ignore_index=True)
+            
             # Finish building the plot and save
-            ax.set_title(f'Case {case+1}: target_x={rf_target[0,0]}, target_y={rf_target[1,0]}\nIterations: {counter} (D2 part a, Lillian Shido)')
-            ax.legend(fontsize=10)
-            plt.savefig(f'D2_a_Case_{case+1}.png', dpi=300, bbox_inches='tight')
+            ax.set_title(f'Case {case+1}: target_x={rf_target[0,0]}, target_y={rf_target[1,0]}\nIterations: {counter} ({ps}, Lillian Shido)')
+            ax.legend(fontsize=8)
+            plt.savefig(f'{ps}_Case_{case+1}.png', dpi=300, bbox_inches='tight')
             break
     continue
-
-# Build the dataframe for report Question 9.
-# Question 9: Error of first velocity guess compared to final
-df_velocity_error = pd.DataFrame(
-        columns = ["Case","error_delta_v0_x","error_delta_v0_y","error_delta_v0_mag"]
-    )
-for n_case in [0,1,2]:
-    case_df = df_iterations_per_case.loc[df_iterations_per_case['Case'].str.contains(f'Case {n_case+1}')]
-    delta_v0_x_dim_initial = case_df['delta_v0_x_dim'].iloc[0]
-    delta_v0_x_dim_final = case_df['delta_v0_x_dim'].iloc[-1]
-    delta_v0_y_dim_initial = case_df['delta_v0_y_dim'].iloc[0]
-    delta_v0_y_dim_final = case_df['delta_v0_y_dim'].iloc[-1]
-    delta_v0_mag_dim_initial = case_df['delta_v0_mag_dim'].iloc[0]
-    delta_v0_mag_dim_final = case_df['delta_v0_mag_dim'].iloc[-1]
-    per_error_delta_v0_x = calc_error(delta_v0_x_dim_initial,delta_v0_x_dim_final)*100
-    per_error_delta_v0_y = calc_error(delta_v0_y_dim_initial,delta_v0_y_dim_final)*100
-    per_error_delta_v0_mag = calc_error(delta_v0_mag_dim_initial,delta_v0_mag_dim_final)*100
-    velocity_error_data = pd.DataFrame({
-        "Case": [f'Case {n_case+1}'],
-        "error_delta_v0_x":[per_error_delta_v0_x],
-        "error_delta_v0_y":[per_error_delta_v0_y],
-        "error_delta_v0_mag":[per_error_delta_v0_mag]
-    })
-    df_velocity_error = pd.concat([df_velocity_error, velocity_error_data], ignore_index=True)
 
 # Configure the table for Question #5:
     # columns = ["Case", "delta_v0_mag", "delta_v0_x", "delta_v0_y", "delta_v0_mag_dim", "delta_v0_x_dim", "delta_v0_y_dim"]
 delta_v0_table = (
     GT(df_delta_v0)
     .tab_header(
-        title="Final Total Change in Initial Velocity (D2 part a, Lillian Shido)"
+        title=md(f"Final Total Change in Initial Velocity -<br>Time-Varying Targeter ({ps}, Lillian Shido)")
     )
     .tab_stub(rowname_col="Case")
     .tab_stubhead(label="Case")
@@ -323,7 +307,7 @@ delta_v0_table.show()
 iteration_per_case_table = (
     GT(df_iterations_per_case)
     .tab_header(
-        title="States at each Iteration (D2 part a, Lillian Shido)"
+        title=md(f"States at each Iteration - Time-Varying Targeter<br>({ps}, Lillian Shido)")
     )
     .tab_stub(rowname_col="Iteration", groupname_col="Case")
     .tab_stubhead(label="Iteration") 
@@ -337,6 +321,7 @@ iteration_per_case_table = (
     )
     .cols_label(
         tf_dim=html("Time Interval<br>[days]"),
+        delta_tf_dim="{{:delta:t_f}}<br>[days]",
         delta_x_dim="{{:Delta:x}}<br>[km]",
         delta_y_dim="{{:Delta:y}}<br>[km]",
         delta_v0_mag_dim="{{:Delta:v_mag}}<br>[km/s]",
@@ -357,7 +342,7 @@ iteration_per_case_table = (
         decimals=5
     )
     .fmt_number(
-        columns=["tf_dim", "delta_x_dim", "delta_y_dim"],
+        columns=["tf_dim", "delta_tf_dim", "delta_x_dim", "delta_y_dim"],
         decimals=3
     )
     .cols_align(
@@ -370,86 +355,5 @@ iteration_per_case_table = (
 )
 iteration_per_case_table.show()
 
-# Configure table for question 8
-    # columns = ["Case","error_x","error_y","error_x_dim","error_y_dim"]
-position_error_table = (
-    GT(df_position_error)
-    .tab_header(
-        title="Error in Position at Arrival (D2 part a, Lillian Shido)"
-    )
-    .tab_stub(rowname_col="Case")
-    .tab_stubhead(label="Case") 
-    .tab_spanner(
-        label="Non-Dimensional Error", 
-        columns=["error_x","error_y"]
-    )
-    .tab_spanner(
-        label="Dimensional Error",
-        columns=["error_x_dim","error_y_dim"]
-    )
-    .cols_label(
-        error_x="{{x}}<br>[non-dim]",
-        error_y="{{y}}<br>[non-dim]",
-        error_x_dim="{{x}}<br>[km]",
-        error_y_dim="{{y}}<br>[km]"
-    )
-    # .tab_style(
-    #     style=style.borders(
-    #         sides="right",
-    #         color="lightgray",
-    #         style="solid",
-    #         weight="1px"
-    #     ),
-    #     locations=loc.body(columns=[2, 4, 6, 8])
-    # )
-    .fmt_scientific(
-        columns=["error_x","error_y","error_x_dim","error_y_dim"],
-        decimals=3
-    )
-    .cols_align(
-        align="center"
-    )
-    .opt_table_outline()
-    .opt_stylize()
-    .opt_table_font(font=system_fonts(name="industrial"))
-    .opt_horizontal_padding(scale=2)
-)
-position_error_table.show()
 
-# Configure table for question 9 
-# columns = "Case", "error_delta_v0_x", "error_delta_v0_y", "error_delta_v0_mag"
-velocity_error_table = (
-    GT(df_velocity_error)
-    .tab_header(
-        title=md("Error Percentage of Initial Change in Velocity<br>Compared to Final Change in Velocity<br>(D2 part a, Lillian Shido)")
-    )
-    .tab_stub(rowname_col="Case")
-    .tab_stubhead(label="Case") 
-    .cols_label(
-        error_delta_v0_x="{{:Delta:v_x}}<br>[%]",
-        error_delta_v0_y="{{:Delta:v_y}}<br>[%]",
-        error_delta_v0_mag="{{:Delta:v_mag}}<br>[%]"
-    )
-    # .tab_style(
-    #     style=style.borders(
-    #         sides="right",
-    #         color="lightgray",
-    #         style="solid",
-    #         weight="1px"
-    #     ),
-    #     locations=loc.body(columns=[2, 4, 6, 8])
-    # )
-    .fmt_number(
-        columns=["error_delta_v0_x", "error_delta_v0_y", "error_delta_v0_mag"],
-        decimals=3
-    )
-    .cols_align(
-        align="center"
-    )
-    .opt_table_outline()
-    .opt_stylize()
-    .opt_table_font(font=system_fonts(name="industrial"))
-    .opt_horizontal_padding(scale=2)
-)
-velocity_error_table.show()
 # pdb.set_trace()
