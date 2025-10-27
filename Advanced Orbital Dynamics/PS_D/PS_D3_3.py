@@ -1,7 +1,7 @@
-ps = "D3 part 2"
-# Problem D3 Part 2
+ps = "D3 part 3"
+# Problem D3 Part 3
 # Author: Lillian Shido
-# Date: 10/25/2025
+# Date: 10/26/2025
 
 import pdb
 import copy
@@ -11,6 +11,7 @@ import pandas as pd
 from math import pi, sqrt
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 from matplotlib.collections import LineCollection
 import matplotlib.colors as mcolors
 from great_tables import GT, md, html, style, loc, system_fonts
@@ -55,6 +56,34 @@ def calc_L1(mu, a):
             counter = 0
             break
     return x_L1, y_L1
+
+def calc_initial_velocities(xi_0, eta_0, x_L, y_L, mu):
+    """
+    Calculates the initial velocities around the collinear libration points.
+    
+    Args:
+        xi_0: x-direction distance offset from the libration point
+        eta_0: y-direction distance offset from the libration point
+        x_L: The x value of the libration point
+        y_L: The y value of the libration point
+        mu: The mu value for the system
+
+    Returns:
+        xi_dot: The initial velocity in the xi direction
+        eta_dot: The initial velocity in the eta direction
+    """
+    d = sqrt((x_L+mu)**2 + y_L**2)
+    r = sqrt((x_L-1+mu)**2 + y_L**2)
+    U_xx = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*(x_L+mu)**2/d**5 + 3*mu*(x_L-1+mu)**2/r**5
+    U_yy = 1 - (1-mu)/d**3 - mu/r**3
+    B_1 = 2 - (U_xx + U_yy)/2
+    B_2_squared = -U_xx*U_yy
+    s = (B_1 + (B_1**2 + B_2_squared)**(1/2))**(1/2)
+    B_3 = (s**2 + U_xx)/(2*s)
+    xi_dot_0 = eta_0*s/B_3
+    eta_dot_0 = -B_3*xi_0*s
+    return xi_dot_0, eta_dot_0
+
 
 def eoms(t,sv,mu):
     
@@ -139,7 +168,7 @@ mu, l_char, t_char, x_Earth, x_Moon = system_properties(mu_Earth, mu_Moon, a_Moo
 x_L1, y_L1 = calc_L1(mu, a_Moon)
 
 # Initial Conditions
-xi = 0.01
+xi = 0.01799
 eta = 0
 
 # Distance from L1
@@ -152,10 +181,12 @@ df_distance_from_L1 = pd.DataFrame({
     "eta_from_L1_dim":[eta_from_L1_dim]
 })
 
+xi_dot_0, eta_dot_0 = calc_initial_velocities(xi, eta, x_L1, y_L1, mu)
+
 x0_IC = x_L1 + xi
 y0_IC = y_L1 + eta
-vx0_IC = 0 # From problem C2(b)
-vy0_IC = -0.0837 # From problem C2(b)
+vx0_IC = xi_dot_0
+vy0_IC = eta_dot_0
 
 # Trjaectory Initial Conditions
 original_IC = [
@@ -196,18 +227,21 @@ v0_IC = np.array([
 ])
 print(f"Initial Conditions: x: {r0_IC[0,0]}, y:{r0_IC[1,0]}, vx:{v0_IC[0,0]}, vy:{v0_IC[1,0]}")
 # Set the span of the integrator
-t_final = 1.5*pi;
+t_final = 15*pi;
 tspan = [0, t_final];
 
 sol = solve_ivp(ode, tspan, sv0_IC, events=crossxEvent, args=(mu,), rtol=1e-12,atol=1e-14)
-tf_IC = sol.t_events[0][1]
+try:
+    tf_IC = sol.t_events[0][1]
+except:
+    pdb.set_trace()
 initial_x_cross_vx = sol.y[2,-1] # xdot column
 print(f"xdot at first crossing: {initial_x_cross_vx}")
 
 # Set up colors for plot and their labels
-colors = load_cmap(name="Classic_Cyclic", cmap_type='discrete').colors
-# cmap = load_cmap(name="Classic_Cyclic")
-# colors = cmap(np.linspace(0,1,50))
+# colors = load_cmap(name="Classic_Cyclic", cmap_type='discrete').colors
+cmap = load_cmap(name="Classic_Cyclic")
+colors = cmap(np.linspace(0,1,50))
 labels = [f'Iteration {i}' if i!=1 else f'Reference' for i, c in enumerate(colors, start=1) ]
 
 tolerance = 1e-12 # Set tolerance
@@ -219,11 +253,26 @@ tf = copy.deepcopy(tf_IC)
 vy0 = v0[1,0]
 arc = []
 
+# Question 3: For each iteration in each case, list the time interval_dim, delta_x_dim, delta_y_dim, delta_xdot_dim, delta_ydot_dim, delta_v_mag_dim
+df_iterations_per_case = pd.DataFrame(
+    columns = ["Iteration", "x_dim", "y_dim", "v_x_dim", "v_y_dim"]
+)
+
+# Set up plots for report
+fig1, ax1 = plt.subplots(figsize=(6.5, 6.5))
+ax1.set_aspect('equal', 'box')
+ax1.xaxis.set_major_locator(ticker.MultipleLocator(0.1))
+# ax1.scatter(x_Earth, 0, label='Earth', s=20, color='blue')
+ax1.scatter(x_Moon, 0, label='Moon', s=20, color='gray')
+plt.grid()
+ax1.scatter(original_IC[0], original_IC[1], label='Start', s=20, marker="<", color='green')
+ax1.scatter(x_L1, y_L1, label='L1', s=10, color='purple')
+ax1.axhline(y=0, color='r', linestyle='--', linewidth=0.5)
 counter = 0
 while True:
     counter = counter + 1
     # Step 1: Using ICs, propagate EOM+STM until second x-axis cross, get STM, get xdot, ydot
-    prop = solve_ivp(ode, tspan, sv0, events=crossxEvent, args=(mu,), rtol=1e-13,atol=1e-14)
+    prop = solve_ivp(ode, tspan, sv0, events=crossxEvent, args=(mu,), rtol=1e-12,atol=1e-14)
     stm = prop.y[4:20,-1].reshape(4,4) # turn into 4x4 phi matrix
     tf = prop.t_events[0][1]
     phi_34 = stm[2,3]
@@ -232,15 +281,19 @@ while True:
     vf = prop.y[2:4,-1].reshape(2,1) # velocity at tf, turn into 2x1 vector
     vxf = prop.y[2,-1] # get xdot to compare against tolerance
     vyf = prop.y[3,-1] # get ydot to calculate the acceleration
+    # Add the arc for this iteration
+    arc = [np.column_stack([prop.y[0], prop.y[1]])]
+    try:
+        line_collection = LineCollection(arc, colors=colors[counter-1], label=labels[counter-1], linewidth=0.8)
+    except:
+        pdb.set_trace()
+    ax1.add_collection(line_collection)
     # Check if the vxf is close to 0 within acceptable margins
-    if abs(vxf) > tolerance: # If not, recalculate the delta_v0 and try again
+    if abs(vxf) > tolerance and counter < 20: # If not, recalculate the delta_v0 and try again
         # Calc the acceleration in x
         a_x, a_y = eval_acceleration(rf[0,0], rf[1,0], vxf, vyf, mu)
         # Step 3: Calc new delta_vy0
         delta_vy0 = -vxf / (phi_34 - phi_24*(a_x/vyf))
-        # Calc delta_t as a check on tf
-        # delta_t = -phi_24/vyf*delta_vy0
-        # tf = tf + delta_t
         # Step 4: Use new deltas_ydot_t to calc new ICs
         vy0 = vy0 + delta_vy0
         r0 = r0 # Initial position is constant; we only vary velocity in this problem
@@ -255,6 +308,15 @@ while True:
             0,0,1,0,
             0,0,0,1
         ]
+        # Build data for report Question 3
+        iteration_data = pd.DataFrame({
+            "Iteration":[counter],
+            "x_dim":[rf[0,0]*l_char],
+            "y_dim":[rf[1,0]*l_char],
+            "v_x_dim":[vxf*l_char/t_char],
+            "v_y_dim":[vyf*l_char/t_char]
+        })
+        df_iterations_per_case = pd.concat([df_iterations_per_case, iteration_data], ignore_index=True)
         continue
     else: # If error is within acceptable margins, break out of iterative loop
         # Build the dataframe for the states
@@ -286,22 +348,44 @@ while True:
             "initial_xdot_dim":[sv0[2]*l_char/t_char],
             "initial_ydot_dim":[sv0[3]*l_char/t_char]
         })
+
+        # Build data for report Question 3
+        iteration_data = pd.DataFrame({
+            "Iteration":[counter],
+            "x_dim":[rf[0,0]*l_char],
+            "y_dim":[rf[1,0]*l_char],
+            "v_x_dim":[vxf*l_char/t_char],
+            "v_y_dim":[vyf*l_char/t_char]
+        })
+        df_iterations_per_case = pd.concat([df_iterations_per_case, iteration_data], ignore_index=True)
+        # Finish building the plot and save
+        # ax1.scatter(rf[0,0], 0, marker='x', label='Perpendicular Cross', color="green")
+        ax1.set_title(f'Perpendicular Crossing near L1 with $\\xi$={xi}, $\\eta$={eta}\nIterations: {counter} ({ps}, Lillian Shido)')
+        # ax1.legend(loc='lower left', fontsize=6)
+        plt.savefig(f'Iterations_{ps}.png', dpi=300, bbox_inches='tight')
         break
+    
 
 full_period_prop = solve_ivp(ode, [0, 2*tf], sv0, args=(mu,), rtol=1e-12,atol=1e-14)
-fig, ax = plt.subplots(figsize=(6.5, 6.5))
-lim = (np.linalg.norm(r0_IC))
-plt.xlim(0.8,0.9)
-plt.ylim(-0.05,0.05)
-plt.axis('square')
-ax.scatter(original_IC[0], original_IC[1], label='Start', s=20, marker="<", color='green')
-ax.scatter(x_L1, y_L1, label='L1', s=10, color='purple')
-ax.plot(full_period_prop.y[0], full_period_prop.y[1], label='Full Period Arc')
-ax.annotate("",xy=(full_period_prop.y[0,0],full_period_prop.y[1,0]),arrowprops=dict(arrowstyle="->"))
-ax.axhline(y=0, color='r', linestyle='--', linewidth=0.5)
-ax.set_title(f'Full Period Propagation near L1 with $\\xi$={xi}, $\\eta$={eta}\n$x_0$={sv0[0]:.3f},$y_0$={sv0[1]:.3f},$v_{{x0}}$={sv0[2]:.3f},$v_{{y0}}$={sv0[3]:.3f} ({ps}, Lillian Shido)')
-ax.legend(fontsize=8)
-plt.savefig(f'{ps}.png', dpi=300, bbox_inches='tight')
+fig2, ax2 = plt.subplots(figsize=(6.5, 6.5))
+ax2.set_aspect('equal', 'box')
+ax2.xaxis.set_major_locator(ticker.MultipleLocator(0.1))
+# ax2.scatter(x_Earth, 0, label='Earth', s=20, color='blue')
+ax2.scatter(x_Moon, 0, label='Moon', s=20, color='gray')
+plt.grid()
+ax2.scatter(original_IC[0], original_IC[1], label='Start', s=20, marker="v", color='green')
+ax2.scatter(x_L1, y_L1, label='L1', s=10, color='purple')
+ax2.plot(full_period_prop.y[0], full_period_prop.y[1], label='Full Period Arc')
+plt.quiver(full_period_prop.y[0,100], full_period_prop.y[1,100],
+    full_period_prop.y[2,100], full_period_prop.y[3,100],
+    color='red', label='Direction', zorder=2.5, width=0.005
+)
+ax2.axhline(y=0, color='r', linestyle='--', linewidth=0.5)
+ax2.set_title(f'Full Period Propagation near L1 with $\\xi$={xi}, $\\eta$={eta}\n$x_0$={sv0[0]:.3f},$y_0$={sv0[1]:.3f},$v_{{x0}}$={sv0[2]:.3f},$v_{{y0}}$={sv0[3]:.3f} ({ps}, Lillian Shido)')
+ax2.legend(loc='upper right',fontsize=8)
+plt.savefig(f'Full_period_{ps}.png', dpi=300, bbox_inches='tight')
+
+# pdb.set_trace()
 
 df_check_return = pd.DataFrame({
     "location":['Start','End'],
@@ -325,42 +409,90 @@ df_state_error = pd.DataFrame({
     "ydot_error_dim":[(full_period_prop.y[3,-1]- full_period_prop.y[3,0])*l_char/t_char]
 })
 
-# # Configure table for question 1 
-#     # columns = "half_period", "initial_x", "initial_y", "initial_xdot", "initial_ydot",
-#     # "half_period_dim", "initial_x_dim", "initial_y_dim", "initial_xdot_dim", "initial_ydot_dim"
-# state_error_table = (
-#     GT(df_state_error)
-#     .tab_header(
-#         title=md(f"State Error<br>({ps}, Lillian Shido)")
-#     )
-#     .cols_label(
-#         jacobi="Jacobi Constant",
-#         x_error="{{x}}<br>[non-dim]",
-#         y_error="{{y}}<br>[non-dim]",
-#         xdot_error="{{v_x}}<br>[non-dim]",
-#         ydot_error="{{v_y}}<br>[non-dim]",
-#         x_error_dim="{{x}}<br>[km]",
-#         y_error_dim="{{y}}<br>[km]",
-#         xdot_error_dim="{{v_x}}<br>[km/s]",
-#         ydot_error_dim="{{v_y}}<br>[km/s]"
-#     )
-#     .fmt_scientific(
-#         columns=["jacobi", "x_error","y_error","xdot_error","ydot_error","x_error_dim","y_error_dim","xdot_error_dim","ydot_error_dim"],
-#         decimals=4
-#     )
-#     .cols_align(
-#         align="center"
-#     )
-#     .opt_table_outline()
-#     .opt_stylize()
-#     .opt_table_font(font=system_fonts(name="industrial"))
-#     .opt_horizontal_padding(scale=2)
-# )
-# state_error_table.show()
+# Configure table for question 7
+    # columns = ["Case", "Iteration", "tf_dim", "delta_x_dim", "delta_y_dim", "delta_v0_x_dim", "delta_v0_y_dim", "delta_v0_mag_dim"]
+iteration_per_case_table = (
+    GT(df_iterations_per_case)
+    .tab_header(
+        title=md(f"States at each Iteration - 1D Periodic Targeter<br>({ps}, Lillian Shido)")
+    )
+    .tab_stub(rowname_col="Iteration")
+    .tab_stubhead(label="Iteration") 
+    .tab_spanner(
+        label="Position", 
+        columns=["x_dim","y_dim"]
+    )
+    .tab_spanner(
+        label="Velocity",
+        columns=["v_x_dim", "v_y_dim"]
+    )
+    .cols_label(
+        Iteration="Iteration",
+        x_dim="{{x}}<br>[km]",
+        y_dim="{{y}}<br>[km]",
+        v_x_dim="{{v_x}}<br>[km/s]",
+        v_y_dim="{{v_y}}<br>[km/s]"
+    )
+    # .tab_style(
+    #     style=style.borders(
+    #         sides="right",
+    #         color="lightgray",
+    #         style="solid",
+    #         weight="1px"
+    #     ),
+    #     locations=loc.body(columns=[2, 4, 6, 8])
+    # )
+    .fmt_number(
+        columns=["v_x_dim", "v_y_dim"],
+        decimals=5
+    )
+    .fmt_number(
+        columns=["x_dim","y_dim"],
+        decimals=3
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+iteration_per_case_table.show()
 
 # Configure table for question 1 
     # columns = "half_period", "initial_x", "initial_y", "initial_xdot", "initial_ydot",
     # "half_period_dim", "initial_x_dim", "initial_y_dim", "initial_xdot_dim", "initial_ydot_dim"
+state_error_table = (
+    GT(df_state_error)
+    .tab_header(
+        title=md(f"State Error<br>({ps}, Lillian Shido)")
+    )
+    .cols_label(
+        jacobi="Jacobi Constant",
+        x_error="{{x}}<br>[non-dim]",
+        y_error="{{y}}<br>[non-dim]",
+        xdot_error="{{v_x}}<br>[non-dim]",
+        ydot_error="{{v_y}}<br>[non-dim]",
+        x_error_dim="{{x}}<br>[km]",
+        y_error_dim="{{y}}<br>[km]",
+        xdot_error_dim="{{v_x}}<br>[km/s]",
+        ydot_error_dim="{{v_y}}<br>[km/s]"
+    )
+    .fmt_scientific(
+        columns=["jacobi", "x_error","y_error","xdot_error","ydot_error","x_error_dim","y_error_dim","xdot_error_dim","ydot_error_dim"],
+        decimals=4
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+state_error_table.show()
+
 check_return_table = (
     GT(df_check_return)
     .tab_header(
@@ -438,5 +570,45 @@ check_return_table.show()
 #     .opt_horizontal_padding(scale=2)
 # )
 # final_initial_states_table.show()
+
+# Configure Tables
+# Configure table for question 1 
+# columns = "xi_from_L1", "eta_from_L1", "xi_from_L1_dim", "eta_from_L1_dim"
+distance_from_L1_table = (
+    GT(df_distance_from_L1)
+    .tab_header(
+        title=md(f"Distance from L1 Libration Point<br>({ps}, Lillian Shido)")
+    )
+    .tab_spanner(
+        label="Non-Dimensional", 
+        columns=["xi_from_L1", "eta_from_L1"]
+    )
+    .tab_spanner(
+        label="Dimensional",
+        columns=["xi_from_L1_dim", "eta_from_L1_dim"]
+    )
+    .cols_label(
+        xi_from_L1="{{:xi:}}<br>[non-dim]",
+        eta_from_L1="{{:eta:}}<br>[non-dim]",
+        xi_from_L1_dim="{{:xi:}}<br>[km]",
+        eta_from_L1_dim="{{:eta:}}<br>[km]"
+    )
+    .fmt_number(
+        columns=["xi_from_L1", "eta_from_L1"],
+        decimals=2
+    )
+    .fmt_number(
+        columns=["xi_from_L1_dim", "eta_from_L1_dim"],
+        decimals=3
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+distance_from_L1_table.show()
 
 # pdb.set_trace()

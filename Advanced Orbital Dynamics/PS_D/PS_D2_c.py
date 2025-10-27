@@ -127,7 +127,7 @@ cmap = load_cmap(name="Classic_Cyclic")
 colors = cmap(np.linspace(0,1,14))
 labels = [f'Iteration {i}' if i!=1 else f'Reference' for i, c in enumerate(colors, start=1) ]
 # Run the targeter for a set of targets. Try scaling.
-scale = 10
+scale = 12
 rf_target_list = [
     np.array([[-0.3*scale], [0.05*scale]])
     # np.array([[-0.1*scale],[0*scale]])
@@ -248,7 +248,7 @@ for case, rf_target in enumerate(rf_target_list):
             df_iterations_per_case = pd.concat([df_iterations_per_case, iteration_data], ignore_index=True)
             
             # Finish building the plot and save
-            ax.set_title(f'Case {case+1}: target_x={rf_target[0,0]}, target_y={rf_target[1,0]}\nIterations: {counter} ({ps}, Lillian Shido)')
+            ax.set_title(f'Case {case+1}: target_x={rf_target[0,0]:4f}, target_y={rf_target[1,0]:4f}\nIterations: {counter} ({ps}, Lillian Shido)')
             ax.legend(fontsize=8)
             plt.savefig(f'{ps}_Case_{case+1}.png', dpi=300, bbox_inches='tight')
             break

@@ -238,9 +238,6 @@ while True:
         a_x, a_y = eval_acceleration(rf[0,0], rf[1,0], vxf, vyf, mu)
         # Step 3: Calc new delta_vy0
         delta_vy0 = -vxf / (phi_34 - phi_24*(a_x/vyf))
-        # Calc delta_t as a check on tf
-        # delta_t = -phi_24/vyf*delta_vy0
-        # tf = tf + delta_t
         # Step 4: Use new deltas_ydot_t to calc new ICs
         vy0 = vy0 + delta_vy0
         r0 = r0 # Initial position is constant; we only vary velocity in this problem
