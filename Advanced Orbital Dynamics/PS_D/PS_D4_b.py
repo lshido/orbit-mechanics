@@ -168,7 +168,7 @@ mu, l_char, t_char, x_Earth, x_Moon = system_properties(mu_Earth, mu_Moon, a_Moo
 x_L1, y_L1 = calc_L1(mu, a_Moon)
 
 # Initial Conditions
-xi = -0.01
+xi = 0.01
 eta = 0
 
 # Distance from L1
@@ -252,8 +252,9 @@ vy0 = v0[1,0]
 arc = []
 
 # Configuration
-delta_x = -0.001 # Step size for x
+delta_x = 0.001 # Step size for x
 tolerance = 1e-12 # Set convergence tolerance
+step_size = 0.01
 
 # Find 10 orbits
 for orbit in range(11):
@@ -277,8 +278,9 @@ for orbit in range(11):
             # Step 3: Calc new delta_vy0
             delta_vy0 = -vxf / (phi_34 - phi_24*(a_x/vyf))
             # Step 4: Use new deltas_ydot_t to calc new ICs
+            if delta_vy0 > step_size:
+                delta_vy0 = delta_vy0/3
             vy0 = vy0 + delta_vy0
-            r0 = r0 # Initial position is constant; we only vary velocity in this problem
             # Rebuild the ICs for combined EOM+STM ODEs (IC_guess)
             IC_guess = [
                 x0, # x
@@ -290,7 +292,7 @@ for orbit in range(11):
                 0,0,1,0,
                 0,0,0,1
             ]
-            print(f"{counter}, x:{x0}, y:{r0[1,0]}, vx:{v0[0,0]}, vy0:{vy0}")
+            print(f"{counter}, x:{x0}, y:{r0[1,0]}, vx:{v0[0,0]}, vy0:{vy0}, dvy0:{delta_vy0}")
             continue
         else: # If error is within acceptable margins, break out of iterative loop
             # Store these ICs so we can propagate them in bulk later
@@ -352,9 +354,9 @@ for row in df_initial_conditions.iterrows():
     except:
         pdb.set_trace()
     ax1.add_collection(line_collection)
-    plt.quiver(full_period_prop.y[0,100], full_period_prop.y[1,100],
-    full_period_prop.y[2,100], full_period_prop.y[3,100],
-    color='red', zorder=2.5, width=0.005
+    # plt.quiver(full_period_prop.y[0,100], full_period_prop.y[1,100],
+    # full_period_prop.y[2,100], full_period_prop.y[3,100],
+    # color='red', zorder=2.5, width=0.005
 )
 ax1.set_title(f'Perpendicular Crossing near L1 with $\\xi$={xi}, $\\eta$={eta}\nIterations: {counter} ({ps}, Lillian Shido)')
 ax1.legend(loc='lower left', fontsize=6)
