@@ -1,3 +1,7 @@
+# Problem D1 part(d)
+# Numerical Integrator with STM when we introduce a delta_t at the end
+# Author: Lillian Shido
+# Date: 10/21/2025
 
 import pdb
 import copy

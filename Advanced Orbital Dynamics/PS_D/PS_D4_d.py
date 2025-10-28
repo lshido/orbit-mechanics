@@ -1,6 +1,6 @@
-ps = "D4 part b"
-# Problem D4 Part b
-# Continuation Algorithm: NO ydot prediction
+ps = "D4 part d"
+# Continuation Algorithm: Natural Parameter Process with Dynamic Step Sizes
+# Problem D4 Part d
 # Author: Lillian Shido
 # Date: 10/26/2025
 
@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from matplotlib.collections import LineCollection
 import matplotlib.colors as mcolors
+from scipy import stats
 from great_tables import GT, md, html, style, loc, system_fonts
 from pypalettes import load_cmap
 
@@ -31,32 +32,33 @@ def system_properties(mu_major,mu_minor, a):
 def calc_error(actual, ideal):
     return abs(actual-ideal)/abs(ideal)
 
-def calc_L1(mu, a):
-    gamma = 0.2
-    tolerance = 1e-12
+# Calculate the location of L2
+def calc_L2(mu, a):
+    gamma = 1e-6
+    tolerance=1e-12
     counter = 0
     while True:
         counter = counter + 1
-        f = 1-mu-gamma-((1-mu)/(1-gamma)**2)+(mu/gamma**2)
-        f_prime = -1-(2*(1-mu)/(1-gamma)**3)-(2*mu/gamma**3)
+        f = -(((1-mu)/(1+gamma)**2)+(mu/gamma**2)-1+mu-gamma)
+        f_prime = ((2*(1-mu))/(1+gamma)**3)+((2*mu)/(gamma**3))+1
         if abs(f) > tolerance:
-            gamma = gamma - f/f_prime;
+            gamma = gamma - f/f_prime
             continue
         else:
-            x = 1 - mu - gamma
+            x = 1 - mu + gamma
             # Add check for accleration
             d_x = x*a+mu
             r_x = x*a-1+mu
             d = ((x*a+mu)**2)**(1/2)
             r = ((x*a-1+mu)**2)**(1/2)
             accel = -(1-mu)/d**3*d_x - mu/r**3*r_x
-            # Add check for partial wrt gamma
-            partial = (1-mu)/(1-gamma)**2 - mu/(gamma)**2 - (1-mu-gamma)
-            x_L1 = x
-            y_L1 = 0
+            # Add check for partial wrt x
+            partial = -((1-mu)/(x+mu)**2) - mu/(x-1+mu)**2 + x
+            x_L2 = x
+            y_L2 = 0
             counter = 0
             break
-    return x_L1, y_L1
+    return x_L2, y_L2
 
 def calc_initial_velocities(xi_0, eta_0, x_L, y_L, mu):
     """
@@ -85,6 +87,25 @@ def calc_initial_velocities(xi_0, eta_0, x_L, y_L, mu):
     eta_dot_0 = -B_3*xi_0*s
     return xi_dot_0, eta_dot_0
 
+# Calculate the Eigenvalues
+def calc_eigenvalues(mu, x_L, y_L):
+    d = ((x_L+mu)**2 + y_L**2)**(1/2)
+    r = ((x_L-1+mu)**2 + y_L**2)**(1/2)
+    U_xx = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*(x_L+mu)**2/d**5 + 3*mu*(x_L-1+mu)**2/r**5
+    U_yy = 1 - (1-mu)/d**3 - mu/r**3
+    B_1 = 2 - (U_xx + U_yy)/2
+    B_2_squared = -U_xx*U_yy
+    s = (B_1 + (B_1**2 + B_2_squared)**(1/2))**(1/2)
+    B_3 = (s**2 + U_xx)/(2*s)
+    big_Lambda_1 = -B_1 + (B_1**2 + B_2_squared)**(1/2)
+    big_Lambda_2 = -B_1 - (B_1**2 + B_2_squared)**(1/2)
+    lambda_1 = (big_Lambda_1)**(1/2) # real
+    lambda_2 = -(big_Lambda_1)**(1/2) # real
+    lambda_3 = (big_Lambda_2)**(1/2) # imaginary
+    lambda_4 = -(big_Lambda_2)**(1/2) # imaginary
+    period = 2*pi/s
+    B_2 = B_2_squared**(1/2)
+    return lambda_1, lambda_2, lambda_3, lambda_4, B_1, B_2, B_3, s, period
 
 def eoms(t,sv,mu):
     
@@ -232,33 +253,50 @@ def find_halfperiod(starting_x, ydot_guess, mu, tolerance=1e-12, max_iterations=
 
 # Properties of the system
 mu, l_char, t_char, x_Earth, x_Moon = system_properties(mu_Earth, mu_Moon, a_Moon)
-x_L1, y_L1 = calc_L1(mu, a_Moon)
+x_L2, y_L2 = calc_L2(mu, a_Moon)
 
 # Initial Conditions
 xi = 0.01
 eta = 0
 
-# Distance from L1
-xi_from_L1_dim = xi*l_char
-eta_from_L1_dim = eta*l_char
-df_distance_from_L1 = pd.DataFrame({    
-    "xi_from_L1":[xi],
-    "eta_from_L1":[eta],
-    "xi_from_L1_dim":[xi_from_L1_dim],
-    "eta_from_L1_dim":[eta_from_L1_dim]
+# Distance from L2
+xi_from_L2_dim = xi*l_char
+eta_from_L2_dim = eta*l_char
+df_distance_from_L2 = pd.DataFrame({    
+    "xi_from_L2":[xi],
+    "eta_from_L2":[eta],
+    "xi_from_L2_dim":[xi_from_L2_dim],
+    "eta_from_L2_dim":[eta_from_L2_dim]
+})
+
+# Calc characteristics for L2
+lambda_1, lambda_2, lambda_3, lambda_4, B_1, B_2, B_3, s, period = calc_eigenvalues(mu, x_L2, y_L2)
+df_eigenvalues = pd.DataFrame({
+    "lambda_1":[lambda_1],
+    "lambda_2":[lambda_2],
+    "lambda_3":[lambda_3.imag], # imaginary only
+    "lambda_4":[lambda_4.imag], # imaginary only
+})
+
+df_chars = pd.DataFrame({
+    "beta_1":[B_1],
+    "beta_2":[B_2],
+    "beta_3":[B_3],
+    "xi0":[xi],
+    "eta0":[eta],
+    "eta0_beta3":[eta/B_3],
+    "beta3_eta0":[B_3*xi],
+    "s":[s],
+    "period":[2*pi/s]
 })
 
 # Calc starting guess values
-xi_dot_0, eta_dot_0 = calc_initial_velocities(xi, eta, x_L1, y_L1, mu)
-starting_x = x_L1 + xi
-starting_y = y_L1 + eta
+xi_dot_0, eta_dot_0 = calc_initial_velocities(xi, eta, x_L2, y_L2, mu)
+starting_x = x_L2 + xi
+starting_y = y_L2 + eta
 starting_xdot = xi_dot_0
 ydot_guess = eta_dot_0
 
-# Find arrival states for starting state using xi as starting x
-iterations, tf, arrival_states, _ = find_halfperiod(starting_x, ydot_guess, mu, tolerance=1e-12, max_iterations=50)
-print(f"First guess:\nIterations:{iterations},half-period:{tf}, x:{arrival_states[0]}, y:{arrival_states[1]}, vx:{arrival_states[2]}, vy:{arrival_states[3]}")
-# pdb.set_trace()
 # Initialize list to store orbit ICs
 df_orbits = pd.DataFrame(
     columns = [
@@ -275,111 +313,186 @@ df_orbits = pd.DataFrame(
 )
 
 # Configuration
-delta_x = -0.001 # step in x
+first_delta_x = 0.001
+delta_x = 0.007 # step in x
 
-orbit_x = arrival_states[0]
-orbit_ydot = arrival_states[3]
+orbit_x = starting_x
+orbit_ydot = ydot_guess
 # Use the arrival states for xi (x0, y0, vx0, vy0) as the starting x
-for orbit in range(11):
+for orbit in range(21):
     print(f"starting x0:{orbit_x}, starting ydot: {orbit_ydot}")
     iterations, tf, arrival_states, converged_initial_states = find_halfperiod(orbit_x, orbit_ydot, mu, tolerance=1e-12)
-    print(f"found x0:{converged_initial_states[0]}, found ydot: {converged_initial_states[3]}")
-    # Calc Jacobi
-    jacobi = calc_Jacobi(mu, converged_initial_states[0], converged_initial_states[1], converged_initial_states[2], converged_initial_states[3])
-    orbit_IC_data = pd.DataFrame({
-        "orbit":[orbit],
-        "iterations":[iterations],
-        "tf":[tf],
-        "xi":[arrival_states[0]-x_L1],
-        "x":[converged_initial_states[0]],
-        "y":[converged_initial_states[1]],
-        "vx":[converged_initial_states[2]],
-        "vy":[converged_initial_states[3]],
-        "jacobi":[jacobi]
-    })
-    df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
-    orbit_x = converged_initial_states[0] + delta_x # Step the x by delta_x
-    orbit_ydot = converged_initial_states[3]
+    if orbit <= 1: # For the first two calculations, naively guess ydot is the same
+        orbit_x = converged_initial_states[0] + first_delta_x # Step the x by delta_x
+        orbit_ydot = converged_initial_states[3]
+        print(f"found x0:{converged_initial_states[0]}, found ydot: {converged_initial_states[3]}")
+        # Calc Jacobi
+        jacobi = calc_Jacobi(mu, converged_initial_states[0], converged_initial_states[1], converged_initial_states[2], converged_initial_states[3])
+        # Compile data
+        orbit_IC_data = pd.DataFrame({
+            "orbit":[orbit],
+            "iterations":[iterations],
+            "tf":[tf],
+            "xi":[converged_initial_states[0]-x_L2],
+            "x":[converged_initial_states[0]],
+            "y":[converged_initial_states[1]],
+            "vx":[converged_initial_states[2]],
+            "vy":[converged_initial_states[3]],
+            "jacobi":[jacobi]
+        })
+        df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
+    else:
+        # Calc the slope from the last pair of x0 and vy0
+        my_slope = (df_orbits.iloc[-1]['vy']-df_orbits.iloc[-2]['vy'])/(df_orbits.iloc[-1]['x']-df_orbits.iloc[-2]['x'])
+        if orbit_x > 1.24:
+            delta_x = 0.008
+        if orbit_x > 1.25:
+            delta_x = 0.009
+        orbit_x = converged_initial_states[0] + delta_x # Step the x by delta_x
+        orbit_ydot = converged_initial_states[3] + delta_x*my_slope
+        print(f"found x0:{converged_initial_states[0]}, found ydot: {converged_initial_states[3]}")
+        # Calc Jacobi
+        jacobi = calc_Jacobi(mu, converged_initial_states[0], converged_initial_states[1], converged_initial_states[2], converged_initial_states[3])
+        # Compile data
+        orbit_IC_data = pd.DataFrame({
+            "orbit":[orbit],
+            "iterations":[iterations],
+            "tf":[tf],
+            "xi":[converged_initial_states[0]-x_L2],
+            "x":[converged_initial_states[0]],
+            "y":[converged_initial_states[1]],
+            "vx":[converged_initial_states[2]],
+            "vy":[converged_initial_states[3]],
+            "jacobi":[jacobi]
+        })
+        df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
 
 # Table iterations each orbit takes to converge
 df_orbit_iterations = df_orbits[['orbit','xi','iterations']]
 
-# Plot period as a function of x0
-fig4, ax4 = plt.subplots()
-ax4.plot(df_orbits['x'],df_orbits['tf']*2)
-plt.grid()
-plt.xlabel(r"${{x_0}}$""\n[non-dim]")
-plt.ylabel("Period\n[non-dim]")
-ax4.set_title(rf'Period as a function of ${{x_0}}$'f'\n({ps}, Lillian Shido)')
-plt.savefig(f'period_wrt_x0_{ps}.png', dpi=300, bbox_inches='tight')
-
-# Plot JC as a function of x0
-fig3, ax3 = plt.subplots()
-ax3.plot(df_orbits['x'],df_orbits['jacobi'])
-plt.grid()
-plt.xlabel(r"${{x_0}}$""\n[non-dim]")
-plt.ylabel(r"Jacobi Constant")
-ax3.set_title(rf'JC as a function of ${{x_0}}$'f'\n({ps}, Lillian Shido)')
-plt.savefig(f'JC_wrt_x0_{ps}.png', dpi=300, bbox_inches='tight')
-
-# # Plot vy0 as a function of x0
-# fig2, ax2 = plt.subplots()
-# ax2.plot(df_orbits['x'],df_orbits['vy'])
-# plt.grid()
-# plt.xlabel(r"${{x_0}}$""\n[non-dim]")
-# plt.ylabel(r"$\dot{{y_0}}$""\n[non-dim]")
-# ax2.set_title(rf'$\dot{{y_0}}$ as a function of ${{x_0}}$'f'\n({ps}, Lillian Shido)')
-# plt.savefig(f'ydot0_wrt_x0_{ps}.png', dpi=300, bbox_inches='tight')
-
-# # Set up colors for plot and their labels
+# Set up colors for plot and their labels
+cmap = load_cmap(name="Classic_Cyclic")
+colors = cmap(np.linspace(0,1,21))
 # colors = load_cmap(name="Classic_Cyclic", cmap_type='discrete').colors
-# labels = [fr'$\xi$={i}' if i!=0 else f'Baseline' for i, c in enumerate(colors)]
+labels = [fr'$\xi$={i}' if i!=0 else f'Baseline' for i, c in enumerate(colors)]
 
-# # Initialize family plot
-# fig1, ax1 = plt.subplots()
-# ax1.xaxis.set_major_locator(ticker.MultipleLocator(0.02))
-# ax1.yaxis.set_major_locator(ticker.MultipleLocator(0.02))
-# ax1.xaxis.set_minor_locator(ticker.MultipleLocator(0.01))
-# ax1.yaxis.set_minor_locator(ticker.MultipleLocator(0.01))
-# # ax1.scatter(x_Earth, 0, label='Earth', s=20, color='blue')
-# ax1.scatter(x_Moon, 0, label='Moon', s=20, color='gray')
-# ax1.scatter(x_L1, y_L1, label='L1', s=10, color='purple')
-# ax1.axhline(y=0, color='r', linestyle='--', linewidth=0.5)
-# for enum, orbit in enumerate(df_orbits.iterrows()):
-#     tf = orbit[1]["tf"]
-#     x0 = orbit[1]["x"]
-#     vy0 = orbit[1]["vy"]
-#     xi0 = orbit[1]["xi"]
-#     IC = [
-#         x0, 0, 0, vy0, # IC states
-#         1,0,0,0, # Identity matrix for phi ICs
-#         0,1,0,0,
-#         0,0,1,0,
-#         0,0,0,1
-#     ]
-#     full_period_prop = solve_ivp(ode, [0, 2*tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
-#     arc = [np.column_stack([full_period_prop.y[0], full_period_prop.y[1]])]
-#     try:
-#         line_collection = LineCollection(arc, colors=colors[enum], linewidth=0.5, label=fr"$\xi$={xi0:.3f}")
-#     except:
-#         pdb.set_trace()
-#     ax1.add_collection(line_collection)
-#     # plt.quiver(full_period_prop.y[0,100], full_period_prop.y[1,100],
-#     # full_period_prop.y[2,100], full_period_prop.y[3,100],
-#     # color='red', zorder=2.5, width=0.005
-# # )
-# ax1.set_aspect('equal', 'box')
-# ax1.autoscale()
-# ax1.legend(fontsize=6)
-# plt.grid()
-# plt.xlabel("x [non-dim]")
-# plt.ylabel("y [non-dim]")
-# ax1.set_title(f'Lyapunovs near L1 starting from $\\xi$={xi:.2f}, $\\eta$={eta}\n ({ps}, Lillian Shido)')
-# plt.savefig(f'Lyapunov_family_{ps}.png', dpi=300, bbox_inches='tight')
+# Initialize family plot
+fig1, ax1 = plt.subplots()
+ax1.xaxis.set_major_locator(ticker.MultipleLocator(0.1))
+ax1.yaxis.set_major_locator(ticker.MultipleLocator(0.1))
+ax1.xaxis.set_minor_locator(ticker.MultipleLocator(0.05))
+ax1.yaxis.set_minor_locator(ticker.MultipleLocator(0.05))
+ax1.scatter(x_Earth, 0, label='Earth', s=20, color='blue')
+ax1.scatter(x_Moon, 0, label='Moon', s=20, color='gray')
+ax1.scatter(x_L2, y_L2, label='L2', s=10, color='purple')
+ax1.axhline(y=0, color='r', linestyle='--', linewidth=0.5)
+for enum, orbit in enumerate(df_orbits.iterrows()):
+    tf = orbit[1]["tf"]
+    x0 = orbit[1]["x"]
+    vy0 = orbit[1]["vy"]
+    xi0 = orbit[1]["xi"]
+    IC = [
+        x0, 0, 0, vy0, # IC states
+        1,0,0,0, # Identity matrix for phi ICs
+        0,1,0,0,
+        0,0,1,0,
+        0,0,0,1
+    ]
+    full_period_prop = solve_ivp(ode, [0, 2*tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
+    arc = [np.column_stack([full_period_prop.y[0], full_period_prop.y[1]])]
+    try:
+        line_collection = LineCollection(arc, colors=colors[enum], linewidth=0.5, label=fr"$\xi$={xi0:.3f}")
+    except:
+        pdb.set_trace()
+    ax1.add_collection(line_collection)
+
+ax1.set_aspect('equal', 'box')
+ax1.autoscale()
+ax1.legend(loc="upper center", fontsize=6)
+plt.grid()
+plt.xlabel("x [non-dim]")
+plt.ylabel("y [non-dim]")
+ax1.tick_params(axis='both', which='major', labelsize=6)
+ax1.set_title(f'Lyapunovs near L2 starting from $\\xi$={xi:.2f}, $\\eta$={eta}\nwith predicted $\dot{{y_0}}$, Dynamic $\\Delta{{x}}$ ({ps}, Lillian Shido)')
+plt.savefig(f'Lyapunov_family_{ps}.png', dpi=300, bbox_inches='tight')
 
 # Configure tables
 # Configure table for question 7
-    # columns = ['Orbit','xi','iterations']
+#     columns = ['Orbit','xi','iterations']
+eigs_table = (
+    GT(df_eigenvalues)
+    .tab_header(
+        title=md(f"L2 Eigenvalues ({ps}, Lillian Shido)")
+    )
+    .cols_label(
+    lambda_1="{{:lambda:_1}}",
+    lambda_2="{{:lambda:_2}}",
+    lambda_3="{{:lambda:_3}}",
+    lambda_4="{{:lambda:_4}}",
+    )
+    .fmt_number(
+        columns=["lambda_1","lambda_2"],
+        decimals=4
+    )
+    .fmt_number(
+        columns=["lambda_3","lambda_4"],
+        pattern="{x} i",
+        decimals=4
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+eigs_table.show()
+
+# Configure tables
+# Configure table for question 7
+#     columns = ['Orbit','xi','iterations']
+chars_table = (
+    GT(df_chars)
+    .tab_header(
+        title=md(f"Characteristics of L2 Linear Approximation [non-dim]<br>({ps}, Lillian Shido)")
+    )
+    .tab_spanner(
+        label="Coefficients",
+        columns=["beta_1","beta_2","beta_3"]
+    )
+    .tab_spanner(
+        label="Amplitudes",
+        columns=["xi0","eta0", "eta0_beta3", "beta3_eta0"]
+    )
+    .cols_label(
+        beta_1="{{:beta:_1}}",
+        beta_2="{{:beta:_2}}",
+        beta_3="{{:beta:_3}}",
+        xi0="{{:xi:_0}}",
+        eta0="{{:eta:_0}}",
+        eta0_beta3="{{:eta:_0}}/{{:beta:_3}}",
+        beta3_eta0="{{:beta:_3}}{{:xi:_0}}",
+        s="{{s}}<br>(frequency)",
+        period="period"
+    )
+    .fmt_number(
+        columns=["beta_1","beta_2","beta_3","xi0","eta0","eta0_beta3","beta3_eta0","s","period"],
+        decimals=3
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+chars_table.show()
+
+# # Configure tables
+# # Configure table for question 7
+# #     columns = ['Orbit','xi','iterations']
 # iterations_table = (
 #     GT(df_orbit_iterations)
 #     .tab_header(

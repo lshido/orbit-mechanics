@@ -1,5 +1,5 @@
 # Problem D2 part(a)
-# Code for Numerical Integrator
+# Fixed-Time Position Targeter with constant STM
 # Author: Lillian Shido
 # Date: 10/21/2025
 

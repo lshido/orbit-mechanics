@@ -1,6 +1,5 @@
-ps = "D4 part b"
-# Problem D4 Part b
-# Continuation Algorithm: NO ydot prediction
+ps = "D4 part b iii"
+# Problem D4 Part b iii
 # Author: Lillian Shido
 # Date: 10/26/2025
 
@@ -15,6 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from matplotlib.collections import LineCollection
 import matplotlib.colors as mcolors
+from scipy import stats
 from great_tables import GT, md, html, style, loc, system_fonts
 from pypalettes import load_cmap
 
@@ -275,7 +275,8 @@ df_orbits = pd.DataFrame(
 )
 
 # Configuration
-delta_x = -0.001 # step in x
+first_delta_x = -0.001
+delta_x = -0.008 # step in x
 
 orbit_x = arrival_states[0]
 orbit_ydot = arrival_states[3]
@@ -283,44 +284,55 @@ orbit_ydot = arrival_states[3]
 for orbit in range(11):
     print(f"starting x0:{orbit_x}, starting ydot: {orbit_ydot}")
     iterations, tf, arrival_states, converged_initial_states = find_halfperiod(orbit_x, orbit_ydot, mu, tolerance=1e-12)
-    print(f"found x0:{converged_initial_states[0]}, found ydot: {converged_initial_states[3]}")
-    # Calc Jacobi
-    jacobi = calc_Jacobi(mu, converged_initial_states[0], converged_initial_states[1], converged_initial_states[2], converged_initial_states[3])
-    orbit_IC_data = pd.DataFrame({
-        "orbit":[orbit],
-        "iterations":[iterations],
-        "tf":[tf],
-        "xi":[arrival_states[0]-x_L1],
-        "x":[converged_initial_states[0]],
-        "y":[converged_initial_states[1]],
-        "vx":[converged_initial_states[2]],
-        "vy":[converged_initial_states[3]],
-        "jacobi":[jacobi]
-    })
-    df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
-    orbit_x = converged_initial_states[0] + delta_x # Step the x by delta_x
-    orbit_ydot = converged_initial_states[3]
+    if orbit <= 1: # For the first two calculations, naively guess ydot is the same
+        orbit_x = converged_initial_states[0] + first_delta_x # Step the x by delta_x
+        orbit_ydot = converged_initial_states[3]
+        print(f"found x0:{converged_initial_states[0]}, found ydot: {converged_initial_states[3]}")
+        # Calc Jacobi
+        jacobi = calc_Jacobi(mu, converged_initial_states[0], converged_initial_states[1], converged_initial_states[2], converged_initial_states[3])
+        # Compile data
+        orbit_IC_data = pd.DataFrame({
+            "orbit":[orbit],
+            "iterations":[iterations],
+            "tf":[tf],
+            "xi":[arrival_states[0]-x_L1],
+            "x":[converged_initial_states[0]],
+            "y":[converged_initial_states[1]],
+            "vx":[converged_initial_states[2]],
+            "vy":[converged_initial_states[3]],
+            "jacobi":[jacobi]
+        })
+        df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
+    else:
+        # Calc the slope from the last pair of x0 and vy0
+        my_slope = (df_orbits.iloc[-1]['vy']-df_orbits.iloc[-2]['vy'])/(df_orbits.iloc[-1]['x']-df_orbits.iloc[-2]['x'])
+        orbit_x = converged_initial_states[0] + delta_x # Step the x by delta_x
+        orbit_ydot = converged_initial_states[3] + delta_x*my_slope
+        print(f"found x0:{converged_initial_states[0]}, found ydot: {converged_initial_states[3]}")
+        # Calc Jacobi
+        jacobi = calc_Jacobi(mu, converged_initial_states[0], converged_initial_states[1], converged_initial_states[2], converged_initial_states[3])
+        # Compile data
+        orbit_IC_data = pd.DataFrame({
+            "orbit":[orbit],
+            "iterations":[iterations],
+            "tf":[tf],
+            "xi":[arrival_states[0]-x_L1],
+            "x":[converged_initial_states[0]],
+            "y":[converged_initial_states[1]],
+            "vx":[converged_initial_states[2]],
+            "vy":[converged_initial_states[3]],
+            "jacobi":[jacobi]
+        })
+        df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
 
 # Table iterations each orbit takes to converge
 df_orbit_iterations = df_orbits[['orbit','xi','iterations']]
-
-# Plot period as a function of x0
-fig4, ax4 = plt.subplots()
-ax4.plot(df_orbits['x'],df_orbits['tf']*2)
-plt.grid()
-plt.xlabel(r"${{x_0}}$""\n[non-dim]")
-plt.ylabel("Period\n[non-dim]")
-ax4.set_title(rf'Period as a function of ${{x_0}}$'f'\n({ps}, Lillian Shido)')
-plt.savefig(f'period_wrt_x0_{ps}.png', dpi=300, bbox_inches='tight')
-
-# Plot JC as a function of x0
-fig3, ax3 = plt.subplots()
-ax3.plot(df_orbits['x'],df_orbits['jacobi'])
-plt.grid()
-plt.xlabel(r"${{x_0}}$""\n[non-dim]")
-plt.ylabel(r"Jacobi Constant")
-ax3.set_title(rf'JC as a function of ${{x_0}}$'f'\n({ps}, Lillian Shido)')
-plt.savefig(f'JC_wrt_x0_{ps}.png', dpi=300, bbox_inches='tight')
+# Calculate the ydot vs x slope of the previous set
+# result = stats.linregress(df_orbits['x'].astype(float), df_orbits['vy'].astype(float))
+# print(f"linregress slope: {result.slope}")
+# # Check slope calc
+# my_slope = (df_orbits.iloc[-1]['vy']-df_orbits.iloc[-2]['vy'])/(df_orbits.iloc[-1]['x']-df_orbits.iloc[-2]['x'])
+# # print(f"my_slope: {my_slope}")
 
 # # Plot vy0 as a function of x0
 # fig2, ax2 = plt.subplots()
@@ -331,75 +343,76 @@ plt.savefig(f'JC_wrt_x0_{ps}.png', dpi=300, bbox_inches='tight')
 # ax2.set_title(rf'$\dot{{y_0}}$ as a function of ${{x_0}}$'f'\n({ps}, Lillian Shido)')
 # plt.savefig(f'ydot0_wrt_x0_{ps}.png', dpi=300, bbox_inches='tight')
 
-# # Set up colors for plot and their labels
-# colors = load_cmap(name="Classic_Cyclic", cmap_type='discrete').colors
-# labels = [fr'$\xi$={i}' if i!=0 else f'Baseline' for i, c in enumerate(colors)]
+# Set up colors for plot and their labels
+colors = load_cmap(name="Classic_Cyclic", cmap_type='discrete').colors
+labels = [fr'$\xi$={i}' if i!=0 else f'Baseline' for i, c in enumerate(colors)]
 
-# # Initialize family plot
-# fig1, ax1 = plt.subplots()
-# ax1.xaxis.set_major_locator(ticker.MultipleLocator(0.02))
-# ax1.yaxis.set_major_locator(ticker.MultipleLocator(0.02))
-# ax1.xaxis.set_minor_locator(ticker.MultipleLocator(0.01))
-# ax1.yaxis.set_minor_locator(ticker.MultipleLocator(0.01))
-# # ax1.scatter(x_Earth, 0, label='Earth', s=20, color='blue')
-# ax1.scatter(x_Moon, 0, label='Moon', s=20, color='gray')
-# ax1.scatter(x_L1, y_L1, label='L1', s=10, color='purple')
-# ax1.axhline(y=0, color='r', linestyle='--', linewidth=0.5)
-# for enum, orbit in enumerate(df_orbits.iterrows()):
-#     tf = orbit[1]["tf"]
-#     x0 = orbit[1]["x"]
-#     vy0 = orbit[1]["vy"]
-#     xi0 = orbit[1]["xi"]
-#     IC = [
-#         x0, 0, 0, vy0, # IC states
-#         1,0,0,0, # Identity matrix for phi ICs
-#         0,1,0,0,
-#         0,0,1,0,
-#         0,0,0,1
-#     ]
-#     full_period_prop = solve_ivp(ode, [0, 2*tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
-#     arc = [np.column_stack([full_period_prop.y[0], full_period_prop.y[1]])]
-#     try:
-#         line_collection = LineCollection(arc, colors=colors[enum], linewidth=0.5, label=fr"$\xi$={xi0:.3f}")
-#     except:
-#         pdb.set_trace()
-#     ax1.add_collection(line_collection)
-#     # plt.quiver(full_period_prop.y[0,100], full_period_prop.y[1,100],
-#     # full_period_prop.y[2,100], full_period_prop.y[3,100],
-#     # color='red', zorder=2.5, width=0.005
-# # )
-# ax1.set_aspect('equal', 'box')
-# ax1.autoscale()
-# ax1.legend(fontsize=6)
-# plt.grid()
-# plt.xlabel("x [non-dim]")
-# plt.ylabel("y [non-dim]")
-# ax1.set_title(f'Lyapunovs near L1 starting from $\\xi$={xi:.2f}, $\\eta$={eta}\n ({ps}, Lillian Shido)')
-# plt.savefig(f'Lyapunov_family_{ps}.png', dpi=300, bbox_inches='tight')
+# Initialize family plot
+fig1, ax1 = plt.subplots()
+ax1.xaxis.set_major_locator(ticker.MultipleLocator(0.1))
+ax1.yaxis.set_major_locator(ticker.MultipleLocator(0.1))
+ax1.xaxis.set_minor_locator(ticker.MultipleLocator(0.05))
+ax1.yaxis.set_minor_locator(ticker.MultipleLocator(0.05))
+ax1.scatter(x_Earth, 0, label='Earth', s=20, color='blue')
+ax1.scatter(x_Moon, 0, label='Moon', s=20, color='gray')
+ax1.scatter(x_L1, y_L1, label='L1', s=10, color='purple')
+ax1.axhline(y=0, color='r', linestyle='--', linewidth=0.5)
+for enum, orbit in enumerate(df_orbits.iterrows()):
+    tf = orbit[1]["tf"]
+    x0 = orbit[1]["x"]
+    vy0 = orbit[1]["vy"]
+    xi0 = orbit[1]["xi"]
+    IC = [
+        x0, 0, 0, vy0, # IC states
+        1,0,0,0, # Identity matrix for phi ICs
+        0,1,0,0,
+        0,0,1,0,
+        0,0,0,1
+    ]
+    full_period_prop = solve_ivp(ode, [0, 2*tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
+    arc = [np.column_stack([full_period_prop.y[0], full_period_prop.y[1]])]
+    try:
+        line_collection = LineCollection(arc, colors=colors[enum], linewidth=0.5, label=fr"$\xi$={xi0:.3f}")
+    except:
+        pdb.set_trace()
+    ax1.add_collection(line_collection)
+    # plt.quiver(full_period_prop.y[0,100], full_period_prop.y[1,100],
+    # full_period_prop.y[2,100], full_period_prop.y[3,100],
+    # color='red', zorder=2.5, width=0.005
+# )
+ax1.set_aspect('equal', 'box')
+ax1.autoscale()
+ax1.legend(fontsize=6)
+plt.grid()
+plt.xlabel("x [non-dim]")
+plt.ylabel("y [non-dim]")
+ax1.tick_params(axis='both', which='major', labelsize=6)
+ax1.set_title(f'Lyapunovs near L1 starting from $\\xi$={xi:.2f}, $\\eta$={eta}\nwith predicted $\dot{{y_0}}$, $\\Delta{{x}}$={delta_x:.3f} ({ps}, Lillian Shido)')
+plt.savefig(f'Lyapunov_family_{ps}.png', dpi=300, bbox_inches='tight')
 
 # Configure tables
 # Configure table for question 7
-    # columns = ['Orbit','xi','iterations']
-# iterations_table = (
-#     GT(df_orbit_iterations)
-#     .tab_header(
-#         title=md(f"Iterations to Produce Periodic Orbit<br>({ps}, Lillian Shido)")
-#     )
-#     .cols_label(
-#         orbit="Orbit",
-#         xi="{{:xi:}}",
-#         iterations="Iterations",
-#     )
-#     .fmt_number(
-#         columns=["xi"],
-#         decimals=3
-#     )
-#     .cols_align(
-#         align="center"
-#     )
-#     .opt_table_outline()
-#     .opt_stylize()
-#     .opt_table_font(font=system_fonts(name="industrial"))
-#     .opt_horizontal_padding(scale=2)
-# )
-# iterations_table.show()
+#     columns = ['Orbit','xi','iterations']
+iterations_table = (
+    GT(df_orbit_iterations)
+    .tab_header(
+        title=md(f"Iterations to Produce Periodic Orbit<br>({ps}, Lillian Shido)")
+    )
+    .cols_label(
+        orbit="Orbit",
+        xi="{{:xi:}}",
+        iterations="Iterations",
+    )
+    .fmt_number(
+        columns=["xi"],
+        decimals=3
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+iterations_table.show()

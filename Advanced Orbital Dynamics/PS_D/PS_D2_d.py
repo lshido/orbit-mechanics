@@ -1,6 +1,6 @@
-# Problem D2 part(c)
+# Problem D2 part(d)
 ps = "D2 part d"
-# Code for Numerical Integrator
+# Varying-Time Position Targeter with max allowable delta_t
 # Author: Lillian Shido
 # Date: 10/21/2025
 
@@ -121,8 +121,6 @@ df_iterations_per_case = pd.DataFrame(
     columns = ["Case", "Iteration", "tf_dim", "delta_tf_dim", "delta_x_dim", "delta_y_dim", "delta_v0_x_dim", "delta_v0_y_dim", "delta_v0_mag_dim"]
 )
 # Set up colors for plot and their labels
-# colors = list(mcolors.XKCD_COLORS.keys())
-# colors = load_cmap(name="Classic_Cyclic", cmap_type='discrete').colors
 cmap = load_cmap(name="Classic_Cyclic")
 colors = cmap(np.linspace(0,1,50))
 labels = [f'Iteration {i}' if i!=1 else f'Reference' for i, c in enumerate(colors, start=1) ]

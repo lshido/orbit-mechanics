@@ -128,10 +128,15 @@ def eval_kinematic(x0,y0,xdot_0,ydot_0,a_x, a_y,t_span):
     y = y0 + ydot_0*t_span
     return x,y,xdot,ydot
 
-def calc_Jacobi(mu, x, y):
+def calc_Jacobi(mu, x, y, vx, vy):
     d = sqrt((x+mu)**2 + y**2)
     r = sqrt((x-1+mu)**2 + y**2)
-    C = x**2 + y**2 + (2*(1-mu)/d) + (2*mu/r)
+    x_y_sq = (x**2+y**2)/2
+    term_1 = (1-mu)/d
+    term_2 = mu/r
+    pseudo_U = term_1 + term_2 + x_y_sq
+    v_squared = vx**2 + vy**2
+    C = 2*pseudo_U - v_squared
     return C
 
 # Properties of the system
@@ -210,7 +215,7 @@ colors = load_cmap(name="Classic_Cyclic", cmap_type='discrete').colors
 # colors = cmap(np.linspace(0,1,50))
 labels = [f'Iteration {i}' if i!=1 else f'Reference' for i, c in enumerate(colors, start=1) ]
 
-tolerance = 1e-12 # Set tolerance
+tolerance = 1e-14 # Set tolerance
 
 r0 = copy.deepcopy(r0_IC)
 v0 = copy.deepcopy(v0_IC)
@@ -306,7 +311,7 @@ plt.savefig(f'{ps}.png', dpi=300, bbox_inches='tight')
 df_check_return = pd.DataFrame({
     "location":['Start','End'],
     "time":[0,2*tf],
-    "jacobi":[calc_Jacobi(mu, full_period_prop.y[0,0], full_period_prop.y[1,0]), calc_Jacobi(mu, full_period_prop.y[0,-1],full_period_prop.y[1,-1])],
+    "jacobi":[calc_Jacobi(mu, full_period_prop.y[0,0], full_period_prop.y[1,0],full_period_prop.y[2,0],full_period_prop.y[3,0]), calc_Jacobi(mu, full_period_prop.y[0,-1],full_period_prop.y[1,-1],full_period_prop.y[2,-1],full_period_prop.y[3,-1])],
     "x":[full_period_prop.y[0,0], full_period_prop.y[0,-1]],
     "y":[full_period_prop.y[1,0], full_period_prop.y[1,-1]],
     "xdot":[full_period_prop.y[2,0], full_period_prop.y[2,-1]],
@@ -314,7 +319,7 @@ df_check_return = pd.DataFrame({
 })
 
 df_state_error = pd.DataFrame({
-    "jacobi":[calc_Jacobi(mu, full_period_prop.y[0,-1], full_period_prop.y[1,-1]) - calc_Jacobi(mu, full_period_prop.y[0,0],full_period_prop.y[1,0])],
+    "jacobi":[calc_Jacobi(mu, full_period_prop.y[0,-1], full_period_prop.y[1,-1], full_period_prop.y[2,-1], full_period_prop.y[3,-1]) - calc_Jacobi(mu, full_period_prop.y[0,0],full_period_prop.y[1,0],full_period_prop.y[2,0],full_period_prop.y[3,0])],
     "x_error":[full_period_prop.y[0,-1]-full_period_prop.y[0,0]],
     "y_error":[full_period_prop.y[1,-1]- full_period_prop.y[1,0]],
     "xdot_error":[full_period_prop.y[2,-1]- full_period_prop.y[2,0]],
@@ -325,38 +330,38 @@ df_state_error = pd.DataFrame({
     "ydot_error_dim":[(full_period_prop.y[3,-1]- full_period_prop.y[3,0])*l_char/t_char]
 })
 
-# # Configure table for question 1 
-#     # columns = "half_period", "initial_x", "initial_y", "initial_xdot", "initial_ydot",
-#     # "half_period_dim", "initial_x_dim", "initial_y_dim", "initial_xdot_dim", "initial_ydot_dim"
-# state_error_table = (
-#     GT(df_state_error)
-#     .tab_header(
-#         title=md(f"State Error<br>({ps}, Lillian Shido)")
-#     )
-#     .cols_label(
-#         jacobi="Jacobi Constant",
-#         x_error="{{x}}<br>[non-dim]",
-#         y_error="{{y}}<br>[non-dim]",
-#         xdot_error="{{v_x}}<br>[non-dim]",
-#         ydot_error="{{v_y}}<br>[non-dim]",
-#         x_error_dim="{{x}}<br>[km]",
-#         y_error_dim="{{y}}<br>[km]",
-#         xdot_error_dim="{{v_x}}<br>[km/s]",
-#         ydot_error_dim="{{v_y}}<br>[km/s]"
-#     )
-#     .fmt_scientific(
-#         columns=["jacobi", "x_error","y_error","xdot_error","ydot_error","x_error_dim","y_error_dim","xdot_error_dim","ydot_error_dim"],
-#         decimals=4
-#     )
-#     .cols_align(
-#         align="center"
-#     )
-#     .opt_table_outline()
-#     .opt_stylize()
-#     .opt_table_font(font=system_fonts(name="industrial"))
-#     .opt_horizontal_padding(scale=2)
-# )
-# state_error_table.show()
+# Configure table for question 1 
+    # columns = "half_period", "initial_x", "initial_y", "initial_xdot", "initial_ydot",
+    # "half_period_dim", "initial_x_dim", "initial_y_dim", "initial_xdot_dim", "initial_ydot_dim"
+state_error_table = (
+    GT(df_state_error)
+    .tab_header(
+        title=md(f"State Error<br>({ps}, Lillian Shido)")
+    )
+    .cols_label(
+        jacobi="Jacobi Constant",
+        x_error="{{x}}<br>[non-dim]",
+        y_error="{{y}}<br>[non-dim]",
+        xdot_error="{{v_x}}<br>[non-dim]",
+        ydot_error="{{v_y}}<br>[non-dim]",
+        x_error_dim="{{x}}<br>[km]",
+        y_error_dim="{{y}}<br>[km]",
+        xdot_error_dim="{{v_x}}<br>[km/s]",
+        ydot_error_dim="{{v_y}}<br>[km/s]"
+    )
+    .fmt_scientific(
+        columns=["jacobi", "x_error","y_error","xdot_error","ydot_error","x_error_dim","y_error_dim","xdot_error_dim","ydot_error_dim"],
+        decimals=4
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+state_error_table.show()
 
 # Configure table for question 1 
     # columns = "half_period", "initial_x", "initial_y", "initial_xdot", "initial_ydot",

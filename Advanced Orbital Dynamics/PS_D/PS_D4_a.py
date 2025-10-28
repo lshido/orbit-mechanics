@@ -157,10 +157,15 @@ def eval_kinematic(x0,y0,xdot_0,ydot_0,a_x, a_y,t_span):
     y = y0 + ydot_0*t_span
     return x,y,xdot,ydot
 
-def calc_Jacobi(mu, x, y):
+def calc_Jacobi(mu, x, y, vx, vy):
     d = sqrt((x+mu)**2 + y**2)
     r = sqrt((x-1+mu)**2 + y**2)
-    C = x**2 + y**2 + (2*(1-mu)/d) + (2*mu/r)
+    x_y_sq = (x**2+y**2)/2
+    term_1 = (1-mu)/d
+    term_2 = mu/r
+    pseudo_U = term_1 + term_2 + x_y_sq
+    v_squared = vx**2 + vy**2
+    C = 2*pseudo_U - v_squared
     return C
 
 # Properties of the system
@@ -391,7 +396,7 @@ plt.savefig(f'Full_period_{ps}.png', dpi=300, bbox_inches='tight')
 df_check_return = pd.DataFrame({
     "location":['Start','End'],
     "time":[0,2*tf],
-    "jacobi":[calc_Jacobi(mu, full_period_prop.y[0,0], full_period_prop.y[1,0]), calc_Jacobi(mu, full_period_prop.y[0,-1],full_period_prop.y[1,-1])],
+    "jacobi":[calc_Jacobi(mu, full_period_prop.y[0,0], full_period_prop.y[1,0], full_period_prop.y[2,0],full_period_prop.y[3,0]), calc_Jacobi(mu, full_period_prop.y[0,-1],full_period_prop.y[1,-1],full_period_prop.y[2,-1],full_period_prop.y[3,-1])],
     "x":[full_period_prop.y[0,0], full_period_prop.y[0,-1]],
     "y":[full_period_prop.y[1,0], full_period_prop.y[1,-1]],
     "xdot":[full_period_prop.y[2,0], full_period_prop.y[2,-1]],
@@ -399,7 +404,7 @@ df_check_return = pd.DataFrame({
 })
 
 df_state_error = pd.DataFrame({
-    "jacobi":[calc_Jacobi(mu, full_period_prop.y[0,-1], full_period_prop.y[1,-1]) - calc_Jacobi(mu, full_period_prop.y[0,0],full_period_prop.y[1,0])],
+    "jacobi":[calc_Jacobi(mu, full_period_prop.y[0,-1], full_period_prop.y[1,-1], full_period_prop.y[2,-1], full_period_prop.y[3,-1]) - calc_Jacobi(mu, full_period_prop.y[0,0],full_period_prop.y[1,0], full_period_prop.y[2,0], full_period_prop.y[3,0])],
     "x_error":[full_period_prop.y[0,-1]-full_period_prop.y[0,0]],
     "y_error":[full_period_prop.y[1,-1]- full_period_prop.y[1,0]],
     "xdot_error":[full_period_prop.y[2,-1]- full_period_prop.y[2,0]],

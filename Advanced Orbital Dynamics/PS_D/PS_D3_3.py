@@ -157,10 +157,15 @@ def eval_kinematic(x0,y0,xdot_0,ydot_0,a_x, a_y,t_span):
     y = y0 + ydot_0*t_span
     return x,y,xdot,ydot
 
-def calc_Jacobi(mu, x, y):
+def calc_Jacobi(mu, x, y, vx, vy):
     d = sqrt((x+mu)**2 + y**2)
     r = sqrt((x-1+mu)**2 + y**2)
-    C = x**2 + y**2 + (2*(1-mu)/d) + (2*mu/r)
+    x_y_sq = (x**2+y**2)/2
+    term_1 = (1-mu)/d
+    term_2 = mu/r
+    pseudo_U = term_1 + term_2 + x_y_sq
+    v_squared = vx**2 + vy**2
+    C = 2*pseudo_U - v_squared
     return C
 
 # Properties of the system
@@ -168,7 +173,7 @@ mu, l_char, t_char, x_Earth, x_Moon = system_properties(mu_Earth, mu_Moon, a_Moo
 x_L1, y_L1 = calc_L1(mu, a_Moon)
 
 # Initial Conditions
-xi = 0.01799
+xi = 0.1
 eta = 0
 
 # Distance from L1
@@ -368,11 +373,14 @@ while True:
 
 full_period_prop = solve_ivp(ode, [0, 2*tf], sv0, args=(mu,), rtol=1e-12,atol=1e-14)
 fig2, ax2 = plt.subplots(figsize=(6.5, 6.5))
+ax2.xaxis.set_major_locator(ticker.MultipleLocator(0.2))
+ax2.yaxis.set_major_locator(ticker.MultipleLocator(0.2))
+ax2.xaxis.set_minor_locator(ticker.MultipleLocator(0.1))
+ax2.yaxis.set_minor_locator(ticker.MultipleLocator(0.1))
 ax2.set_aspect('equal', 'box')
 ax2.xaxis.set_major_locator(ticker.MultipleLocator(0.1))
-# ax2.scatter(x_Earth, 0, label='Earth', s=20, color='blue')
+ax2.scatter(x_Earth, 0, label='Earth', s=20, color='blue')
 ax2.scatter(x_Moon, 0, label='Moon', s=20, color='gray')
-plt.grid()
 ax2.scatter(original_IC[0], original_IC[1], label='Start', s=20, marker="v", color='green')
 ax2.scatter(x_L1, y_L1, label='L1', s=10, color='purple')
 ax2.plot(full_period_prop.y[0], full_period_prop.y[1], label='Full Period Arc')
@@ -382,7 +390,10 @@ plt.quiver(full_period_prop.y[0,100], full_period_prop.y[1,100],
 )
 ax2.axhline(y=0, color='r', linestyle='--', linewidth=0.5)
 ax2.set_title(f'Full Period Propagation near L1 with $\\xi$={xi}, $\\eta$={eta}\n$x_0$={sv0[0]:.3f},$y_0$={sv0[1]:.3f},$v_{{x0}}$={sv0[2]:.3f},$v_{{y0}}$={sv0[3]:.3f} ({ps}, Lillian Shido)')
-ax2.legend(loc='upper right',fontsize=8)
+ax2.legend(loc='upper left',fontsize=8)
+plt.grid(which="both")
+plt.xlabel("x [non-dim]")
+plt.ylabel("y [non-dim]")
 plt.savefig(f'Full_period_{ps}.png', dpi=300, bbox_inches='tight')
 
 # pdb.set_trace()
@@ -390,7 +401,7 @@ plt.savefig(f'Full_period_{ps}.png', dpi=300, bbox_inches='tight')
 df_check_return = pd.DataFrame({
     "location":['Start','End'],
     "time":[0,2*tf],
-    "jacobi":[calc_Jacobi(mu, full_period_prop.y[0,0], full_period_prop.y[1,0]), calc_Jacobi(mu, full_period_prop.y[0,-1],full_period_prop.y[1,-1])],
+    "jacobi":[calc_Jacobi(mu, full_period_prop.y[0,0], full_period_prop.y[1,0], full_period_prop.y[2,0],full_period_prop.y[3,0]), calc_Jacobi(mu, full_period_prop.y[0,-1],full_period_prop.y[1,-1],full_period_prop.y[2,-1],full_period_prop.y[3,-1])],
     "x":[full_period_prop.y[0,0], full_period_prop.y[0,-1]],
     "y":[full_period_prop.y[1,0], full_period_prop.y[1,-1]],
     "xdot":[full_period_prop.y[2,0], full_period_prop.y[2,-1]],
@@ -398,7 +409,7 @@ df_check_return = pd.DataFrame({
 })
 
 df_state_error = pd.DataFrame({
-    "jacobi":[calc_Jacobi(mu, full_period_prop.y[0,-1], full_period_prop.y[1,-1]) - calc_Jacobi(mu, full_period_prop.y[0,0],full_period_prop.y[1,0])],
+    "jacobi":[calc_Jacobi(mu, full_period_prop.y[0,-1], full_period_prop.y[1,-1],full_period_prop.y[2,-1],full_period_prop.y[3,-1]) - calc_Jacobi(mu, full_period_prop.y[0,0],full_period_prop.y[1,0],full_period_prop.y[2,0],full_period_prop.y[3,0])],
     "x_error":[full_period_prop.y[0,-1]-full_period_prop.y[0,0]],
     "y_error":[full_period_prop.y[1,-1]- full_period_prop.y[1,0]],
     "xdot_error":[full_period_prop.y[2,-1]- full_period_prop.y[2,0]],

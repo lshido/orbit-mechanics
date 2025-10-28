@@ -183,6 +183,17 @@ tspan = [0, t_final];
 sol = solve_ivp(ode, tspan, sv0_IC, events=crossxEvent, args=(mu,), rtol=1e-12,atol=1e-14)
 tf_IC = sol.t_events[0][1]
 initial_x_cross_vx = sol.y[2,-1] # xdot column
+df_first_prop = pd.DataFrame({
+    "x":[sol.y[0,-1]],
+    "y":[sol.y[1,-1]],
+    "xdot":[sol.y[2,-1]],
+    "ydot":[sol.y[3,-1]],
+    "x_dim":[sol.y[0,-1]*l_char],
+    "y_dim":[sol.y[1,-1]*l_char],
+    "xdot_dim":[sol.y[2,-1]*l_char/t_char],
+    "ydot_dim":[sol.y[3,-1]*l_char/t_char],
+})
+
 print(f"xdot at first crossing: {initial_x_cross_vx}")
 
 # Set up colors for plot and their labels
@@ -291,6 +302,46 @@ while True:
         plt.savefig(f'{ps}.png', dpi=300, bbox_inches='tight')
         break
 
+first_prop_table = (
+    GT(df_first_prop)
+    .tab_header(
+        title=md(f"States after first propagation<br>({ps}, Lillian Shido)")
+    )
+    .tab_spanner(
+        label="Non-Dimensional", 
+        columns=["x", "y", "xdot", "ydot"]
+    )
+    .tab_spanner(
+        label="Dimensional",
+        columns=["x_dim", "y_dim", "xdot_dim", "ydot_dim"]
+    )
+    .cols_label(
+        x="{{x}}<br>[non-dim]",
+        y="{{y}}<br>[non-dim]",
+        xdot="{{v_x}}<br>[non-dim]",
+        ydot="{{v_y}}<br>[non-dim]",
+        x_dim="{{x}}<br>[km]",
+        y_dim="{{y}}<br>[km]",
+        xdot_dim="{{v_x}}<br>[km/s]",
+        ydot_dim="{{v_y}}<br>[km/s]",
+    )
+    .fmt_number(
+        columns=["x", "y", "xdot", "ydot", "half_period_dim", "x_dim", "y_dim", "xdot_dim", "ydot_dim"],
+        decimals=4
+    )
+    .fmt_number(
+        columns=[],
+        decimals=3
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+first_prop_table.show()
 
 # Configure Tables
 # Configure table for question 1 

@@ -1,5 +1,5 @@
-# Problem D2 part(a)
-# Code for Numerical Integrator
+# Problem D2 part(b)
+# Varying-Time Position Targeter
 # Author: Lillian Shido
 # Date: 10/21/2025
 
