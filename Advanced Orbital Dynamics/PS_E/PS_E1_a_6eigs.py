@@ -18,7 +18,7 @@ from great_tables import GT, md, html, style, loc, system_fonts
 from pypalettes import load_cmap
 
 from constants import mu_Earth, mu_Moon, a_Moon
-from methods import system_properties, calc_L1, calc_initial_velocities, find_halfperiod, planar_ode, calc_poincare_exponents
+from methods import system_properties, calc_L1, calc_initial_velocities, find_halfperiod, planar_ode, calc_poincare_exponents, spatial_ode
 
 mu = mu_Moon/(mu_Earth + mu_Moon)
 
@@ -47,22 +47,25 @@ starting_y = y_L1 + eta
 starting_xdot = xi_dot_0
 ydot_guess = eta_dot_0
 
-
+# Planar half period
 iterations, tf, arrival_states, converged_initial_states = find_halfperiod(starting_x, ydot_guess, mu, tolerance=1e-12)
 
+# Spatial ICs, but for z=zdot=0
 IC = [
-    converged_initial_states[0], converged_initial_states[1], converged_initial_states[2], converged_initial_states[3],
-    1,0,0,0, # Identity matrix for phi ICs
-    0,1,0,0,
-    0,0,1,0,
-    0,0,0,1
+    converged_initial_states[0], converged_initial_states[1], 0, converged_initial_states[2], converged_initial_states[3], 0,
+    1,0,0,0,0,0, # Identity matrix for phi ICs
+    0,1,0,0,0,0,
+    0,0,1,0,0,0,
+    0,0,0,1,0,0,
+    0,0,0,0,1,0,
+    0,0,0,0,0,1
 ]
 # Monodromy matrix from full period
-full_period_prop = solve_ivp(planar_ode, [0, 2*tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
+full_period_prop = solve_ivp(spatial_ode, [0, 2*tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
 monodromy_full = full_period_prop.y[4:20,-1].reshape(4,4)
 
 # Monodromy matrix from half period
-half_period_prop = solve_ivp(planar_ode, [0, tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
+half_period_prop = solve_ivp(spatial_ode, [0, tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
 stm_half = half_period_prop.y[4:20,-1].reshape(4,4)
 G = np.array([
     [1,0,0,0],

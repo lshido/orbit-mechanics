@@ -312,7 +312,7 @@ df_eigenvalues = pd.DataFrame({
     "eig_3":[eigenvalues[2]],
     "eig_4":[eigenvalues[3]],
 })
-pdb.set_trace()
+pdb.set_trace
 
 df_poincare_exponents = pd.DataFrame({
     "pe_1":[calc_poincare_exponents(eigenvalues[0],2*tf)],

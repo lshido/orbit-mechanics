@@ -1,6 +1,7 @@
 from math import pi, sqrt
 import numpy as np
 from scipy.integrate import solve_ivp
+import pdb
 
 
 def system_properties(mu_major,mu_minor, a):
@@ -97,6 +98,7 @@ def planar_ode(t,sv,mu):
     U_xx = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*(sv[0]+mu)**2/d**5 + 3*mu*(sv[0]-1+mu)**2/r**5;
     U_yy = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*sv[1]**2/d**5 + 3*mu*sv[1]**2/r**5;
     U_xy = 3*(1-mu)*(sv[0]+mu)*sv[1]/d**5 + 3*mu*(sv[0]-1+mu)*sv[1]/r**5;
+
     # Set up the STM ODEs
     stm = [
     sv[12],
@@ -120,7 +122,7 @@ def planar_ode(t,sv,mu):
     combined = eoms + stm
     return combined
 
-def spatial_eoms(t, sv, mu):
+def spatial_eoms(t,sv, mu):
     # Set up the EOM ODEs
     d = ((sv[0] + mu)**2 + sv[1]**2 + sv[2]**2)**(1/2)
     r = ((sv[0] - 1 + mu)**2 + sv[1]**2 + sv[2]**2)**(1/2)
@@ -128,17 +130,17 @@ def spatial_eoms(t, sv, mu):
         sv[3],
         sv[4],
         sv[5],
-        2*sv[4] + sv[0] - (1 - mu) * (sv[0] + mu) / d^3 -\
-        mu * (sv[0] - 1 + mu) / r^3,
-        -2*sv[3] + sv[1] - (1 - mu) * sv[1] / d^3 -\
-        mu * sv[1]/r^3,
-        -(1-mu)*sv[2]/d^3 - mu*sv[2]/r^3
+        2*sv[4] + sv[0] - (1 - mu) * (sv[0] + mu) / d**3 -\
+        mu * (sv[0] - 1 + mu) / r**3,
+        -2*sv[3] + sv[1] - (1 - mu) * sv[1] / d**3 -\
+        mu * sv[1]/r**3,
+        -(1-mu)*sv[2]/d**3 - mu*sv[2]/r**3
     ]
     return eoms
 
-def planar_ode(t,sv,mu):
+def spatial_ode(t,sv,mu):
     # Set up the EOM ODEs
-    eoms = spatial_eoms
+    eoms = spatial_eoms(t,sv,mu)
 
     # Calc the partials using the current x and y values
     d = ((sv[0] + mu)**2 + sv[1]**2 + sv[2]**2)**(1/2)
@@ -149,27 +151,28 @@ def planar_ode(t,sv,mu):
     U_xy = 3*(1-mu)*(sv[0]+mu)*sv[1]/d**5 + 3*mu*(sv[0]-1+mu)*sv[1]/r**5
     U_xz = 3*(1-mu)*(sv[0]+mu)*sv[2]/d**5 + 3*mu*(sv[0]-1+mu)*sv[2]/r**5
     U_yz = 3*(1-mu)*sv[1]*sv[2]/d**5 + 3*mu*sv[1]*sv[2]/r**5
-    # Set up the STM ODEs
     
-
-    stm = [
-    sv[12],
-    sv[13],
-    sv[14],
-    sv[15],
-    sv[16],
-    sv[17],
-    sv[18],
-    sv[19],
-    U_xx*sv[4] + U_xy*sv[8] + 2*sv[16],
-    U_xx*sv[5] + U_xy*sv[9] + 2*sv[17],
-    U_xx*sv[6] + U_xy*sv[10] + 2*sv[18],
-    U_xx*sv[7] + U_xy*sv[11] + 2*sv[19],
-    U_xy*sv[4] + U_yy*sv[8] - 2*sv[12],
-    U_xy*sv[5] + U_yy*sv[9] - 2*sv[13],
-    U_xy*sv[6] + U_yy*sv[10] - 2*sv[14],
-    U_xy*sv[7] + U_yy*sv[11] - 2*sv[15]
-    ]
+    # Build A matrix
+    quad_1 = np.zeros((3,3))
+    quad_2 = np.identity(3)
+    quad_3 = np.array([
+        [U_xx,U_xy,U_xz],
+        [U_xy,U_yy,U_yz],
+        [U_xz,U_yz,U_zz]
+    ])
+    quad_4 = np.array([
+        [0,1,0],
+        [-1,0,0],
+        [0,0,0]
+    ])
+    A = np.bmat([
+        [quad_1, quad_2],
+        [quad_3, quad_4]
+    ]).reshape(36,1)
+    # Set up the STM ODEs
+    pdb.set_trace()
+    phi = sv[6:42].reshape(1,36)
+    stm = A*phi.reshape(36,1)
     # Combine them into one big matrix
     combined = eoms + stm
     return combined
