@@ -161,20 +161,19 @@ def spatial_ode(t,sv,mu):
         [U_xz,U_yz,U_zz]
     ])
     quad_4 = np.array([
-        [0,1,0],
-        [-1,0,0],
+        [0,2,0],
+        [-2,0,0],
         [0,0,0]
     ])
     A = np.bmat([
         [quad_1, quad_2],
         [quad_3, quad_4]
-    ]).reshape(36,1)
+    ])
     # Set up the STM ODEs
-    pdb.set_trace()
-    phi = sv[6:42].reshape(1,36)
-    stm = A*phi.reshape(36,1)
+    phi = sv[6:42].reshape(6,6)
+    stm = A*phi
     # Combine them into one big matrix
-    combined = eoms + stm
+    combined = eoms + np.squeeze(stm.reshape(-1)).tolist()[0]
     return combined
 
 def crossxEvent(t, sv, mu):

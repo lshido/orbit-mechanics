@@ -259,6 +259,20 @@ starting_y = y_L1 + eta
 starting_xdot = xi_dot_0
 ydot_guess = eta_dot_0
 
+# test_IC = [
+#     0.84692, 0, 0, -0.07824,
+#     1,0,0,0, # Identity matrix for phi ICs
+#     0,1,0,0,
+#     0,0,1,0,
+#     0,0,0,1,
+# ]
+
+# # Try running for just one run using these ICs above
+# # test_prop_planar = solve_ivp(ode, [0, 2*pi], test_IC, args=(mu,), rtol=1e-12,atol=1e-14)
+# test_prop_planar = solve_ivp(ode, [0, 2.70923], test_IC, args=(mu,), rtol=1e-12,atol=1e-14)
+# plt.plot(test_prop_planar.y[0],test_prop_planar.y[1])
+# plt.show()
+# pdb.set_trace()
 
 iterations, tf, arrival_states, converged_initial_states = find_halfperiod(starting_x, ydot_guess, mu, tolerance=1e-12)
 
@@ -272,6 +286,7 @@ IC = [
 # Monodromy matrix from full period
 full_period_prop = solve_ivp(ode, [0, 2*tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
 monodromy_full = full_period_prop.y[4:20,-1].reshape(4,4)
+pdb.set_trace()
 
 # Monodromy matrix from half period
 half_period_prop = solve_ivp(ode, [0, tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)

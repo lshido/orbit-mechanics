@@ -18,7 +18,7 @@ from great_tables import GT, md, html, style, loc, system_fonts
 from pypalettes import load_cmap
 
 from constants import mu_Earth, mu_Moon, a_Moon
-from methods import system_properties, calc_L1, calc_initial_velocities, find_halfperiod, planar_ode, calc_poincare_exponents, spatial_ode
+from methods import system_properties, calc_L1, calc_initial_velocities, find_halfperiod, planar_ode, calc_poincare_exponents, spatial_ode, crossxEvent
 
 mu = mu_Moon/(mu_Earth + mu_Moon)
 
@@ -47,6 +47,21 @@ starting_y = y_L1 + eta
 starting_xdot = xi_dot_0
 ydot_guess = eta_dot_0
 
+# test_IC = [
+#     0.84692, 0, 0, 0, -0.07824, 0,
+#     1,0,0,0,0,0, # Identity matrix for phi ICs
+#     0,1,0,0,0,0,
+#     0,0,1,0,0,0,
+#     0,0,0,1,0,0,
+#     0,0,0,0,1,0,
+#     0,0,0,0,0,1
+# ]
+
+# # Try running for just one run using these ICs above
+# test_prop_spatial = solve_ivp(spatial_ode, [0, 2.70923], test_IC, args=(mu,), rtol=1e-12,atol=1e-14)
+# plt.plot(test_prop_spatial.y[0],test_prop_spatial.y[1])
+# plt.show()
+
 # Planar half period
 iterations, tf, arrival_states, converged_initial_states = find_halfperiod(starting_x, ydot_guess, mu, tolerance=1e-12)
 
@@ -62,30 +77,33 @@ IC = [
 ]
 # Monodromy matrix from full period
 full_period_prop = solve_ivp(spatial_ode, [0, 2*tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
-monodromy_full = full_period_prop.y[4:20,-1].reshape(4,4)
+monodromy_full = full_period_prop.y[6:42,-1].reshape(6,6)
 
 # Monodromy matrix from half period
 half_period_prop = solve_ivp(spatial_ode, [0, tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
-stm_half = half_period_prop.y[4:20,-1].reshape(4,4)
+stm_half = half_period_prop.y[6:42,-1].reshape(6,6)
 G = np.array([
-    [1,0,0,0],
-    [0,-1,0,0],
-    [0,0,-1,0],
-    [0,0,0,1]
+    [1,0,0,0,0,0],
+    [0,-1,0,0,0,0],
+    [0,0,1,0,0,0],
+    [0,0,0,-1,0,0],
+    [0,0,0,0,1,0],
+    [0,0,0,0,0,-1]
     ])
-I = np.identity(2)
+I = np.identity(3)
 omega = np.array([
-    [0,1],
-    [-1,0]
+    [0,1,0],
+    [-1,0,0],
+    [0,0,0]
     ])
 term1 = np.bmat([
-    [np.zeros((2,2)) , -I],
+    [np.zeros((3,3)) , -I],
     [I , -2*omega] 
     ])
 term2 = np.transpose(stm_half)
 term3 = np.bmat([
     [-2*omega , I],
-    [-I , np.zeros((2,2))]
+    [-I , np.zeros((3,3))]
 ])
 monodromy_half = G*term1*term2*term3*G*stm_half
 
