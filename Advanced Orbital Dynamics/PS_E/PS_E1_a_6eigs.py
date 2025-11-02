@@ -116,12 +116,15 @@ df_det_error = pd.DataFrame({
 
 eigenvalues = np.linalg.eigvals(monodromy_half)
 df_eigenvalues = pd.DataFrame({
-    "eig_1":[eigenvalues[0]],
-    "eig_2":[eigenvalues[1]],
-    "eig_3":[eigenvalues[2]],
-    "eig_4":[eigenvalues[3]],
+    "eig_1":[f"{eigenvalues[0]:.5g}"],
+    "eig_2":[f"{eigenvalues[1]:.5g}"],
+    "eig_3":[f"{eigenvalues[2]:.5g}"],
+    "eig_4":[f"{eigenvalues[3]:.5g}"],
+    "eig_5":[f"{eigenvalues[4]:.5g}"],
+    "eig_6":[f"{eigenvalues[5]:.5g}"]
 })
-pdb.set_trace()
+
+# pdb.set_trace()
 
 df_poincare_exponents = pd.DataFrame({
     "pe_1":[calc_poincare_exponents(eigenvalues[0],2*tf)],
@@ -130,54 +133,23 @@ df_poincare_exponents = pd.DataFrame({
     "pe_4":[calc_poincare_exponents(eigenvalues[3],2*tf)],
 })
 
-pdb.set_trace()
-
 # # Configure det error table
 # columns = [
 # "eig_1", "eig_2", "eig_3", "eig_4"]
-pe_table = (
-    GT(df_poincare_exponents)
-    .tab_header(
-        title=md(f"Poincaré Exponents<br>({ps}, Lillian Shido)")
-    )
-    .cols_label(
-        pe_1="{{:omega:_1}}",
-        pe_2="{{:omega:_2}}",
-        pe_3="{{:omega:_3}}",
-        pe_4="{{:omega:_4}}"
-    )
-    .fmt_number(
-        columns=["pe_1", "pe_2", "pe_3", "pe_4"],
-        decimals=5
-    )
-    .cols_align(
-        align="center"
-    )
-    .opt_table_outline()
-    .opt_stylize()
-    .opt_table_font(font=system_fonts(name="industrial"))
-    .opt_horizontal_padding(scale=2)
-)
-pe_table.show()
-
-
-# # # Configure det error table
-# # columns = [
-# # "eig_1", "eig_2", "eig_3", "eig_4"]
-# eig_table = (
-#     GT(df_eigenvalues)
+# pe_table = (
+#     GT(df_poincare_exponents)
 #     .tab_header(
-#         title=md(f"Eigenvalues of the Monodromy Matrix<br>({ps}, Lillian Shido)")
+#         title=md(f"Poincaré Exponents<br>({ps}, Lillian Shido)")
 #     )
 #     .cols_label(
-#         eig_1="{{:lambda:_1}}",
-#         eig_2="{{:lambda:_2}}",
-#         eig_3="{{:lambda:_3}}",
-#         eig_4="{{:lambda:_4}}"
+#         pe_1="{{:omega:_1}}",
+#         pe_2="{{:omega:_2}}",
+#         pe_3="{{:omega:_3}}",
+#         pe_4="{{:omega:_4}}"
 #     )
-#     .fmt_scientific(
-#         columns=["eig_1", "eig_2", "eig_3", "eig_4"],
-#         decimals=9
+#     .fmt_number(
+#         columns=["pe_1", "pe_2", "pe_3", "pe_4"],
+#         decimals=5
 #     )
 #     .cols_align(
 #         align="center"
@@ -187,7 +159,42 @@ pe_table.show()
 #     .opt_table_font(font=system_fonts(name="industrial"))
 #     .opt_horizontal_padding(scale=2)
 # )
-# eig_table.show()
+# pe_table.show()
+
+
+# # # Configure det error table
+# # columns = [
+# # "eig_1", "eig_2", "eig_3", "eig_4"]
+eig_table = (
+    GT(df_eigenvalues)
+    .tab_header(
+        title=md(f"All 6 Eigenvalues of the Monodromy Matrix<br>({ps}, Lillian Shido)")
+    )
+    .tab_spanner(
+        label="In-Plane",
+        columns=["eig_1", "eig_2", "eig_3", "eig_4"]
+    )
+    .tab_spanner(
+        label="Out-of-Plane",
+        columns=["eig_5","eig_6"]
+    )
+    .cols_label(
+        eig_1="{{:lambda:_1}}",
+        eig_2="{{:lambda:_2}}",
+        eig_3="{{:lambda:_3}}",
+        eig_4="{{:lambda:_4}}",
+        eig_5="{{:lambda:_5}}",
+        eig_6="{{:lambda:_6}}"
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+eig_table.show()
 
 
 # # Configure tables

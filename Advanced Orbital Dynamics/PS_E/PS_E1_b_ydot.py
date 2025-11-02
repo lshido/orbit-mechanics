@@ -16,7 +16,7 @@ from great_tables import GT, md, html, style, loc, system_fonts
 from pypalettes import load_cmap
 
 from constants import mu_Earth, mu_Moon, a_Moon
-from methods import system_properties, calc_L1, calc_initial_velocities, find_halfperiod, calc_Jacobi, ode, calc_poincare_exponents, calc_monodromy_half
+from methods import system_properties, calc_L1, calc_initial_velocities, find_halfperiod, calc_Jacobi, planar_ode, calc_poincare_exponents, calc_monodromy_half
 
 mu = mu_Moon/(mu_Earth + mu_Moon)
 
@@ -125,7 +125,7 @@ colors = cmap(np.linspace(0,1,20))
 labels = [fr'$\xi$={i}' if i!=0 else f'Baseline' for i, c in enumerate(colors)]
 
 # Initialize eigenvalue dataframe
-df_eigenvalues = pd.DataFrame(
+df_eigenvalues_comp = pd.DataFrame(
     columns=[
         "orbit",
         "xi",
@@ -135,6 +135,17 @@ df_eigenvalues = pd.DataFrame(
         "eig_4_real","eig_4_imag"
     ]
 )
+df_eigenvalues = pd.DataFrame(
+    columns=[
+        "orbit",
+        "xi",
+        "eig_1",
+        "eig_2",
+        "eig_3",
+        "eig_4"
+    ]
+)
+
 # Initialize Poincaré exponents
 df_poincare_exponents = pd.DataFrame(
     columns=[
@@ -168,15 +179,15 @@ for enum, orbit in enumerate(df_orbits.iterrows()):
         0,0,1,0,
         0,0,0,1
     ]
-    full_period_prop = solve_ivp(ode, [0, 2*tf], IC, args=(mu,), rtol=1e-13,atol=1e-14)
-    half_period_prop = solve_ivp(ode, [0, tf], IC, args=(mu,), rtol=1e-13,atol=1e-14)
+    full_period_prop = solve_ivp(planar_ode, [0, 2*tf], IC, args=(mu,), rtol=1e-13,atol=1e-14)
+    half_period_prop = solve_ivp(planar_ode, [0, tf], IC, args=(mu,), rtol=1e-13,atol=1e-14)
     stm_half = half_period_prop.y[4:20,-1].reshape(4,4)
     monodromy_half = calc_monodromy_half(stm_half)
     # monodromy_full = full_period_prop.y[4:20,-1].reshape(4,4)
     eigenvalues = np.linalg.eigvals(monodromy_half)
     # eigenvalues = np.linalg.eigvals(monodromy_full)
     # Collect eigenvalues
-    eigenvalues_data = pd.DataFrame({
+    eigenvalues_comp_data = pd.DataFrame({
         "orbit":[enum],
         "xi":[xi0],
         "eig_1_real":[eigenvalues[0].real],
@@ -187,6 +198,15 @@ for enum, orbit in enumerate(df_orbits.iterrows()):
         "eig_3_imag":[eigenvalues[2].imag],
         "eig_4_real":[eigenvalues[3].real],
         "eig_4_imag":[eigenvalues[3].imag]
+    })
+    df_eigenvalues_comp = pd.concat([df_eigenvalues_comp, eigenvalues_comp_data], ignore_index=True)
+    eigenvalues_data = pd.DataFrame({
+        "orbit":[enum],
+        "xi":[xi0],
+        "eig_1":[f"{eigenvalues[0]:.6g}"],
+        "eig_2":[f"{eigenvalues[1]:.6g}"],
+        "eig_3":[f"{eigenvalues[2]:.6g}"],
+        "eig_4":[f"{eigenvalues[3]:.6g}"]
     })
     df_eigenvalues = pd.concat([df_eigenvalues, eigenvalues_data], ignore_index=True)
     # Calc Poincaré exponents
@@ -218,73 +238,22 @@ ax1.set_title(f'Lyapunovs near L1 starting from $\\xi$={xi:.2f}, $\\eta$={eta}\n
 plt.savefig(f'Lyapunov_family_{ps}.png', dpi=300, bbox_inches='tight')
 
 # Configure tables
-# Configure det error table
-# columns = [
-# "orbit","xi","eig_1", "eig_2", "eig_3", "eig_4"]
 eig_table = (
     GT(df_eigenvalues)
     .tab_header(
         title=md(f"Eigenvalues of Orbits in L1 Lyapunov Family<br>1/2 period-derived monodromy matrix ({ps}, Lillian Shido)")
     )
-    .tab_spanner(
-        label="{{:lambda:_1}}",
-        columns=["eig_1_real","eig_1_imag"]
-    )
-    .tab_spanner(
-        label="{{:lambda:_2}}",
-        columns=["eig_2_real","eig_2_imag"]
-    )
-    .tab_spanner(
-        label="{{:lambda:_3}}",
-        columns=["eig_3_real","eig_3_imag"]
-    )
-    .tab_spanner(
-        label="{{:lambda:_4}}",
-        columns=["eig_4_real","eig_4_imag"]
-    )
     .cols_label(
         orbit="Orbit",
         xi="{{:xi:}}",
-        eig_1_real="Real",
-        eig_1_imag="Imag",
-        eig_2_real="Real",
-        eig_2_imag="Imag",
-        eig_3_real="Real",
-        eig_3_imag="Imag",
-        eig_4_real="Real",
-        eig_4_imag="Imag"
+        eig_1="{{:lambda:_1}}",
+        eig_2="{{:lambda:_2}}",
+        eig_3="{{:lambda:_3}}",
+        eig_4="{{:lambda:_4}}"
     )
     .fmt_number(
         columns=["xi"],
         decimals=3
-    )
-    .fmt_scientific(
-        columns=[
-            "eig_1_real",
-            "eig_2_real",
-            "eig_3_real",
-            "eig_4_real",
-        ],
-        decimals=3
-    )
-    .fmt_scientific(
-        columns=[
-            "eig_1_imag",
-            "eig_2_imag",
-            "eig_3_imag",
-            "eig_4_imag"
-        ],
-        decimals=3,
-        pattern="{x} i"
-    )
-    .tab_style(
-        style=style.borders(
-            sides="right",
-            color="lightgray",
-            style="solid",
-            weight="1px"
-        ),
-        locations=loc.body(columns=[1, 3, 5, 7])
     )
     .cols_align(
         align="center"
@@ -295,6 +264,85 @@ eig_table = (
     .opt_horizontal_padding(scale=2)
 )
 eig_table.show()
+
+
+# Configure det error table
+# columns = [
+# "orbit","xi","eig_1", "eig_2", "eig_3", "eig_4"]
+# eig_comp_table = (
+#     GT(df_eigenvalues_comp)
+#     .tab_header(
+#         title=md(f"Eigenvalues of Orbits in L1 Lyapunov Family<br>1/2 period-derived monodromy matrix ({ps}, Lillian Shido)")
+#     )
+#     .tab_spanner(
+#         label="{{:lambda:_1}}",
+#         columns=["eig_1_real","eig_1_imag"]
+#     )
+#     .tab_spanner(
+#         label="{{:lambda:_2}}",
+#         columns=["eig_2_real","eig_2_imag"]
+#     )
+#     .tab_spanner(
+#         label="{{:lambda:_3}}",
+#         columns=["eig_3_real","eig_3_imag"]
+#     )
+#     .tab_spanner(
+#         label="{{:lambda:_4}}",
+#         columns=["eig_4_real","eig_4_imag"]
+#     )
+#     .cols_label(
+#         orbit="Orbit",
+#         xi="{{:xi:}}",
+#         eig_1_real="Real",
+#         eig_1_imag="Imag",
+#         eig_2_real="Real",
+#         eig_2_imag="Imag",
+#         eig_3_real="Real",
+#         eig_3_imag="Imag",
+#         eig_4_real="Real",
+#         eig_4_imag="Imag"
+#     )
+#     .fmt_number(
+#         columns=["xi"],
+#         decimals=3
+#     )
+#     .fmt_number(
+#         columns=[
+#             "eig_1_real",
+#             "eig_2_real",
+#             "eig_3_real",
+#             "eig_4_real",
+#         ],
+#         n_sigfig=7
+#     )
+#     .fmt_number(
+#         columns=[
+#             "eig_1_imag",
+#             "eig_2_imag",
+#             "eig_3_imag",
+#             "eig_4_imag"
+#         ],
+#         n_sigfig=7,
+#         pattern="{x} i"
+#     )
+#     .tab_style(
+#         style=style.borders(
+#             sides="right",
+#             color="lightgray",
+#             style="solid",
+#             weight="1px"
+#         ),
+#         locations=loc.body(columns=[1, 3, 5, 7])
+#     )
+#     .cols_align(
+#         align="center"
+#     )
+#     .opt_table_outline()
+#     .opt_stylize()
+#     .opt_table_font(font=system_fonts(name="industrial"))
+#     .opt_horizontal_padding(scale=2)
+# )
+# eig_comp_table.show()
 
 # Configure tables
 # Configure det error table
@@ -337,23 +385,23 @@ pe_table = (
         columns=["xi"],
         decimals=3
     )
-    .fmt_scientific(
+    .fmt_number(
         columns=[
             "omega_1_real",
             "omega_2_real",
             "omega_3_real",
             "omega_4_real",
         ],
-        decimals=3
+        n_sigfig=4
     )
-    .fmt_scientific(
+    .fmt_number(
         columns=[
             "omega_1_imag",
             "omega_2_imag",
             "omega_3_imag",
             "omega_4_imag"
         ],
-        decimals=3,
+        n_sigfig=4,
         pattern="{x} i"
     )
     .tab_style(
