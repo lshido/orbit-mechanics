@@ -18,7 +18,7 @@ from pypalettes import load_cmap
 from math import isclose
 
 from constants import mu_Earth, mu_Moon, a_Moon
-from methods import system_properties, calc_L1, calc_initial_velocities, find_halfperiod, calc_Jacobi, planar_ode, calc_poincare_exponents, calc_planar_monodromy_half
+from methods import system_properties, calc_L1, calc_initial_velocities, find_halfperiod, calc_Jacobi, planar_ode, calc_poincare_exponents, calc_monodromy_half
 
 mu = mu_Moon/(mu_Earth + mu_Moon)
 
@@ -64,7 +64,7 @@ df_orbits = pd.DataFrame(
 
 # Configuration
 first_delta_x = 0.002
-delta_x = 0.010 # step in x
+delta_x = 0.015 # step in x
 
 orbit_x = starting_x
 orbit_ydot = ydot_guess
@@ -117,7 +117,6 @@ for orbit in range(11):
         })
         df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
 
-pdb.set_trace()
 # Table iterations each orbit takes to converge
 df_orbit_iterations = df_orbits[['orbit','xi','iterations']]
 
@@ -144,6 +143,7 @@ df_eigenvalues = pd.DataFrame(
         "orbit",
         "xi",
         "period",
+        "jacobi",
         "eig_1",
         "eig_1_abs",
         "eig_2",
@@ -179,7 +179,15 @@ df_eigenvalues_abs = pd.DataFrame(
         "eig_4_abs"
     ]
 )
-
+df_jc_period = pd.DataFrame(
+    columns=[
+        "orbit",
+        "xi",
+        "x0",
+        "period",
+        "jacobi"
+    ]
+)
 # Initialize Poincaré exponents
 df_poincare_exponents = pd.DataFrame(
     columns=[
@@ -213,10 +221,11 @@ for enum, orbit in enumerate(df_orbits.iterrows()):
         0,0,1,0,
         0,0,0,1
     ]
+    jacobi = calc_Jacobi(mu, x0, 0, 0, vy0)
     full_period_prop = solve_ivp(planar_ode, [0, 2*tf], IC, args=(mu,), rtol=1e-13,atol=1e-14)
     half_period_prop = solve_ivp(planar_ode, [0, tf], IC, args=(mu,), rtol=1e-13,atol=1e-14)
     stm_half = half_period_prop.y[4:20,-1].reshape(4,4)
-    monodromy_half = calc_planar_monodromy_half(stm_half)
+    monodromy_half = calc_monodromy_half(stm_half)
     # monodromy_full = full_period_prop.y[4:20,-1].reshape(4,4)
     eigenvalues = np.linalg.eigvals(monodromy_half)
     # eigenvalues = np.linalg.eigvals(monodromy_full)
@@ -243,6 +252,7 @@ for enum, orbit in enumerate(df_orbits.iterrows()):
         "orbit":[enum],
         "xi":[xi0],
         "period":[2*tf],
+        "jacobi":[jacobi],
         "eig_1":[f"{eigenvalues[0]:.6g}"],
         "eig_1_abs":[abs(eigenvalues[0])],
         "eig_2":[f"{eigenvalues[1]:.6g}"],
@@ -269,7 +279,6 @@ for enum, orbit in enumerate(df_orbits.iterrows()):
     })
     df_eigenvalues_float = pd.concat([df_eigenvalues_float, eigenvalues_float_data], ignore_index=True)
 
-
     eigenvalues_abs_data = pd.DataFrame({
         "orbit":[enum],
         "xi":[xi0],
@@ -280,6 +289,14 @@ for enum, orbit in enumerate(df_orbits.iterrows()):
     })
     df_eigenvalues_abs = pd.concat([df_eigenvalues_abs, eigenvalues_abs_data], ignore_index=True)
 
+    jc_period_data = pd.DataFrame({
+        "orbit":[enum],
+        "xi":[xi0],
+        "x0":[x0],
+        "period":[2*tf],
+        "jacobi":[jacobi]
+    })
+    df_jc_period = pd.concat([df_jc_period, jc_period_data], ignore_index=True)
 
     # Calc Poincaré exponents
     poincare_exponents_data = pd.DataFrame({
@@ -309,6 +326,18 @@ ax1.tick_params(axis='both', which='major', labelsize=6)
 ax1.set_title(f'Lyapunovs near L1 starting from $\\xi$={xi:.2f}, $\\eta$={eta}\nwith predicted $\dot{{y_0}}$, Dynamic $\\Delta{{x}}$ ({ps}, Lillian Shido)')
 plt.savefig(f'Lyapunov_family_{ps}.png', dpi=300, bbox_inches='tight')
 
+# Plot JC as a function of x0
+fig3, ax3 = plt.subplots()
+ax4 = ax3.twinx()
+ax3.plot(df_jc_period['x0'],df_jc_period['jacobi'], label="Jacobi Constant", color="blue")
+ax4.plot(df_jc_period['x0'],df_jc_period['period'], label="Period", color="red")
+plt.grid()
+ax3.set_xlabel(r"${{x_0}}$""\n[non-dim]")
+ax3.set_ylabel(r"Jacobi Constant")
+ax4.set_ylabel("Period\n[non-dim]")
+ax3.set_title(rf'Jacobi Constant and Period as a function of ${{x_0}}$'f'\n({ps}, Lillian Shido)')
+fig3.legend(loc="upper right", bbox_to_anchor=(1,1), bbox_transform=ax3.transAxes,fontsize=6)
+plt.savefig(f'JC_period_wrt_x0_{ps}.png', dpi=300, bbox_inches='tight')
 
 # Make a table with just the non-unity pairs
 df_stability_index = pd.DataFrame(columns=[
@@ -338,32 +367,73 @@ for enum, row in enumerate(df_eigenvalues_float.iterrows()):
     })
     df_stability_index = pd.concat([df_stability_index, stability_data], ignore_index=True)
 
-# Plot unit circles
-fig2, axes = plt.subplots(len(df_eigenvalues_comp), 4, figsize=(6.5,8))
-unit_circle = patches.Circle((0,0),1, ec="black", ls="--")
-for enum, row in enumerate(df_eigenvalues_comp.iterrows()):
-    axes[enum,0].scatter(row[1]["eig_1_real"], row[1]["eig_1_imag"], s=5)
-    axes[enum,0].set_title(f"{row[1]["xi"]:.3f} $\\lambda_1$", fontsize=8)
-    # axes[enum,0].autoscale()
-    # axes[enum,0].add_patch(unit_circle)
-    axes[enum,1].scatter(row[1]["eig_2_real"], row[1]["eig_2_imag"], s=5)
-    axes[enum,1].set_title(f"{row[1]["xi"]:.3f} $\\lambda_2$", fontsize=8)
-    # axes[enum,1].autoscale()
-    # axes[enum,1].add_patch(unit_circle)
-    axes[enum,2].scatter(row[1]["eig_3_real"], row[1]["eig_3_imag"], s=5)
-    axes[enum,2].set_title(f"{row[1]["xi"]:.3f} $\\lambda_3$", fontsize=8)
-    # axes[enum,2].autoscale()
-    # axes[enum,2].add_patch(unit_circle)
-    axes[enum,3].scatter(row[1]["eig_4_real"], row[1]["eig_4_imag"], s=5)
-    axes[enum,3].set_title(f"{row[1]["xi"]:.3f} $\\lambda_4$", fontsize=8)
-    # axes[enum,3].autoscale()
-    # axes[enum,3].add_patch(unit_circle)
-for ax in axes.flat:
-    ax.tick_params(axis="both", labelsize=8)
-    ax.set_xlim([-1,1])
-    ax.set_ylim([-1,1])
-    ax.set_aspect('equal', 'box')
-fig2.savefig(f'Eigenvalues on the unit circle_{ps}.png', dpi=300, bbox_inches='tight')
+df_jc_period_stability = df_jc_period[['orbit','xi','x0','period','jacobi']].join(df_stability_index[['stability']])
+
+# eig_table = (
+#     GT(df_eigenvalues)
+#     .tab_header(
+#         title=md(f"Jacobi Constant and Period in L1 Lyapunov Family<br>({ps}, Lillian Shido)")
+#     )
+#     .cols_label(
+#         orbit="Orbit",
+#         xi="{{:xi:}}",
+#         period="{{Period}}<br>[non-dim]",
+#         jacobi="{{Jacobi}}<br>Constant",
+#         eig_1="{{:lambda:_1}}",
+#         eig_2="{{:lambda:_2}}",
+#         eig_3="{{:lambda:_3}}",
+#         eig_4="{{:lambda:_4}}",
+#     )
+#     .fmt_number(
+#         columns=["xi","period"],
+#         decimals=3
+#     )
+#     .fmt_number(
+#         columns=["jacobi","eig_1_abs","eig_2_abs","eig_3_abs","eig_4_abs"],
+#         n_sigfig=6
+#     )
+#     .cols_align(
+#         align="center"
+#     )
+#     .opt_table_outline()
+#     .opt_stylize()
+#     .opt_table_font(font=system_fonts(name="industrial"))
+#     .opt_horizontal_padding(scale=2)
+#     .cols_hide(columns=["eig_1_abs","eig_2_abs","eig_3_abs","eig_4_abs"])
+# )
+# eig_table.show()
+
+jc_period_stability = (
+    GT(df_jc_period_stability)
+    .tab_header(
+        title=md(f"Jacobi Constant and Period in L1 Lyapunov Family<br>({ps}, Lillian Shido)")
+    )
+    .cols_label(
+        orbit="Orbit",
+        xi="{{:xi:}}",
+        x0="{{x_0}}",
+        period="{{Period}}<br>[non-dim]",
+        jacobi="{{Jacobi}}<br>Constant",
+        stability="{{Stability Index}}<br>{{:nu:}}"
+    )
+    .fmt_number(
+        columns=["xi","period", "x0"],
+        decimals=3
+    )
+    .fmt_number(
+        columns=["jacobi"],
+        n_sigfig=6
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+jc_period_stability.show()
+
 
 # eig_abs_table = (
 #     GT(df_eigenvalues_abs)
@@ -396,276 +466,5 @@ fig2.savefig(f'Eigenvalues on the unit circle_{ps}.png', dpi=300, bbox_inches='t
 # )
 # eig_abs_table.show()
 
-stability_table = (
-    GT(df_stability_index)
-    .tab_header(
-        title=md(f"Stability Indices of Non-Unity Eigenvalues of Orbits in L1 Lyapunov Family<br>1/2 period-derived monodromy matrix ({ps}, Lillian Shido)")
-    )
-    .cols_label(
-        orbit="Orbit",
-        xi="{{:xi:}}",
-        lambda_i="{{:lambda:_i}}",
-        reciprocal_lambda_i="{{Reciprocal of :lambda:_i}}",
-        lambda_j="{{:lambda:_j}}",
-        stability="{{:nu:}}"
-    )
-    .fmt_number(
-        columns=["orbit"],
-        decimals=0
-    )
-    .fmt_number(
-        columns=["xi","period"],
-        decimals=3
-    )
-    .fmt_number(
-        columns=["nu"],
-        n_sigfig=6
-    )
-    .cols_align(
-        align="center"
-    )
-    .opt_table_outline()
-    .opt_stylize()
-    .opt_table_font(font=system_fonts(name="industrial"))
-    .opt_horizontal_padding(scale=2)
-    .cols_move_to_start(columns=["orbit","xi"])
-)
-stability_table.show()
 
 
-# Configure tables
-# eig_table = (
-#     GT(df_eigenvalues)
-#     .tab_header(
-#         title=md(f"Eigenvalues of Orbits in L1 Lyapunov Family<br>1/2 period-derived monodromy matrix ({ps}, Lillian Shido)")
-#     )
-#     .cols_label(
-#         orbit="Orbit",
-#         xi="{{:xi:}}",
-#         period="Period [non-dim]",
-#         eig_1="{{:lambda:_1}}",
-#         eig_1_abs="{{| :lambda:_1 |}}",
-#         eig_2="{{:lambda:_2}}",
-#         eig_2_abs="{{| :lambda:_2 |}}",
-#         eig_3="{{:lambda:_3}}",
-#         eig_3_abs="{{| :lambda:_3 |}}",
-#         eig_4="{{:lambda:_4}}",
-#         eig_4_abs="{{| :lambda:_4 |}}"
-#     )
-#     .fmt_number(
-#         columns=["xi","period"],
-#         decimals=3
-#     )
-#     .fmt_number(
-#         columns=["eig_1_abs","eig_2_abs","eig_3_abs","eig_4_abs"],
-#         n_sigfig=6
-#     )
-#     .tab_style(
-#         style=style.fill(color="yellow"),
-#         locations=loc.body(columns=["eig_1","eig_2"], rows=[0,1,2,3,4])
-#     )
-#     .tab_style(
-#         style=style.fill(color="yellow"),
-#         locations=loc.body(columns=["eig_1","eig_4"], rows=[5,6,7,8,9,10])
-#     )
-#     .cols_align(
-#         align="center"
-#     )
-#     .opt_table_outline()
-#     .opt_stylize()
-#     .opt_table_font(font=system_fonts(name="industrial"))
-#     .opt_horizontal_padding(scale=2)
-#     .cols_hide(columns=["eig_1_abs","eig_2_abs","eig_3_abs","eig_4_abs"])
-# )
-# eig_table.show()
-
-
-# Configure det error table
-# columns = [
-# # "orbit","xi","eig_1", "eig_2", "eig_3", "eig_4"]
-# eig_comp_table = (
-#     GT(df_eigenvalues_comp)
-#     .tab_header(
-#         title=md(f"Eigenvalues of Orbits in L1 Lyapunov Family<br>1/2 period-derived monodromy matrix ({ps}, Lillian Shido)")
-#     )
-#     .tab_spanner(
-#         label="{{:lambda:_1}}",
-#         columns=["eig_1_real","eig_1_imag","eig_1_plot"]
-#     )
-#     .tab_spanner(
-#         label="{{:lambda:_2}}",
-#         columns=["eig_2_real","eig_2_imag","eig_2_plot"]
-#     )
-#     .tab_spanner(
-#         label="{{:lambda:_3}}",
-#         columns=["eig_3_real","eig_3_imag","eig_3_plot"]
-#     )
-#     .tab_spanner(
-#         label="{{:lambda:_4}}",
-#         columns=["eig_4_real","eig_4_imag","eig_4_plot"]
-#     )
-#     .cols_label(
-#         orbit="Orbit",
-#         xi="{{:xi:}}",
-#         eig_1_real="Real",
-#         eig_1_imag="Imag",
-#         eig_2_real="Real",
-#         eig_2_imag="Imag",
-#         eig_3_real="Real",
-#         eig_3_imag="Imag",
-#         eig_4_real="Real",
-#         eig_4_imag="Imag"
-#     )
-#     .fmt_number(
-#         columns=["xi"],
-#         decimals=3
-#     )
-#     .fmt_number(
-#         columns=[
-#             "eig_1_real",
-#             "eig_2_real",
-#             "eig_3_real",
-#             "eig_4_real",
-#         ],
-#         n_sigfig=7
-#     )
-#     .fmt_number(
-#         columns=[
-#             "eig_1_imag",
-#             "eig_2_imag",
-#             "eig_3_imag",
-#             "eig_4_imag"
-#         ],
-#         n_sigfig=7,
-#         pattern="{x} i"
-#     )
-#     .tab_style(
-#         style=style.borders(
-#             sides="right",
-#             color="lightgray",
-#             style="solid",
-#             weight="1px"
-#         ),
-#         locations=loc.body(columns=[1, 3, 5, 7])
-#     )
-#     .cols_align(
-#         align="center"
-#     )
-#     .opt_table_outline()
-#     .opt_stylize()
-#     .opt_table_font(font=system_fonts(name="industrial"))
-#     .opt_horizontal_padding(scale=2)
-#     .cols_hide(
-#         columns=["eig_1_plot","eig_2_plot","eig_3_plot","eig_4_plot"]
-#     )
-#     # .fmt_nanoplot(columns = "eig_1_plot", reference_area = [-1,1], reference_line = 0)
-#     # .fmt_nanoplot(columns = "eig_2_plot", reference_area = [-1,1], reference_line = 0)
-#     # .fmt_nanoplot(columns = "eig_3_plot", reference_area = [-1,1], reference_line = 0)
-#     # .fmt_nanoplot(columns = "eig_4_plot", reference_area = [-1,1], reference_line = 0)
-# )
-# eig_comp_table.show()
-
-# Configure tables
-# Configure det error table
-# columns = [
-# "orbit","xi","eig_1", "eig_2", "eig_3", "eig_4"]
-# pe_table = (
-#     GT(df_poincare_exponents)
-#     .tab_header(
-#         title=md(f"Poincaré Exponents of Orbits in L1 Lyapunov Family<br>1/2 period-derived monodromy matrix ({ps}, Lillian Shido)")
-#     )
-#     .tab_spanner(
-#         label="{{:omega:_1}}",
-#         columns=["omega_1_real","omega_1_imag"]
-#     )
-#     .tab_spanner(
-#         label="{{:omega:_2}}",
-#         columns=["omega_2_real","omega_2_imag"]
-#     )
-#     .tab_spanner(
-#         label="{{:omega:_3}}",
-#         columns=["omega_3_real","omega_3_imag"]
-#     )
-#     .tab_spanner(
-#         label="{{:omega:_4}}",
-#         columns=["omega_4_real","omega_4_imag"]
-#     )
-#     .cols_label(
-#         orbit="Orbit",
-#         xi="{{:xi:}}",
-#         omega_1_real="Real",
-#         omega_1_imag="Imag",
-#         omega_2_real="Real",
-#         omega_2_imag="Imag",
-#         omega_3_real="Real",
-#         omega_3_imag="Imag",
-#         omega_4_real="Real",
-#         omega_4_imag="Imag"
-#     )
-#     .fmt_number(
-#         columns=["xi"],
-#         decimals=3
-#     )
-#     .fmt_number(
-#         columns=[
-#             "omega_1_real",
-#             "omega_2_real",
-#             "omega_3_real",
-#             "omega_4_real",
-#         ],
-#         n_sigfig=4
-#     )
-#     .fmt_number(
-#         columns=[
-#             "omega_1_imag",
-#             "omega_2_imag",
-#             "omega_3_imag",
-#             "omega_4_imag"
-#         ],
-#         n_sigfig=4,
-#         pattern="{x} i"
-#     )
-#     .tab_style(
-#         style=style.borders(
-#             sides="right",
-#             color="lightgray",
-#             style="solid",
-#             weight="1px"
-#         ),
-#         locations=loc.body(columns=[1, 3, 5, 7])
-#     )
-#     .cols_align(
-#         align="center"
-#     )
-#     .opt_table_outline()
-#     .opt_stylize()
-#     .opt_table_font(font=system_fonts(name="industrial"))
-#     .opt_horizontal_padding(scale=2)
-# )
-# pe_table.show()
-
-# # Configure table for question 7
-# #     columns = ['Orbit','xi','iterations']
-# iterations_table = (
-#     GT(df_orbit_iterations)
-#     .tab_header(
-#         title=md(f"Iterations to Produce Periodic Orbit<br>({ps}, Lillian Shido)")
-#     )
-#     .cols_label(
-#         orbit="Orbit",
-#         xi="{{:xi:}}",
-#         iterations="Iterations",
-#     )
-#     .fmt_number(
-#         columns=["xi"],
-#         decimals=3
-#     )
-#     .cols_align(
-#         align="center"
-#     )
-#     .opt_table_outline()
-#     .opt_stylize()
-#     .opt_table_font(font=system_fonts(name="industrial"))
-#     .opt_horizontal_padding(scale=2)
-# )
-# iterations_table.show()

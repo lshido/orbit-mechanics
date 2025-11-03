@@ -272,7 +272,7 @@ def calc_poincare_exponents(eig, period):
     omega = 1/period*np.log(eig)
     return omega
 
-def calc_monodromy_half(stm_half):
+def calc_planar_monodromy_half(stm_half):
     G = np.array([
     [1,0,0,0],
     [0,-1,0,0],
@@ -292,6 +292,33 @@ def calc_monodromy_half(stm_half):
     term3 = np.bmat([
         [-2*omega , I],
         [-I , np.zeros((2,2))]
+    ])
+    monodromy_half = G*term1*term2*term3*G*stm_half
+    return monodromy_half
+
+def calc_spatial_monodromy_half(stm_half):
+    G = np.array([
+        [1,0,0,0,0,0],
+        [0,-1,0,0,0,0],
+        [0,0,1,0,0,0],
+        [0,0,0,-1,0,0],
+        [0,0,0,0,1,0],
+        [0,0,0,0,0,-1]
+        ])
+    I = np.identity(3)
+    omega = np.array([
+        [0,1,0],
+        [-1,0,0],
+        [0,0,0]
+        ])
+    term1 = np.bmat([
+        [np.zeros((3,3)) , -I],
+        [I , -2*omega] 
+        ])
+    term2 = np.transpose(stm_half)
+    term3 = np.bmat([
+        [-2*omega , I],
+        [-I , np.zeros((3,3))]
     ])
     monodromy_half = G*term1*term2*term3*G*stm_half
     return monodromy_half

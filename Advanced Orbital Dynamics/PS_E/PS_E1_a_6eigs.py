@@ -116,12 +116,14 @@ df_det_error = pd.DataFrame({
 
 eigenvalues = np.linalg.eigvals(monodromy_half)
 df_eigenvalues = pd.DataFrame({
-    "eig_1":[f"{eigenvalues[0]:.5g}"],
-    "eig_2":[f"{eigenvalues[1]:.5g}"],
-    "eig_3":[f"{eigenvalues[2]:.5g}"],
-    "eig_4":[f"{eigenvalues[3]:.5g}"],
-    "eig_5":[f"{eigenvalues[4]:.5g}"],
-    "eig_6":[f"{eigenvalues[5]:.5g}"]
+    "eig_1":[f"{eigenvalues[0]:.6g}"],
+    "eig_2":[f"{eigenvalues[1]:.6g}"],
+    "eig_3":[f"{eigenvalues[2]:.6g}"],
+    "eig_4":[f"{eigenvalues[3]:.6g}"],
+    "eig_5":[f"{eigenvalues[4]:.6g}"],
+    "eig_6":[f"{eigenvalues[5]:.6g}"],
+    "eig_5_abs":[f"{abs(eigenvalues[4]):.6g}"],
+    "eig_6_abs":[f"{abs(eigenvalues[5]):.6g}"]
 })
 
 # pdb.set_trace()
@@ -176,7 +178,7 @@ eig_table = (
     )
     .tab_spanner(
         label="Out-of-Plane",
-        columns=["eig_5","eig_6"]
+        columns=["eig_5","eig_6","eig_5_abs","eig_6_abs"]
     )
     .cols_label(
         eig_1="{{:lambda:_1}}",
@@ -184,7 +186,9 @@ eig_table = (
         eig_3="{{:lambda:_3}}",
         eig_4="{{:lambda:_4}}",
         eig_5="{{:lambda:_5}}",
-        eig_6="{{:lambda:_6}}"
+        eig_6="{{:lambda:_6}}",
+        eig_5_abs="{{| :lambda:_5 |}}",
+        eig_6_abs="{{| :lambda:_6 |}}"
     )
     .cols_align(
         align="center"
