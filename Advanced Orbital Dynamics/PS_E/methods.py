@@ -207,6 +207,17 @@ def calc_Jacobi(mu, x, y, vx, vy):
     C = 2*pseudo_U - v_squared
     return C
 
+def calc_spatial_Jacobi(mu, x, y, z, vx, vy, vz):
+    d = sqrt((x+mu)**2 + y**2 + z**2)
+    r = sqrt((x-1+mu)**2 + y**2 + z**2)
+    x_y_sq = (x**2+y**2)/2
+    term_1 = (1-mu)/d
+    term_2 = mu/r
+    pseudo_U = term_1 + term_2 + x_y_sq
+    v_squared = vx**2 + vy**2 + vz**2
+    C = 2*pseudo_U - v_squared
+    return C
+
 def find_halfperiod(starting_x, ydot_guess, mu, tolerance=1e-12, max_iterations=50):
     """
     Calculates the resulting half period states for a perpindicular x-axis crossing
@@ -322,3 +333,6 @@ def calc_spatial_monodromy_half(stm_half):
     ])
     monodromy_half = G*term1*term2*term3*G*stm_half
     return monodromy_half
+
+def calc_stability_index(lambda_i, lambda_j):
+    return 1/2*(lambda_i + lambda_j)
