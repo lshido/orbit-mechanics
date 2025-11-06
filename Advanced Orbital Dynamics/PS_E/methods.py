@@ -42,6 +42,54 @@ def calc_L1(mu, a):
             break
     return x_L1, y_L1
 
+# Calculate the location of L2
+def calc_L2(mu, a):
+    gamma = 1e-6
+    tolerance=1e-12
+    counter = 0
+    while True:
+        counter = counter + 1
+        f = -(((1-mu)/(1+gamma)**2)+(mu/gamma**2)-1+mu-gamma)
+        f_prime = ((2*(1-mu))/(1+gamma)**3)+((2*mu)/(gamma**3))+1
+        if abs(f) > tolerance:
+            gamma = gamma - f/f_prime
+            continue
+        else:
+            x = 1 - mu + gamma
+            # Add check for accleration
+            d_x = x*a+mu
+            r_x = x*a-1+mu
+            d = ((x*a+mu)**2)**(1/2)
+            r = ((x*a-1+mu)**2)**(1/2)
+            accel = -(1-mu)/d**3*d_x - mu/r**3*r_x
+            # Add check for partial wrt x
+            partial = -((1-mu)/(x+mu)**2) - mu/(x-1+mu)**2 + x
+            x_L2 = x
+            y_L2 = 0
+            counter = 0
+            break
+    return x_L2, y_L2
+
+# Calculate the Eigenvalues
+def calc_libration_eigenvalues(mu, x_L, y_L):
+    d = ((x_L+mu)**2 + y_L**2)**(1/2)
+    r = ((x_L-1+mu)**2 + y_L**2)**(1/2)
+    U_xx = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*(x_L+mu)**2/d**5 + 3*mu*(x_L-1+mu)**2/r**5
+    U_yy = 1 - (1-mu)/d**3 - mu/r**3
+    B_1 = 2 - (U_xx + U_yy)/2
+    B_2_squared = -U_xx*U_yy
+    s = (B_1 + (B_1**2 + B_2_squared)**(1/2))**(1/2)
+    B_3 = (s**2 + U_xx)/(2*s)
+    big_Lambda_1 = -B_1 + (B_1**2 + B_2_squared)**(1/2)
+    big_Lambda_2 = -B_1 - (B_1**2 + B_2_squared)**(1/2)
+    lambda_1 = (big_Lambda_1)**(1/2) # real
+    lambda_2 = -(big_Lambda_1)**(1/2) # real
+    lambda_3 = (big_Lambda_2)**(1/2) # imaginary
+    lambda_4 = -(big_Lambda_2)**(1/2) # imaginary
+    period = 2*pi/s
+    B_2 = B_2_squared**(1/2)
+    return lambda_1, lambda_2, lambda_3, lambda_4, B_1, B_2, B_3, s, period
+
 def calc_initial_velocities(xi_0, eta_0, x_L, y_L, mu):
     """
     Calculates the initial velocities around the collinear libration points.
