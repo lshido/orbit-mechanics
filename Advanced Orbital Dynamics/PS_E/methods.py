@@ -224,9 +224,62 @@ def spatial_ode(t,sv,mu):
     combined = eoms + np.squeeze(stm.reshape(-1)).tolist()[0]
     return combined
 
+def spatial_2bp_eoms(t,sv,mu,r):
+    # Set up the EOM ODEs
+    eoms = [
+        sv[3],
+        sv[4],
+        sv[5],
+        -mu*sv[0]/r**3,
+        -mu*sv[1]/r**3,
+        -mu*sv[2]/r**3
+    ]
+    return eoms
+
+def spatial_2bp_ode(t,sv,mu,r):
+    # Set up the EOM ODEs
+    eoms = spatial_2bp_eoms(t,sv,mu,r)
+
+    # Calc the partials using the current x and y values
+    A11 = -mu/r**3 + 3*mu*sv[0]**2/r**5
+    A12 = 3*mu*sv[0]*sv[1]/r**5
+    A13 = 3*mu*sv[0]*sv[2]/r**5
+    A21 = 3*mu*sv[2]*sv[0]/r**5
+    A22 = -mu/r**3 + 3*mu*sv[1]**2/r**5
+    A23 = 3*mu*sv[1]*sv[2]/r**5
+    A31 = 3*mu*sv[2]*sv[0]/r**5
+    A32 = 3*mu*sv[2]*sv[1]/r**5
+    A33 = -mu/r**3 + 3*mu*sv[2]**2/r**5
+    
+    # Build A matrix
+    quad_1 = np.zeros((3,3))
+    quad_2 = np.identity(3)
+    quad_3 = np.array([
+        [A11, A12, A13],
+        [A21, A22, A23],
+        [A31, A32, A33]
+    ])
+    quad_4 = np.zeros((3,3))
+    A = np.bmat([
+        [quad_1, quad_2],
+        [quad_3, quad_4]
+    ])
+    # Set up the STM ODEs
+    phi = sv[6:42].reshape(6,6)
+    stm = A*phi
+    # Combine them into one big matrix
+    combined = eoms + np.squeeze(stm.reshape(-1)).tolist()[0]
+    return combined
+
 def crossxEvent(t, sv, mu):
     return sv[1] # Return value of y
 crossxEvent.terminal = 2
+
+def eval_2bp_acceleration(x,y,z,mu,r):
+    a_x = -mu*x/r**3
+    a_y = -mu*y/r**3
+    a_z = -mu*z/r**3
+    return a_x, a_y, a_z
 
 def eval_acceleration(x,y,xdot,ydot,mu):
     # Simply evaluate the EOMs with the position and velocity
@@ -243,6 +296,16 @@ def eval_kinematic(x0,y0,xdot_0,ydot_0,a_x, a_y,t_span):
     x = x0 + xdot_0*t_span
     y = y0 + ydot_0*t_span
     return x,y,xdot,ydot
+
+def eval_3d_kinematic(x0,y0,z0,xdot_0,ydot_0,zdot_0,a_x,a_y,a_z,t_span):
+    # Evaluate the kinematic equations with the time
+    xdot = xdot_0 + a_x*t_span
+    ydot = ydot_0 + a_y*t_span
+    zdot = zdot_0 + a_z*t_span
+    x = x0 + xdot_0*t_span
+    y = y0 + ydot_0*t_span
+    z = z0 + zdot_0*t_span
+    return x,y,z,xdot,ydot,zdot
 
 def calc_Jacobi(mu, x, y, vx, vy):
     d = sqrt((x+mu)**2 + y**2)
