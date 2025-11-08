@@ -90,6 +90,14 @@ def calc_libration_eigenvalues(mu, x_L, y_L):
     B_2 = B_2_squared**(1/2)
     return lambda_1, lambda_2, lambda_3, lambda_4, B_1, B_2, B_3, s, period
 
+def calc_out_of_plane_eigenvalues(mu,x_L,y_L):
+    d = ((x_L+mu)**2 + y_L**2)**(1/2)
+    r = ((x_L-1+mu)**2 + y_L**2)**(1/2)
+    U_zz = -(1-mu)/d**3 - mu/r**3
+    lambda_1 = (-abs(U_zz))**(1/2)
+    lambda_2 = -(-abs(U_zz))**(1/2)
+    return lambda_1, lambda_2
+
 def calc_initial_velocities(xi_0, eta_0, x_L, y_L, mu):
     """
     Calculates the initial velocities around the collinear libration points.
@@ -244,7 +252,7 @@ def spatial_2bp_ode(t,sv,mu,r):
     A11 = -mu/r**3 + 3*mu*sv[0]**2/r**5
     A12 = 3*mu*sv[0]*sv[1]/r**5
     A13 = 3*mu*sv[0]*sv[2]/r**5
-    A21 = 3*mu*sv[2]*sv[0]/r**5
+    A21 = 3*mu*sv[1]*sv[0]/r**5
     A22 = -mu/r**3 + 3*mu*sv[1]**2/r**5
     A23 = 3*mu*sv[1]*sv[2]/r**5
     A31 = 3*mu*sv[2]*sv[0]/r**5
@@ -442,8 +450,39 @@ def calc_spatial_monodromy_half(stm_half):
         [-2*omega , I],
         [-I , np.zeros((3,3))]
     ])
-    monodromy_half = G*term1*term2*term3*G*stm_half
+    try:
+        monodromy_half = G*term1*term2*term3*G*stm_half
+    except:
+        pdb.set_trace()
     return monodromy_half
 
 def calc_stability_index(lambda_i, lambda_j):
     return 1/2*(lambda_i + lambda_j)
+
+def build_A_matrix_collinear(mu,x_L,y_L,z_L):
+    # Calc the partials using the current x and y values
+    d = ((x_L + mu)**2 + y_L**2 + z_L**2)**(1/2)
+    r = ((x_L - 1 + mu)**2 + y_L**2 + z_L**2)**(1/2)
+    U_xx = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*(x_L+mu)**2/d**5 + 3*mu*(x_L-1+mu)**2/r**5
+    U_yy = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*y_L**2/d**5 + 3*mu*y_L**2/r**5
+    U_zz = -(1-mu)/d**3 - mu/r**3 + 3*(1-mu)*z_L**2/d**5 + 3*mu*z_L**2/r**5
+    U_xy = 3*(1-mu)*(x_L+mu)*y_L/d**5 + 3*mu*(x_L-1+mu)*y_L/r**5
+    U_xz = 3*(1-mu)*(x_L+mu)*z_L/d**5 + 3*mu*(x_L-1+mu)*z_L/r**5
+    U_yz = 3*(1-mu)*y_L*z_L/d**5 + 3*mu*y_L*z_L/r**5
+    quad1 = np.zeros((3,3))
+    quad2 = np.identity(3)
+    quad3 = np.array([
+        [U_xx, U_xy, U_xz],
+        [U_xy, U_yy, U_yz],
+        [U_xz, U_yz, U_xz]
+    ])
+    quad4 = np.array([
+        [0,2,0],
+        [-2,0,0],
+        [0,0,0]
+    ])
+    A = np.bmat([
+        [quad1,quad2],
+        [quad3,quad4]
+    ])
+    return A
