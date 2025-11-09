@@ -1,7 +1,6 @@
-ps = "E1 part a"
-# Problem D4 Part b iii
+ps = "E4 part a"
 # Author: Lillian Shido
-# Date: 10/26/2025
+# Date: 11/8/2025
 
 import pdb
 import copy
@@ -28,8 +27,17 @@ x_L1, y_L1 = calc_L1(mu, a_Moon)
 
 A = build_A_matrix_collinear(mu, x_L1, y_L1, 0)
 eigenvalues, eigenvectors = np.linalg.eig(A)
-try:
-    print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in eigenvectors.toarray()]))
-except:
-    pdb.set_trace()
-print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in eigenvalues]))
+for i in range(0,6):
+    print(f"lambda_{i+1}: {eigenvalues[i]:.5f}")
+    print(f"eigenvectors_{i+1}:")
+    print("\\begin{bmatrix}")
+    try:
+        for x in range(0,6): print(f"{eigenvectors[:,i].flatten()[0,x]:15.5f}\\\\")
+    except:
+        pdb.set_trace()
+    print("\\end{bmatrix}")
+    # Check if eigs match their eigvectors
+    if np.isclose(A*eigenvectors[:,i],eigenvalues[i]*eigenvectors[:,i],atol=1e-8).all():
+        print("PASS!")
+    else:
+        print("FAIL.")
