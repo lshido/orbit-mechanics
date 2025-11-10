@@ -41,13 +41,20 @@ for x in range(0,6):
         print(f"vector {x+1} y-comp: {eigenvectors[:,x][1].real[0,0]}")
         if x==0:
             label=f"Eigenvector {x+1} (Stable)"
+            # label=f"$E^S$"
+            # linestyle="solid"
         elif x==1:
-            label=f"Eigenvector {x+1} (Unstable)"
+            label=f"Eigenvector {x+1} (Stable)"
+            # label=f"$E^U$"
+            # linestyle="dashed"
         ax1.plot([0,eigenvectors[:,x][0].real[0,0]],[0,eigenvectors[:,x][1].real[0,0]], label=label, linewidth=1.5)
+        # ax1.axline((0,0), (eigenvectors[:,x][0].real[0,0],eigenvectors[:,x][1].real[0,0]), label=label,linestyle=linestyle)
 plt.legend()
 ax1.axis('equal')
 ax1.set_xlabel("x [non-dim]")
 ax1.set_ylabel("y [non-dim]")
+plt.title(f"Stable and Unstable Eigenvectors ({ps}, Lillian Shido)")
+# plt.title(f"Stable and Unstable Eigenspaces ({ps}, Lillian Shido)")
 plt.grid()
 plt.savefig(f'Eigenvectors_{ps}.png', dpi=300, bbox_inches='tight')
 
@@ -56,7 +63,11 @@ b_vec = eigenvectors[:,0][0:2]
 c_vec = eigenvectors[:,1][0:2]
 norm_b = np.linalg.norm(b_vec)
 norm_c = np.linalg.norm(c_vec)
-dot = np.dot(b_vec,c_vec)[0,0].real
-pdb.set_trace()
+try:
+    dot = np.dot(np.asarray(b_vec).flatten(),np.asarray(c_vec).flatten()).real
+except:
+    pdb.set_trace()
 angle = np.rad2deg(np.arccos(dot/(norm_b*norm_c)))
 print(f"angle b/t Eig_1 and eig_2: {angle}")
+
+
