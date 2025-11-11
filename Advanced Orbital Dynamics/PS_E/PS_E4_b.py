@@ -40,26 +40,26 @@ for x in range(0,6):
         print(f"vector {x+1} x-comp: {eigenvectors[:,x][0].real[0,0]}")
         print(f"vector {x+1} y-comp: {eigenvectors[:,x][1].real[0,0]}")
         if x==0:
-            # label=f"Eigenvector {x+1} (Stable)"
-            label=f"$E^S$"
-            linestyle="solid"
+            label=f"Eigenvector {x+1} (Stable)"
+            # label=f"$E^S$"
+            # linestyle="solid"
         elif x==1:
-            # label=f"Eigenvector {x+1} (Stable)"
-            label=f"$E^U$"
-            linestyle="dashed"
+            label=f"Eigenvector {x+1} (Unstable)"
+            # label=f"$E^U$"
+            # linestyle="dashed"
         x_eig = x_L1 + eigenvectors[:,x][0].real[0,0]
         y_eig = y_L1 + eigenvectors[:,x][1].real[0,0]
-        # ax1.plot([x_L1,x_eig],[y_L1,y_eig], label=label, linewidth=1.5)
-        ax1.axline((x_L1,y_L1), (x_eig,y_eig), label=label,linestyle=linestyle)
+        ax1.plot([x_L1,x_eig],[y_L1,y_eig], label=label, linewidth=1.5)
+        # ax1.axline((x_L1,y_L1), (x_eig,y_eig), label=label,linestyle=linestyle)
 plt.legend()
 ax1.axis('equal')
 ax1.set_xlabel("x [non-dim]")
 ax1.set_ylabel("y [non-dim]")
-# plt.title(f"Stable and Unstable Eigenvectors ({ps}, Lillian Shido)")
-plt.title(f"Stable and Unstable Eigenspaces ({ps}, Lillian Shido)")
+plt.title(f"Stable and Unstable Eigenvectors ({ps}, Lillian Shido)")
+# plt.title(f"Stable and Unstable Eigenspaces ({ps}, Lillian Shido)")
 plt.grid()
-# plt.savefig(f'Eigenvectors_{ps}.png', dpi=300, bbox_inches='tight')
-plt.savefig(f'Eigenspaces_{ps}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'Eigenvectors_{ps}.png', dpi=300, bbox_inches='tight')
+# plt.savefig(f'Eigenspaces_{ps}.png', dpi=300, bbox_inches='tight')
 
 # Calc angle between the stable and unstable eigenvectors
 b_vec = eigenvectors[:,0][0:2]

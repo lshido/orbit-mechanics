@@ -96,7 +96,7 @@ plt.grid()
 plt.xlabel("x [non-dim]")
 plt.ylabel("y [non-dim]")
 ax1.tick_params(axis='both', which='major', labelsize=6)
-ax1.set_title(f'Periodic Orbit near L1 with $\\xi$={xi:.2f}, $\\eta$={eta}\n({ps}, Lillian Shido)')
+ax1.set_title(f'Periodic Orbit near L1 with $\\xi$={xi:.3f}, $\\eta$={eta}\n({ps}, Lillian Shido)')
 plt.savefig(f'periodic_orbit_{ps}.png', dpi=300, bbox_inches='tight')
 
 monodromy_error_table = (

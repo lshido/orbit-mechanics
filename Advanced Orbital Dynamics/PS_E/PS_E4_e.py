@@ -1,4 +1,4 @@
-ps = "E4 part c"
+ps = "E4 part e"
 # Author: Lillian Shido
 # Date: 11/9/2025
 
@@ -17,7 +17,7 @@ from great_tables import GT, md, html, style, loc, system_fonts
 from pypalettes import load_cmap
 
 from constants import mu_Earth, mu_Moon, a_Moon
-from methods import system_properties, calc_L1, build_A_matrix_collinear, spatial_ode
+from methods import system_properties, calc_L1, build_A_matrix_collinear, spatial_ode, calc_L2
 
 import warnings
 warnings.filterwarnings("ignore",category=PendingDeprecationWarning)
@@ -28,12 +28,13 @@ mu = mu_Moon/(mu_Earth + mu_Moon)
 # Properties of the system
 mu, l_char, t_char, x_Earth, x_Moon = system_properties(mu_Earth, mu_Moon, a_Moon)
 x_L1, y_L1 = calc_L1(mu, a_Moon)
+x_L2, y_L2 = calc_L2(mu, a_Moon)
 
 # Determine the stable and unstable manifolds 
-d_dim = 30 #[km]
+d_dim = 0 #[km] from L1 point
 d_val = d_dim/l_char #[non-dim]
 print(d_val)
-tf = 1*pi
+tf = .5*pi
 pos_tspan = [0,tf]
 neg_tspan = [0,-tf]
 
@@ -43,7 +44,9 @@ eigenvalues, eigenvectors = np.linalg.eig(A)
 fig1 = plt.figure()
 ax1 = fig1.add_subplot()
 ax1.scatter(x_L1, y_L1, s=25, label="L1", color="green")
+ax1.scatter(x_L2, y_L2, s=25, label="L2", color="green")
 ax1.scatter(x_Moon, 0, s=30, label="Moon", color="gray")
+ax1.scatter(x_Earth, 0, s=30, label="Earth", color="blue")
 for i in range(0,6):
     if i==0 or i==1:
         print(f"vector {i+1} i-comp: {eigenvectors[:,i][0].real[0,0]}")
@@ -62,13 +65,10 @@ for i in range(0,6):
             color="red"
         x_eig = x_L1 + eigenvectors[:,i][0].real[0,0]
         y_eig = y_L1 + eigenvectors[:,i][1].real[0,0]
-        nu_W = eigenvectors[:,i]/np.linalg.norm(eigenvectors[:,i][0:3])
-        print(nu_W)
-        scaled_nu_W = d_val*nu_W
-        x0_pos = x_L1 + scaled_nu_W[0].real[0,0]
-        y0_pos = y_L1 + scaled_nu_W[1].real[0,0]
-        vx0_pos = scaled_nu_W[3].real[0,0]
-        vy0_pos = scaled_nu_W[4].real[0,0]
+        x0_pos = x_L1
+        y0_pos = y_L1
+        vx0_pos = eigenvectors[:,i][3].real[0,0]
+        vy0_pos = eigenvectors[:,i][4].real[0,0]
         print(f"{x0_pos:.4f}")
         print(f"{y0_pos:.4f}")
         print(f"{vx0_pos:.4f}")
@@ -92,10 +92,10 @@ for i in range(0,6):
         neg_prop = solve_ivp(spatial_ode, neg_tspan, IC_pos, args=(mu,), rtol=1e-12,atol=1e-14)
         ax1.plot(neg_prop.y[0], neg_prop.y[1], color=color, linestyle=linestyle, zorder=2.5)
         # Now do the other sides of the manifolds
-        x0_neg = x_L1 - scaled_nu_W[0].real[0,0]
-        y0_neg = y_L1 - scaled_nu_W[1].real[0,0]
-        vx0_neg = -scaled_nu_W[3].real[0,0]
-        vy0_neg = -scaled_nu_W[4].real[0,0]
+        x0_neg = x_L1 - eigenvectors[:,i][0].real[0,0]
+        y0_neg = y_L1 - eigenvectors[:,i][1].real[0,0]
+        vx0_neg = -eigenvectors[:,i][3].real[0,0]
+        vy0_neg = -eigenvectors[:,i][4].real[0,0]
         IC_neg = [
             x0_neg,y0_neg,0,vx0_neg,vy0_neg,0,# IC states
             1,0,0,0,0,0, # Identity matrix for phi ICs
@@ -106,9 +106,9 @@ for i in range(0,6):
             0,0,0,0,0,1
         ]
         pos_prop = solve_ivp(spatial_ode, pos_tspan, IC_neg, args=(mu,), rtol=1e-12,atol=1e-14)
-        ax1.plot(pos_prop.y[0], pos_prop.y[1],label=label_manifold+" -", color="green", linestyle=linestyle, zorder=2.5)
+        ax1.plot(pos_prop.y[0], pos_prop.y[1],label=label_manifold+" -", color=color, linestyle=linestyle, zorder=2.5)
         neg_prop = solve_ivp(spatial_ode, neg_tspan, IC_neg, args=(mu,), rtol=1e-12,atol=1e-14)
-        ax1.plot(neg_prop.y[0], neg_prop.y[1], color="green", linestyle=linestyle, zorder=2.5)
+        ax1.plot(neg_prop.y[0], neg_prop.y[1], color=color, linestyle=linestyle, zorder=2.5)
 
 
 plt.legend(ncol=3,framealpha=1)
