@@ -22,7 +22,7 @@ mu_2BP = mu_Earth
 df_eigenvalues = pd.DataFrame()
 df_stability = pd.DataFrame()
 df_initial_conditions = pd.DataFrame()
-for altitude in [400, 500, 2000, 10000]:
+for altitude in [5*r_Earth - r_Earth, 500, 2000, 10000]:
     a = r_Earth + altitude
     r = a
     v0 = (mu_2BP/r)**(1/2) 
@@ -50,7 +50,7 @@ for altitude in [400, 500, 2000, 10000]:
     stm_half = half_period_prop.y[6:42,-1].reshape(6,6)
     monodromy_full = full_period_prop.y[6:42,-1].reshape(6,6)
     # monodromy_half = calc_spatial_monodromy_half(stm_half)
-    pdb.set_trace()
+    # pdb.set_trace()
     np.set_printoptions(threshold=sys.maxsize)
     # eigenvalues = np.linalg.eigvals(monodromy_full)
     eigenvalues = np.linalg.eigvals(monodromy_full)

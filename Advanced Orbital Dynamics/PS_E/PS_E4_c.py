@@ -41,8 +41,8 @@ eigenvalues, eigenvectors = np.linalg.eig(A)
 # Plot eigenvectors
 fig1 = plt.figure()
 ax1 = fig1.add_subplot()
-# ax1.scatter(x_L1, y_L1, s=20, label="L1", color="red")
-ax1.scatter(x_Moon, 0, s=20, label="Moon", color="gray")
+ax1.scatter(x_L1, y_L1, s=25, label="L1", color="purple")
+ax1.scatter(x_Moon, 0, s=30, label="Moon", color="gray")
 for i in range(0,6):
     if i==0 or i==1:
         print(f"vector {i+1} i-comp: {eigenvectors[:,i][0].real[0,0]}")
@@ -51,29 +51,29 @@ for i in range(0,6):
             label=f"$E^S$"
             linestyle="solid"
             label_point="$x_S^+$"
-            label_manifold="$W_{{loc}}^S+$"
+            label_manifold="$W_{{loc}}^S$"
             color="blue"
         elif i==1:
             label=f"$E^U$"
             linestyle="dashed"
             label_point="$x_U^+$"
-            label_manifold="$W_{{loc}}^U+$"
+            label_manifold="$W_{{loc}}^U$"
             color="red"
         x_eig = x_L1 + eigenvectors[:,i][0].real[0,0]
         y_eig = y_L1 + eigenvectors[:,i][1].real[0,0]
         nu_W = eigenvectors[:,i]/np.linalg.norm(eigenvectors[:,i][0:3])
         scaled_nu_W = d_val*nu_W
-        x0 = x_L1 + scaled_nu_W[0].real[0,0]
-        y0 = y_L1 + scaled_nu_W[1].real[0,0]
-        vx0 = scaled_nu_W[3].real[0,0]
-        vy0 = scaled_nu_W[4].real[0,0]
+        x0_pos = x_L1 + scaled_nu_W[0].real[0,0]
+        y0_pos = y_L1 + scaled_nu_W[1].real[0,0]
+        vx0_pos = scaled_nu_W[3].real[0,0]
+        vy0_pos = scaled_nu_W[4].real[0,0]
         # check the distance from eq
-        check_distance = np.linalg.norm(np.array([[x0-x_L1],[y0-y_L1]]))*l_char
+        check_distance = np.linalg.norm(np.array([[x0_pos-x_L1],[y0_pos-y_L1]]))*l_char
         print(f"Check distance!: {check_distance}")
         ax1.axline((x_L1,y_L1), (x_eig,y_eig), label=label,linestyle=linestyle)
-        ax1.scatter(x0, y0, label=label_point, s=10,zorder=3)
-        IC = [
-            x0,y0,0,vx0,vy0,0,# IC states
+        # ax1.scatter(x0_pos, y0_pos, label=label_point, s=10,zorder=3)
+        IC_pos = [
+            x0_pos,y0_pos,0,vx0_pos,vy0_pos,0,# IC states
             1,0,0,0,0,0, # Identity matrix for phi ICs
             0,1,0,0,0,0,
             0,0,1,0,0,0,
@@ -81,12 +81,31 @@ for i in range(0,6):
             0,0,0,0,1,0,
             0,0,0,0,0,1
         ]
-        pos_prop = solve_ivp(spatial_ode, pos_tspan, IC, args=(mu,), rtol=1e-12,atol=1e-14)
-        ax1.plot(pos_prop.y[0], pos_prop.y[1],label=label_manifold+" +", color=color,zorder=2.5)
-        neg_prop = solve_ivp(spatial_ode, neg_tspan, IC, args=(mu,), rtol=1e-12,atol=1e-14)
-        ax1.plot(neg_prop.y[0], neg_prop.y[1],label=label_manifold+ "-", color=color,zorder=2.5)
+        pos_prop = solve_ivp(spatial_ode, pos_tspan, IC_pos, args=(mu,), rtol=1e-12,atol=1e-14)
+        ax1.plot(pos_prop.y[0], pos_prop.y[1],label=label_manifold+" +", color=color, linestyle=linestyle, zorder=2.5)
+        neg_prop = solve_ivp(spatial_ode, neg_tspan, IC_pos, args=(mu,), rtol=1e-12,atol=1e-14)
+        ax1.plot(neg_prop.y[0], neg_prop.y[1], color=color, linestyle=linestyle, zorder=2.5)
+        # Now do the other sides of the manifolds
+        x0_neg = x_L1 - scaled_nu_W[0].real[0,0]
+        y0_neg = y_L1 - scaled_nu_W[1].real[0,0]
+        vx0_neg = -scaled_nu_W[3].real[0,0]
+        vy0_neg = -scaled_nu_W[4].real[0,0]
+        IC_neg = [
+            x0_neg,y0_neg,0,vx0_neg,vy0_neg,0,# IC states
+            1,0,0,0,0,0, # Identity matrix for phi ICs
+            0,1,0,0,0,0,
+            0,0,1,0,0,0,
+            0,0,0,1,0,0,
+            0,0,0,0,1,0,
+            0,0,0,0,0,1
+        ]
+        pos_prop = solve_ivp(spatial_ode, pos_tspan, IC_neg, args=(mu,), rtol=1e-12,atol=1e-14)
+        ax1.plot(pos_prop.y[0], pos_prop.y[1],label=label_manifold+" -", color=color, linestyle=linestyle, zorder=2.5)
+        neg_prop = solve_ivp(spatial_ode, neg_tspan, IC_neg, args=(mu,), rtol=1e-12,atol=1e-14)
+        ax1.plot(neg_prop.y[0], neg_prop.y[1], color=color, linestyle=linestyle, zorder=2.5)
 
-plt.legend()
+
+plt.legend(ncol=3)
 lim=1e-4
 ax1.axis('equal')
 # ax1.set(xlim=(-lim,lim),ylim=(-lim,lim))
