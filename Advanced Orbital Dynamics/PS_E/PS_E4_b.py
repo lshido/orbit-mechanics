@@ -3,18 +3,8 @@ ps = "E4 part b"
 # Date: 11/9/2025
 
 import pdb
-import copy
 import numpy as np
-import pandas as pd
-from math import pi, sqrt
-from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-from matplotlib.collections import LineCollection
-import matplotlib.colors as mcolors
-from scipy import stats
-from great_tables import GT, md, html, style, loc, system_fonts
-from pypalettes import load_cmap
 
 from constants import mu_Earth, mu_Moon, a_Moon
 from methods import system_properties, calc_L1, build_A_matrix_collinear

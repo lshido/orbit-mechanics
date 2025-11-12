@@ -1,22 +1,15 @@
 ps = "E1 part a"
-# Problem D4 Part b iii
 # Author: Lillian Shido
 # Date: 10/26/2025
 
-import pdb
-import copy
 from constants import mu_Earth, mu_Moon, a_Moon
 import numpy as np
 import pandas as pd
 from math import pi, sqrt
 from scipy.integrate import solve_ivp
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-from matplotlib.collections import LineCollection
-import matplotlib.colors as mcolors
-from scipy import stats
-from great_tables import GT, md, html, style, loc, system_fonts
-from pypalettes import load_cmap
+
+from great_tables import GT, md, system_fonts
+
 
 mu = mu_Moon/(mu_Earth + mu_Moon)
 
@@ -259,21 +252,6 @@ starting_y = y_L1 + eta
 starting_xdot = xi_dot_0
 ydot_guess = eta_dot_0
 
-# test_IC = [
-#     0.84692, 0, 0, -0.07824,
-#     1,0,0,0, # Identity matrix for phi ICs
-#     0,1,0,0,
-#     0,0,1,0,
-#     0,0,0,1,
-# ]
-
-# # Try running for just one run using these ICs above
-# # test_prop_planar = solve_ivp(ode, [0, 2*pi], test_IC, args=(mu,), rtol=1e-12,atol=1e-14)
-# test_prop_planar = solve_ivp(ode, [0, 2.70923], test_IC, args=(mu,), rtol=1e-12,atol=1e-14)
-# plt.plot(test_prop_planar.y[0],test_prop_planar.y[1])
-# plt.show()
-# pdb.set_trace()
-
 iterations, tf, arrival_states, converged_initial_states = find_halfperiod(starting_x, ydot_guess, mu, tolerance=1e-12)
 
 IC = [
@@ -286,7 +264,6 @@ IC = [
 # Monodromy matrix from full period
 full_period_prop = solve_ivp(ode, [0, 2*tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
 monodromy_full = full_period_prop.y[4:20,-1].reshape(4,4)
-pdb.set_trace()
 
 # Monodromy matrix from half period
 half_period_prop = solve_ivp(ode, [0, tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
@@ -327,7 +304,13 @@ df_eigenvalues = pd.DataFrame({
     "eig_3":[eigenvalues[2]],
     "eig_4":[eigenvalues[3]],
 })
-pdb.set_trace
+
+
+df_eigenvalue_error = pd.DataFrame({
+    "error_pair_1":[abs(eigenvalues[0]*eigenvalues[1]-1)],
+    "error_pair_2":[abs(eigenvalues[2]*eigenvalues[3]-1)]
+})
+
 
 df_poincare_exponents = pd.DataFrame({
     "pe_1":[calc_poincare_exponents(eigenvalues[0],2*tf)],
@@ -336,54 +319,24 @@ df_poincare_exponents = pd.DataFrame({
     "pe_4":[calc_poincare_exponents(eigenvalues[3],2*tf)],
 })
 
-pdb.set_trace()
 
 # # Configure det error table
 # columns = [
-# "eig_1", "eig_2", "eig_3", "eig_4"]
-pe_table = (
-    GT(df_poincare_exponents)
-    .tab_header(
-        title=md(f"Poincaré Exponents<br>({ps}, Lillian Shido)")
-    )
-    .cols_label(
-        pe_1="{{:omega:_1}}",
-        pe_2="{{:omega:_2}}",
-        pe_3="{{:omega:_3}}",
-        pe_4="{{:omega:_4}}"
-    )
-    .fmt_number(
-        columns=["pe_1", "pe_2", "pe_3", "pe_4"],
-        decimals=5
-    )
-    .cols_align(
-        align="center"
-    )
-    .opt_table_outline()
-    .opt_stylize()
-    .opt_table_font(font=system_fonts(name="industrial"))
-    .opt_horizontal_padding(scale=2)
-)
-pe_table.show()
-
-
-# # # Configure det error table
-# # columns = [
 # # "eig_1", "eig_2", "eig_3", "eig_4"]
-# eig_table = (
-#     GT(df_eigenvalues)
+# pe_table = (
+#     GT(df_poincare_exponents)
 #     .tab_header(
-#         title=md(f"Eigenvalues of the Monodromy Matrix<br>({ps}, Lillian Shido)")
+#         title=md(f"Poincaré Exponents<br>({ps}, Lillian Shido)")
 #     )
 #     .cols_label(
-#         eig_1="{{:lambda:_1}}",
-#         eig_2="{{:lambda:_2}}",
-#         eig_3="{{:lambda:_3}}",
-#         eig_4="{{:lambda:_4}}"
+#         pe_1="{{:omega:_1}}",
+#         pe_2="{{:omega:_2}}",
+#         pe_3="{{:omega:_3}}",
+#         pe_4="{{:omega:_4}}"
 #     )
-#     .fmt_scientific(
-#         columns=["eig_1", "eig_2", "eig_3", "eig_4"],
-#         decimals=9
+#     .fmt_number(
+#         columns=["pe_1", "pe_2", "pe_3", "pe_4"],
+#         decimals=5
 #     )
 #     .cols_align(
 #         align="center"
@@ -393,8 +346,30 @@ pe_table.show()
 #     .opt_table_font(font=system_fonts(name="industrial"))
 #     .opt_horizontal_padding(scale=2)
 # )
-# eig_table.show()
+# pe_table.show()
 
+eig_error_table = (
+    GT(df_eigenvalue_error)
+    .tab_header(
+        title=md(f"Eigenvalue Error<br>({ps}, Lillian Shido)")
+    )
+    .cols_label(
+        error_pair_1="{{(:lambda:_1, :lambda:_2)}} Pair<br>[non-dim]",
+        error_pair_2="{{(:lambda:_3, :lambda:_4)}} Pair<br>[non-dim]"
+    )
+    .fmt_scientific(
+        columns=["error_pair_1","error_pair_2"],
+        decimals=7
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+eig_error_table.show()
 
 # # Configure tables
 # # Configure det error table

@@ -1,6 +1,4 @@
 ps = "E1 part b"
-# Continuation Algorithm: Natural Parameter Process with Dynamic Step Sizes
-# Problem E1 part b
 # Author: Lillian Shido
 # Date: 10/26/2025
 
@@ -11,14 +9,14 @@ from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from matplotlib.collections import LineCollection
-import matplotlib.colors as mcolors
-import matplotlib.patches as patches
-from great_tables import GT, md, html, style, loc, system_fonts
+from matplotlib.lines import Line2D
+
+from great_tables import GT, md, system_fonts
 from pypalettes import load_cmap
 from math import isclose
 
 from constants import mu_Earth, mu_Moon, a_Moon
-from methods import system_properties, calc_L1, calc_initial_velocities, find_halfperiod, calc_Jacobi, planar_ode, calc_poincare_exponents, calc_monodromy_half
+from methods import system_properties, calc_L1, calc_initial_velocities, find_halfperiod, calc_Jacobi, planar_ode, calc_poincare_exponents, calc_planar_monodromy_half
 
 mu = mu_Moon/(mu_Earth + mu_Moon)
 
@@ -225,7 +223,7 @@ for enum, orbit in enumerate(df_orbits.iterrows()):
     full_period_prop = solve_ivp(planar_ode, [0, 2*tf], IC, args=(mu,), rtol=1e-13,atol=1e-14)
     half_period_prop = solve_ivp(planar_ode, [0, tf], IC, args=(mu,), rtol=1e-13,atol=1e-14)
     stm_half = half_period_prop.y[4:20,-1].reshape(4,4)
-    monodromy_half = calc_monodromy_half(stm_half)
+    monodromy_half = calc_planar_monodromy_half(stm_half)
     # monodromy_full = full_period_prop.y[4:20,-1].reshape(4,4)
     eigenvalues = np.linalg.eigvals(monodromy_half)
     # eigenvalues = np.linalg.eigvals(monodromy_full)
@@ -268,6 +266,7 @@ for enum, orbit in enumerate(df_orbits.iterrows()):
         "orbit":[enum],
         "xi":[xi0],
         "period":[2*tf],
+        "jacobi":[jacobi],
         "eig_1":[eigenvalues[0]],
         "eig_1_abs":[abs(eigenvalues[0])],
         "eig_2":[eigenvalues[1]],
@@ -326,6 +325,53 @@ ax1.tick_params(axis='both', which='major', labelsize=6)
 ax1.set_title(f'Lyapunovs near L1 starting from $\\xi$={xi:.2f}, $\\eta$={eta}\nwith predicted $\dot{{y_0}}$, Dynamic $\\Delta{{x}}$ ({ps}, Lillian Shido)')
 plt.savefig(f'Lyapunov_family_{ps}.png', dpi=300, bbox_inches='tight')
 
+# Plot eigs
+fig1 = plt.figure()
+ax5 = fig1.add_subplot(1,2,1)
+ax6 = fig1.add_subplot(1,2,2)
+ax5.xaxis.set_major_locator(ticker.MultipleLocator(500))
+ax5.yaxis.set_major_locator(ticker.MultipleLocator(500))
+ax6.yaxis.set_major_locator(ticker.MultipleLocator(0.02))
+circle_outline = plt.Circle((0, 0), 1, fill=False, edgecolor='black', linewidth=1, linestyle='dashed',zorder=1.5)
+for row in df_eigenvalues_float.iterrows():
+    for i in range(1,5):
+        if np.isclose(np.linalg.norm(row[1][f'eig_{i}']),1,atol=1e-6):
+            continue
+        else:
+            # if np.linalg.norm(row[1][f'eig_{i}']) < 1.01 and np.linalg.norm(row[1][f'eig_{i}']) > 1/1.01:
+            # if not np.isreal(np.linalg.norm(row[1][f'eig_{i}'])):
+            # if abs(row[1][f'eig_{i}'].imag)<1e-8:
+            ax5.scatter(row[1][f'eig_{i}'].real, row[1][f'eig_{i}'].imag, color=colors[row[1]['orbit']])
+            ax5.annotate(row[1]['orbit'], [row[1][f'eig_{i}'].real, row[1][f'eig_{i}'].imag])
+            # else:
+            # ax6.scatter(row[1]['jacobi'], row[1][f'eig_{i}'].real, color=colors[row[1]['orbit']])
+            ax6.scatter(row[1][f'eig_{i}'].real, row[1]['jacobi'], color=colors[row[1]['orbit']])
+            ax6.annotate(row[1]['orbit'],[row[1]['jacobi'], row[1][f'eig_{i}'].real])
+plt.legend(ncol=2,framealpha=1)
+lim=4e-4
+ax5.axis('equal')
+legend_elements = [Line2D([0],[0], color=colors[row[1]['orbit']], label=rf"JC={row[1]['jacobi']:.3f}") for row in df_eigenvalues.iterrows()]
+fig1.legend(handles=legend_elements, loc='outside right lower')
+# ax6.legend(handles=legend_elements, loc='outside left upper')
+# ax5.set_aspect(aspect=1, adjustable="box")
+# ax5.set(xlim=(x_L1-lim, x_L1+lim),ylim=(-lim,lim))
+ax5.set_title('Eigenvalues on the Complex Plane')
+ax5.set_xlabel("Real")
+ax5.set_ylabel("Imaginary")
+ax5.add_artist(circle_outline)
+ax6.set_title('Eigenvalues on a log scale')
+ax6.set_xscale('log')
+ax6.set_ylabel("JC")
+ax6.set_xlabel(r'$\lambda$')
+# ax6.set(yticks=[2e2,4e2,6e2,8e2,1e3,2e3], yticklabels=[r"$2x10^2$",r"$4x10^2$",r"$6x10^2$",r"$8x10^2$",r"$1x10^3$",r"$2x10^3$"]) 
+# plt.colorbar(sc)
+fig1.suptitle(rf"Eigenvalues for each $\xi$ ({ps}, Lillian Shido)")
+ax5.grid()
+ax6.grid()
+plt.savefig(f'eigs_complex_{ps}.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+
 # Plot JC as a function of x0
 fig3, ax3 = plt.subplots()
 ax4 = ax3.twinx()
@@ -338,6 +384,8 @@ ax4.set_ylabel("Period\n[non-dim]")
 ax3.set_title(rf'Jacobi Constant and Period as a function of ${{x_0}}$'f'\n({ps}, Lillian Shido)')
 fig3.legend(loc="upper right", bbox_to_anchor=(1,1), bbox_transform=ax3.transAxes,fontsize=6)
 plt.savefig(f'JC_period_wrt_x0_{ps}.png', dpi=300, bbox_inches='tight')
+
+
 
 # Make a table with just the non-unity pairs
 df_stability_index = pd.DataFrame(columns=[
@@ -368,6 +416,18 @@ for enum, row in enumerate(df_eigenvalues_float.iterrows()):
     df_stability_index = pd.concat([df_stability_index, stability_data], ignore_index=True)
 
 df_jc_period_stability = df_jc_period[['orbit','xi','x0','period','jacobi']].join(df_stability_index[['stability']])
+# Plot JC as a function of x0
+fig7, ax7 = plt.subplots()
+ax8 = ax7.twinx()
+ax7.scatter(df_jc_period_stability['stability'].apply(lambda x: complex(x)).apply(lambda x: x.real),df_jc_period_stability['jacobi'], label="Jacobi Constant", color="blue")
+ax8.scatter(df_jc_period_stability['stability'].apply(lambda x: complex(x)).apply(lambda x: x.real),df_jc_period_stability['period'], label="Period", color="red")
+plt.grid()
+ax7.set_xlabel("Stability Index")
+ax7.set_ylabel(r"Jacobi Constant")
+ax8.set_ylabel("Period\n[non-dim]")
+ax7.set_title(rf'Jacobi Constant and Period as a function of Stability'+f'\n({ps}, Lillian Shido)')
+fig7.legend(loc="upper right", bbox_to_anchor=(1,1), bbox_transform=ax7.transAxes,fontsize=6)
+plt.savefig(f'JC_period_wrt_stability_{ps}.png', dpi=300, bbox_inches='tight')
 
 # eig_table = (
 #     GT(df_eigenvalues)

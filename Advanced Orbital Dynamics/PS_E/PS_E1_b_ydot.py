@@ -11,9 +11,8 @@ from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from matplotlib.collections import LineCollection
-import matplotlib.colors as mcolors
-import matplotlib.patches as patches
-from great_tables import GT, md, html, style, loc, system_fonts
+from matplotlib.lines import Line2D
+from great_tables import GT, md, system_fonts
 from pypalettes import load_cmap
 from math import isclose
 
@@ -117,7 +116,6 @@ for orbit in range(11):
         })
         df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
 
-pdb.set_trace()
 # Table iterations each orbit takes to converge
 df_orbit_iterations = df_orbits[['orbit','xi','iterations']]
 
@@ -338,32 +336,50 @@ for enum, row in enumerate(df_eigenvalues_float.iterrows()):
     })
     df_stability_index = pd.concat([df_stability_index, stability_data], ignore_index=True)
 
-# Plot unit circles
-fig2, axes = plt.subplots(len(df_eigenvalues_comp), 4, figsize=(6.5,8))
-unit_circle = patches.Circle((0,0),1, ec="black", ls="--")
-for enum, row in enumerate(df_eigenvalues_comp.iterrows()):
-    axes[enum,0].scatter(row[1]["eig_1_real"], row[1]["eig_1_imag"], s=5)
-    axes[enum,0].set_title(f"{row[1]["xi"]:.3f} $\\lambda_1$", fontsize=8)
-    # axes[enum,0].autoscale()
-    # axes[enum,0].add_patch(unit_circle)
-    axes[enum,1].scatter(row[1]["eig_2_real"], row[1]["eig_2_imag"], s=5)
-    axes[enum,1].set_title(f"{row[1]["xi"]:.3f} $\\lambda_2$", fontsize=8)
-    # axes[enum,1].autoscale()
-    # axes[enum,1].add_patch(unit_circle)
-    axes[enum,2].scatter(row[1]["eig_3_real"], row[1]["eig_3_imag"], s=5)
-    axes[enum,2].set_title(f"{row[1]["xi"]:.3f} $\\lambda_3$", fontsize=8)
-    # axes[enum,2].autoscale()
-    # axes[enum,2].add_patch(unit_circle)
-    axes[enum,3].scatter(row[1]["eig_4_real"], row[1]["eig_4_imag"], s=5)
-    axes[enum,3].set_title(f"{row[1]["xi"]:.3f} $\\lambda_4$", fontsize=8)
-    # axes[enum,3].autoscale()
-    # axes[enum,3].add_patch(unit_circle)
-for ax in axes.flat:
-    ax.tick_params(axis="both", labelsize=8)
-    ax.set_xlim([-1,1])
-    ax.set_ylim([-1,1])
-    ax.set_aspect('equal', 'box')
-fig2.savefig(f'Eigenvalues on the unit circle_{ps}.png', dpi=300, bbox_inches='tight')
+# Plot eigs
+fig1 = plt.figure()
+ax1 = fig1.add_subplot(1,2,1)
+ax2 = fig1.add_subplot(1,2,2)
+ax1.xaxis.set_major_locator(ticker.MultipleLocator(500))
+ax1.yaxis.set_major_locator(ticker.MultipleLocator(500))
+ax2.yaxis.set_major_locator(ticker.MultipleLocator(1e1))
+circle_outline = plt.Circle((0, 0), 1, fill=False, edgecolor='black', linewidth=1, linestyle='dashed',zorder=1.5)
+for row in df_eigenvalues_float.iterrows():
+    for i in range(1,5):
+        if np.isclose(np.linalg.norm(row[1][f'eig_{i}']),1,atol=1e-6):
+            continue
+        else:
+            # if np.linalg.norm(row[1][f'eig_{i}']) < 1.01 and np.linalg.norm(row[1][f'eig_{i}']) > 1/1.01:
+            # if not np.isreal(np.linalg.norm(row[1][f'eig_{i}'])):
+            # if abs(row[1][f'eig_{i}'].imag)<1e-8:
+            ax1.scatter(row[1][f'eig_{i}'].real, row[1][f'eig_{i}'].imag, color=colors[row[1]['orbit']])
+            ax1.annotate(row[1]['orbit'], [row[1][f'eig_{i}'].real, row[1][f'eig_{i}'].imag])
+            # else:
+            ax2.scatter(row[1]['xi'], row[1][f'eig_{i}'].real, color=colors[row[1]['orbit']])
+            ax2.annotate(row[1]['orbit'],[row[1]['xi'], row[1][f'eig_{i}'].real])
+plt.legend(ncol=2,framealpha=1)
+lim=4e-4
+ax1.axis('equal')
+legend_elements = [Line2D([0],[0], color=colors[row[1]['orbit']], label=rf"$\xi$={row[1]['xi']:.3f}") for row in df_eigenvalues.iterrows()]
+fig1.legend(handles=legend_elements, loc='outside right lower')
+# ax2.legend(handles=legend_elements, loc='outside left upper')
+# ax1.set_aspect(aspect=1, adjustable="box")
+# ax1.set(xlim=(x_L1-lim, x_L1+lim),ylim=(-lim,lim))
+ax1.set_title('Eigenvalues on the Complex Plane')
+ax1.set_xlabel("Real")
+ax1.set_ylabel("Imaginary")
+ax1.add_artist(circle_outline)
+ax2.set_title('Eigenvalues on a log scale')
+ax2.set_yscale('log')
+ax2.set_xlabel(r"$\xi$")
+ax2.set_ylabel(r'$\lambda$')
+# ax2.set(yticks=[2e2,4e2,6e2,8e2,1e3,2e3], yticklabels=[r"$2x10^2$",r"$4x10^2$",r"$6x10^2$",r"$8x10^2$",r"$1x10^3$",r"$2x10^3$"]) 
+# plt.colorbar(sc)
+fig1.suptitle(rf"Eigenvalues for each $\xi$ ({ps}, Lillian Shido)")
+ax1.grid()
+ax2.grid()
+plt.savefig(f'eigs_complex_{ps}.png', dpi=300, bbox_inches='tight')
+plt.show()
 
 # eig_abs_table = (
 #     GT(df_eigenvalues_abs)

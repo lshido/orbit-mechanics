@@ -6,18 +6,16 @@ import pdb
 import math
 import numpy as np
 import pandas as pd
-from math import pi, sqrt
+from math import pi
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from matplotlib.collections import LineCollection
 import matplotlib.colors as mcolors
-from scipy import stats
-from great_tables import GT, md, html, style, loc, system_fonts
-from pypalettes import load_cmap
+from great_tables import GT, md, system_fonts
 
 from constants import mu_Earth, mu_Moon, a_Moon
-from methods import system_properties, calc_L1, build_A_matrix_collinear, spatial_ode
+from methods import system_properties, calc_L1, build_A_matrix_collinear, spatial_ode, calc_spatial_Jacobi
 
 import warnings
 warnings.filterwarnings("ignore",category=PendingDeprecationWarning)
@@ -28,14 +26,15 @@ mu = mu_Moon/(mu_Earth + mu_Moon)
 # Properties of the system
 mu, l_char, t_char, x_Earth, x_Moon = system_properties(mu_Earth, mu_Moon, a_Moon)
 x_L1, y_L1 = calc_L1(mu, a_Moon)
+jacobi_L1 = calc_spatial_Jacobi(mu, x_L1, y_L1, 0, 0, 0, 0)
 
 # Determine the stable and unstable manifolds 
-d_dim = 30 #[km]
+d_dim = 0.1 #[km]
 d_val = d_dim/l_char #[non-dim]
 print(d_val)
-tf = 1*pi
-pos_tspan = [0,tf]
-neg_tspan = [0,-tf]
+tf = 2
+pos_tspan = [0,tf*pi]
+neg_tspan = [0,-tf*pi]
 
 A = build_A_matrix_collinear(mu, x_L1, y_L1, 0)
 eigenvalues, eigenvectors = np.linalg.eig(A)
@@ -114,8 +113,8 @@ for i in range(0,6):
             0,0,0,0,1,0,
             0,0,0,0,0,1
         ]
-        pos_prop = solve_ivp(spatial_ode, pos_tspan, IC_neg, args=(mu,), rtol=1e-12,atol=1e-14)
-        ax1.plot(pos_prop.y[0], pos_prop.y[1],label=label_manifold+" -", color="red", linestyle=linestyle, zorder=2.5)
+        minus_prop = solve_ivp(spatial_ode, pos_tspan, IC_neg, args=(mu,), rtol=1e-12,atol=1e-14)
+        ax1.plot(minus_prop.y[0], minus_prop.y[1],label=label_manifold+" -", color=color, linestyle=linestyle, zorder=2.5)
         # neg_prop = solve_ivp(spatial_ode, neg_tspan, IC_neg, args=(mu,), rtol=1e-12,atol=1e-14)
         # ax1.plot(neg_prop.y[0], neg_prop.y[1], color="red", linestyle=linestyle, zorder=2.5)
         tau_pos_prop = solve_ivp(spatial_ode, [0, tau.real], IC_pos, args=(mu,), rtol=1e-12,atol=1e-14)
@@ -123,6 +122,9 @@ for i in range(0,6):
         tau_neg_prop = solve_ivp(spatial_ode, [0, tau.real], IC_neg, args=(mu,), rtol=1e-12,atol=1e-14)
         ax1.scatter(tau_neg_prop.y[0], tau_neg_prop.y[1], marker="*", color="blue", zorder=3)
         
+        plus_jacobi = calc_spatial_Jacobi(mu, pos_prop.y[0,-1], pos_prop.y[1,-1], pos_prop.y[2,-1], pos_prop.y[3,-1],pos_prop.y[4,-1],pos_prop.y[5,-1])
+        minus_jacobi = calc_spatial_Jacobi(mu, minus_prop.y[0,-1], minus_prop.y[1,-1], minus_prop.y[2,-1], minus_prop.y[3,-1],minus_prop.y[4,-1],minus_prop.y[5,-1])
+
         distance_pos = 0
         distance_neg = 0
         for m in range(len(tau_pos_prop.y[0])):
@@ -159,11 +161,16 @@ df_error = pd.DataFrame({
     'error_neg_nondim':[abs((distance_neg*l_char +d_dim) - d_dim*math.e)/l_char]
 })
 
+df_jacobi_error = pd.DataFrame({
+    'error_jacobi_plus':[abs(jacobi_L1-plus_jacobi)],
+    'error_jacobi_minus':[abs(jacobi_L1-minus_jacobi)]
+})
+
 plt.legend(ncol=2,framealpha=1)
 lim=4e-4
 # ax1.axis('equal')
 ax1.set_aspect(aspect=1)
-ax1.set(xlim=(x_L1-lim, x_L1+lim),ylim=(-lim,lim))
+# ax1.set(xlim=(x_L1-lim, x_L1+lim),ylim=(-lim,lim))
 ax1.set_xlabel("x [non-dim]")
 ax1.set_ylabel("y [non-dim]")
 plt.title(f"Time Constant along Unstable Half-Manifolds\n({ps}, Lillian Shido)")
@@ -207,7 +214,7 @@ time_constant_table.show()
 error_table = (
     GT(df_error)
     .tab_header(
-        title=md(f"Error in Predicted vs. Propagated Distance from L1 at t=tau<br>({ps}, Lillian Shido)")
+        title=md(f"Error in Predicted vs. Propagated Distance from L1 at t=tau for d={d_dim} km<br>({ps}, Lillian Shido)")
     )
     .tab_spanner(
         label="Dimensional Error",
@@ -237,6 +244,28 @@ error_table = (
 )
 error_table.show()
 
+jacobi_error_table = (
+    GT(df_jacobi_error)
+    .tab_header(
+        title=md(f"Error in Jacobi Constant for d={d_dim} km<br>t={tf}*pi ({ps}, Lillian Shido)")
+    )
+    .cols_label(
+        error_jacobi_plus="{{Plus(+) Direction}}<br>[non-dim]",
+        error_jacobi_minus="{{Minus(-) Direction}}<br>[non-dim]"
+    )
+    .fmt_scientific(
+        columns=["error_jacobi_plus","error_jacobi_minus"],
+        n_sigfig=6
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+jacobi_error_table.show()
 
 
 

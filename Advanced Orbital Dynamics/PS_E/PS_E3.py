@@ -3,17 +3,15 @@ ps = "E3"
 # Date: 11/6/2025
 
 import sys
-import pdb
 import numpy as np
 import pandas as pd
-from math import pi, sqrt
+from math import pi
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-from great_tables import GT, md, html, style, loc, system_fonts
+from great_tables import GT, md, system_fonts
 
 from constants import r_Earth, mu_Earth
-from methods import spatial_2bp_ode, calc_spatial_monodromy_half, calc_stability_index
+from methods import spatial_2bp_ode, calc_stability_index
 
 # Circular orbit about Earth
 e = 0
@@ -49,10 +47,6 @@ for altitude in [5*r_Earth - r_Earth, 500, 2000, 10000]:
     half_period_prop = solve_ivp(spatial_2bp_ode, [0, period/2], IC, args=(mu_2BP,r), rtol=1e-13,atol=1e-14)
     stm_half = half_period_prop.y[6:42,-1].reshape(6,6)
     monodromy_full = full_period_prop.y[6:42,-1].reshape(6,6)
-    # monodromy_half = calc_spatial_monodromy_half(stm_half)
-    # pdb.set_trace()
-    np.set_printoptions(threshold=sys.maxsize)
-    # eigenvalues = np.linalg.eigvals(monodromy_full)
     eigenvalues = np.linalg.eigvals(monodromy_full)
     print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in monodromy_full]))
     eigenvalues_data = pd.DataFrame({
@@ -91,13 +85,8 @@ for altitude in [5*r_Earth - r_Earth, 500, 2000, 10000]:
         "stability_3":[calc_stability_index(eigenvalues[4],eigenvalues[5])]
     })
     df_stability = pd.concat([df_stability, stability_data], ignore_index=True)
-# monodromy = calc_spatial_monodromy_half(stm_half)
 
 fig, ax = plt.subplots()
-# ax.xaxis.set_major_locator(ticker.MultipleLocator(50))
-# ax.yaxis.set_major_locator(ticker.MultipleLocator(50))
-# ax.xaxis.set_minor_locator(ticker.MultipleLocator(25))
-# ax.yaxis.set_minor_locator(ticker.MultipleLocator(25))
 ax.plot(full_period_prop.y[0], full_period_prop.y[1], label='orbit')
 ax.axis('equal')
 ax.set(xlim=(-10000, 10000), ylim=(-10000,10000))

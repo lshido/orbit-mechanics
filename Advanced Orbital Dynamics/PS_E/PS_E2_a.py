@@ -47,7 +47,7 @@ IC = [
     0,0,0,0,1,0,
     0,0,0,0,0,1
 ]
-
+pdb.set_trace()
 # Monodromy matrix from half period
 half_period_prop = solve_ivp(spatial_ode, [0, tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
 stm_half = half_period_prop.y[6:42,-1].reshape(6,6)

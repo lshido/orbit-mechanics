@@ -1,6 +1,4 @@
 ps = "E2 part c"
-# Continuation Algorithm: Natural Parameter Process with Dynamic Step Sizes
-# Problem E1 part b
 # Author: Lillian Shido
 # Date: 10/26/2025
 
@@ -12,7 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from matplotlib.collections import LineCollection
 import matplotlib.colors as mcolors
-import matplotlib.patches as patches
+from matplotlib.lines import Line2D
 from great_tables import GT, md, html, style, loc, system_fonts
 from pypalettes import load_cmap
 from math import isclose
@@ -297,6 +295,48 @@ ax1.tick_params(axis='both', which='major', labelsize=6)
 ax1.set_title(f'Lyapunovs near L1 starting from $\\xi$={xi:.2f}, $\\eta$={eta}\n({ps}, Lillian Shido)')
 plt.savefig(f'Lyapunov_family_{ps}.png', dpi=300, bbox_inches='tight')
 
+
+# Plot eigs
+fig1 = plt.figure()
+ax1 = fig1.add_subplot(1,2,1)
+ax2 = fig1.add_subplot(1,2,2)
+ax1.xaxis.set_major_locator(ticker.MultipleLocator(0.5))
+ax1.yaxis.set_major_locator(ticker.MultipleLocator(0.5))
+ax2.yaxis.set_major_locator(ticker.MultipleLocator(1e1))
+circle_outline = plt.Circle((0, 0), 1, fill=False, edgecolor='black', linewidth=1, linestyle='dashed',zorder=1.5)
+for row in df_eigenvalues.iterrows():
+    for i in range(1,7):
+        if np.linalg.norm(row[1][f'eig_{i}']) < 1.01 and np.linalg.norm(row[1][f'eig_{i}']) > 1/1.01:
+        # if not np.isreal(np.linalg.norm(row[1][f'eig_{i}'])):
+        # if abs(row[1][f'eig_{i}'].imag)<1e-8:
+            sc = ax1.scatter(row[1][f'eig_{i}'].real, row[1][f'eig_{i}'].imag, color=colors[row[1]['orbit']])
+            ax1.annotate(row[1]['orbit'], [row[1][f'eig_{i}'].real, row[1][f'eig_{i}'].imag])
+        else:
+            ax2.scatter(row[1]['xi'], row[1][f'eig_{i}'].real, color=colors[row[1]['orbit']])
+            ax2.annotate(row[1]['orbit'],[row[1]['xi'], row[1][f'eig_{i}'].real])
+plt.legend(ncol=2,framealpha=1)
+lim=4e-4
+ax1.axis('equal')
+legend_elements = [Line2D([0],[0], color=colors[row[1]['orbit']], label=rf"$\xi$={row[1]['xi']:.3f}") for row in df_eigenvalues.iterrows()]
+fig1.legend(handles=legend_elements, loc='outside right lower')
+# ax2.legend(handles=legend_elements, loc='outside left upper')
+# ax1.set_aspect(aspect=1, adjustable="box")
+# ax1.set(xlim=(x_L1-lim, x_L1+lim),ylim=(-lim,lim))
+ax1.set_title('Complex Eigenvalues')
+ax1.set_xlabel("Real")
+ax1.set_ylabel("Imaginary")
+ax1.add_artist(circle_outline)
+ax2.set_title('Real Eigenvalues')
+ax2.set_yscale('log')
+ax2.set_xlabel(r"$\xi$")
+ax2.set_ylabel(r'$\lambda$')
+# ax2.set(yticks=[2e2,4e2,6e2,8e2,1e3,2e3], yticklabels=[r"$2x10^2$",r"$4x10^2$",r"$6x10^2$",r"$8x10^2$",r"$1x10^3$",r"$2x10^3$"]) 
+# plt.colorbar(sc)
+fig1.suptitle(rf"Eigenvalues for each $\xi$ ({ps}, Lillian Shido)")
+ax1.grid()
+ax2.grid()
+plt.savefig(f'eigs_complex_{ps}.png', dpi=300, bbox_inches='tight')
+plt.show()
 # # Plot JC as a function of x0
 # fig3, ax3 = plt.subplots()
 # ax4 = ax3.twinx()

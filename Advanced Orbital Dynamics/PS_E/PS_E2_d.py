@@ -1,21 +1,16 @@
 ps = "E2 part d"
-# Continuation Algorithm: Natural Parameter Process with Dynamic Step Sizes
-# Problem D4 Part d
 # Author: Lillian Shido
 # Date: 10/26/2025
 
 import pdb
-import copy
 import numpy as np
 import pandas as pd
-from math import pi, sqrt
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from matplotlib.collections import LineCollection
-import matplotlib.colors as mcolors
-from scipy import stats
-from great_tables import GT, md, html, style, loc, system_fonts
+from matplotlib.lines import Line2D
+from great_tables import GT, md, system_fonts
 from pypalettes import load_cmap
 import warnings
 
@@ -122,6 +117,7 @@ for orbit in range(21):
         })
         df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
 
+pdb.set_trace()
 # Table iterations each orbit takes to converge
 df_orbit_iterations = df_orbits[['orbit','xi','iterations']]
 
@@ -214,6 +210,49 @@ ax1.tick_params(axis='both', which='major', labelsize=6)
 ax1.set_title(f'Lyapunovs near L2 starting from $\\xi$={xi:.2f}, $\\eta$={eta}\n({ps}, Lillian Shido)')
 plt.savefig(f'Lyapunov_family_{ps}.png', dpi=300, bbox_inches='tight')
 
+# Plot eigs
+fig1 = plt.figure()
+ax1 = fig1.add_subplot(1,2,1)
+ax2 = fig1.add_subplot(1,2,2)
+ax1.xaxis.set_major_locator(ticker.MultipleLocator(0.5))
+ax1.yaxis.set_major_locator(ticker.MultipleLocator(0.5))
+ax2.yaxis.set_major_locator(ticker.MultipleLocator(1e1))
+circle_outline = plt.Circle((0, 0), 1, fill=False, edgecolor='black', linewidth=1, linestyle='dashed',zorder=1.5)
+for row in df_eigenvalues.iterrows():
+    for i in range(1,7):
+        if np.linalg.norm(row[1][f'eig_{i}']) < 1.01 and np.linalg.norm(row[1][f'eig_{i}']) > 1/1.01:
+        # if not np.isreal(np.linalg.norm(row[1][f'eig_{i}'])):
+        # if abs(row[1][f'eig_{i}'].imag)<1e-8:
+            sc = ax1.scatter(row[1][f'eig_{i}'].real, row[1][f'eig_{i}'].imag, color=colors[row[1]['orbit']])
+            ax1.annotate(row[1]['orbit'], [row[1][f'eig_{i}'].real, row[1][f'eig_{i}'].imag])
+        else:
+            ax2.scatter(row[1]['xi'], row[1][f'eig_{i}'].real, color=colors[row[1]['orbit']])
+            ax2.annotate(row[1]['orbit'],[row[1]['xi'], row[1][f'eig_{i}'].real])
+plt.legend(ncol=2,framealpha=1)
+lim=4e-4
+ax1.axis('equal')
+legend_elements = [Line2D([0],[0], color=colors[row[1]['orbit']], label=rf"$\xi$={row[1]['xi']:.3f}") for row in df_eigenvalues.iterrows()]
+fig1.legend(handles=legend_elements, loc='outside right lower')
+# ax2.legend(handles=legend_elements, loc='outside left upper')
+# ax1.set_aspect(aspect=1, adjustable="box")
+# ax1.set(xlim=(x_L1-lim, x_L1+lim),ylim=(-lim,lim))
+ax1.set_title('Complex Eigenvalues')
+ax1.set_xlabel("Real")
+ax1.set_ylabel("Imaginary")
+ax1.add_artist(circle_outline)
+ax2.set_title('Real Eigenvalues')
+ax2.set_yscale('log')
+ax2.set_xlabel(r"$\xi$")
+ax2.set_ylabel(r'$\lambda$')
+# ax2.set(yticks=[2e2,4e2,6e2,8e2,1e3,2e3], yticklabels=[r"$2x10^2$",r"$4x10^2$",r"$6x10^2$",r"$8x10^2$",r"$1x10^3$",r"$2x10^3$"]) 
+# plt.colorbar(sc)
+fig1.suptitle(rf"Eigenvalues for each $\xi$ near L2 ({ps}, Lillian Shido)")
+ax1.grid()
+ax2.grid()
+plt.savefig(f'eigs_complex_{ps}.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+
 df_stability_index = pd.DataFrame()
 for enum, row in enumerate(df_eigenvalues.iterrows()):
     eig_1 = row[1]['eig_1']
@@ -239,104 +278,104 @@ for enum, row in enumerate(df_eigenvalues.iterrows()):
 
 df_family_stability = df_eigenvalues[['orbit','xi','period']].join(df_stability_index)
 
-eig_table = (
-    GT(df_eigenvalues)
-    .tab_header(
-        title=md(f"All 6 Eigenvalues in L1 Lyapunov Family<br>({ps}, Lillian Shido)")
-    )
-    .cols_label(
-        orbit="Orbit",
-        xi="{{:xi:}}",
-        period="{{Period}}<br>[non-dim]",
-        eig_1_string="{{:lambda:_1}}",
-        eig_2_string="{{:lambda:_2}}",
-        eig_3_string="{{:lambda:_3}}",
-        eig_4_string="{{:lambda:_4}}",
-        eig_5_string="{{:lambda:_5}}",
-        eig_6_string="{{:lambda:_6}}"
-    )
-    .fmt_number(
-        columns=["xi","period"],
-        decimals=3
-    )
-    # .fmt_number(
-    #     columns=["eig_1","eig_2","eig_3","eig_4","eig_5","eig_6"],
-    #     n_sigfig=6
-    # )
-    .cols_align(
-        align="center"
-    )
-    .opt_table_outline()
-    .opt_stylize()
-    .opt_table_font(font=system_fonts(name="industrial"))
-    .opt_horizontal_padding(scale=2)
-    .cols_hide(columns=["jacobi","eig_1_abs","eig_2_abs","eig_3_abs","eig_4_abs","eig_5_abs","eig_6_abs","eig_1","eig_2","eig_3","eig_4","eig_5","eig_6"])
-)
-eig_table.show()
+# eig_table = (
+#     GT(df_eigenvalues)
+#     .tab_header(
+#         title=md(f"All 6 Eigenvalues in L1 Lyapunov Family<br>({ps}, Lillian Shido)")
+#     )
+#     .cols_label(
+#         orbit="Orbit",
+#         xi="{{:xi:}}",
+#         period="{{Period}}<br>[non-dim]",
+#         eig_1_string="{{:lambda:_1}}",
+#         eig_2_string="{{:lambda:_2}}",
+#         eig_3_string="{{:lambda:_3}}",
+#         eig_4_string="{{:lambda:_4}}",
+#         eig_5_string="{{:lambda:_5}}",
+#         eig_6_string="{{:lambda:_6}}"
+#     )
+#     .fmt_number(
+#         columns=["xi","period"],
+#         decimals=3
+#     )
+#     # .fmt_number(
+#     #     columns=["eig_1","eig_2","eig_3","eig_4","eig_5","eig_6"],
+#     #     n_sigfig=6
+#     # )
+#     .cols_align(
+#         align="center"
+#     )
+#     .opt_table_outline()
+#     .opt_stylize()
+#     .opt_table_font(font=system_fonts(name="industrial"))
+#     .opt_horizontal_padding(scale=2)
+#     .cols_hide(columns=["jacobi","eig_1_abs","eig_2_abs","eig_3_abs","eig_4_abs","eig_5_abs","eig_6_abs","eig_1","eig_2","eig_3","eig_4","eig_5","eig_6"])
+# )
+# eig_table.show()
 
-eig_abs_table = (
-    GT(df_eigenvalues)
-    .tab_header(
-        title=md(f"All 6 Eigenvalues in L1 Lyapunov Family<br>({ps}, Lillian Shido)")
-    )
-    .cols_label(
-        orbit="Orbit",
-        xi="{{:xi:}}",
-        period="{{Period}}<br>[non-dim]",
-        eig_1_abs="{{| :lambda:_1 |}}",
-        eig_2_abs="{{| :lambda:_2 |}}",
-        eig_3_abs="{{| :lambda:_3 |}}",
-        eig_4_abs="{{| :lambda:_4 |}}",
-        eig_5_abs="{{| :lambda:_5 |}}",
-        eig_6_abs="{{| :lambda:_6 |}}"
-    )
-    .fmt_number(
-        columns=["xi","period"],
-        decimals=3
-    )
-    .fmt_number(
-        columns=["eig_1_abs","eig_2_abs","eig_3_abs","eig_4_abs","eig_5_abs","eig_6_abs"],
-        n_sigfig=6
-    )
-    .cols_align(
-        align="center"
-    )
-    .opt_table_outline()
-    .opt_stylize()
-    .opt_table_font(font=system_fonts(name="industrial"))
-    .opt_horizontal_padding(scale=2)
-    .cols_hide(columns=["jacobi","eig_1_string","eig_2_string","eig_3_string","eig_4_string","eig_5_string","eig_6_string","eig_1","eig_2","eig_3","eig_4","eig_5","eig_6"])
-)
-eig_abs_table.show()
+# eig_abs_table = (
+#     GT(df_eigenvalues)
+#     .tab_header(
+#         title=md(f"All 6 Eigenvalues in L1 Lyapunov Family<br>({ps}, Lillian Shido)")
+#     )
+#     .cols_label(
+#         orbit="Orbit",
+#         xi="{{:xi:}}",
+#         period="{{Period}}<br>[non-dim]",
+#         eig_1_abs="{{| :lambda:_1 |}}",
+#         eig_2_abs="{{| :lambda:_2 |}}",
+#         eig_3_abs="{{| :lambda:_3 |}}",
+#         eig_4_abs="{{| :lambda:_4 |}}",
+#         eig_5_abs="{{| :lambda:_5 |}}",
+#         eig_6_abs="{{| :lambda:_6 |}}"
+#     )
+#     .fmt_number(
+#         columns=["xi","period"],
+#         decimals=3
+#     )
+#     .fmt_number(
+#         columns=["eig_1_abs","eig_2_abs","eig_3_abs","eig_4_abs","eig_5_abs","eig_6_abs"],
+#         n_sigfig=6
+#     )
+#     .cols_align(
+#         align="center"
+#     )
+#     .opt_table_outline()
+#     .opt_stylize()
+#     .opt_table_font(font=system_fonts(name="industrial"))
+#     .opt_horizontal_padding(scale=2)
+#     .cols_hide(columns=["jacobi","eig_1_string","eig_2_string","eig_3_string","eig_4_string","eig_5_string","eig_6_string","eig_1","eig_2","eig_3","eig_4","eig_5","eig_6"])
+# )
+# eig_abs_table.show()
 
 
-stability_table = (
-    GT(df_family_stability)
-    .tab_header(
-        title=md(f"Stability indices in L1 Lyapunov Family<br>({ps}, Lillian Shido)")
-    )
-    .cols_label(
-        orbit="Orbit",
-        xi="{{:xi:}}",
-        period="{{Period}}<br>[non-dim]",
-        stability_1="Stability Index 1<br>{{:nu:_1}}",
-        stability_2="Stability Index 2<br>{{:nu:_2}}",
-        stability_3="Stability Index 3<br>{{:nu:_3}}",
-    )
-    .fmt_number(
-        columns=["xi","period"],
-        decimals=3
-    )
-    .fmt_number(
-        columns=["stability_1","stability_2","stability_3",],
-        n_sigfig=6
-    )
-    .cols_align(
-        align="center"
-    )
-    .opt_table_outline()
-    .opt_stylize()
-    .opt_table_font(font=system_fonts(name="industrial"))
-    .opt_horizontal_padding(scale=2)
-)
-stability_table.show()
+# stability_table = (
+#     GT(df_family_stability)
+#     .tab_header(
+#         title=md(f"Stability indices in L1 Lyapunov Family<br>({ps}, Lillian Shido)")
+#     )
+#     .cols_label(
+#         orbit="Orbit",
+#         xi="{{:xi:}}",
+#         period="{{Period}}<br>[non-dim]",
+#         stability_1="Stability Index 1<br>{{:nu:_1}}",
+#         stability_2="Stability Index 2<br>{{:nu:_2}}",
+#         stability_3="Stability Index 3<br>{{:nu:_3}}",
+#     )
+#     .fmt_number(
+#         columns=["xi","period"],
+#         decimals=3
+#     )
+#     .fmt_number(
+#         columns=["stability_1","stability_2","stability_3",],
+#         n_sigfig=6
+#     )
+#     .cols_align(
+#         align="center"
+#     )
+#     .opt_table_outline()
+#     .opt_stylize()
+#     .opt_table_font(font=system_fonts(name="industrial"))
+#     .opt_horizontal_padding(scale=2)
+# )
+# stability_table.show()
