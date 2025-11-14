@@ -57,18 +57,19 @@ for x in range(0,6):
         vx_eig = eigenvectors[:,x][3].real[0,0]
         vy_eig = eigenvectors[:,x][4].real[0,0]
         # ax1.plot([x_L1,x_eig],[y_L1,y_eig], label=label, linewidth=1.5)
+        ax1.plot([0,vx_eig],[0,vy_eig], label=label, linewidth=1.5)
         # ax1.axline((x_L1,y_L1), (x_eig,y_eig), label=label+" pos",linestyle=linestyle)
-        ax1.axline((0,0), (vx_eig,vy_eig), label=label+" vel",linestyle=linestyle, color="green")
+        # ax1.axline((0,0), (vx_eig,vy_eig), label=label+" vel",linestyle=linestyle, color="green")
 plt.legend(framealpha=1)
+ax1.set(xlim=(-0.8,0.8))
 ax1.axis('equal')
 ax1.set_xlabel(r"$\dot{x}$"+"\n[non-dim]")
 ax1.set_ylabel(r"$\dot{y}$"+"\n[non-dim]")
-ax1.set(xlim=(-0.8,0.8))
-# plt.title(f"Stable and Unstable Eigenvectors ({ps}, Lillian Shido)")
-plt.title(f"Stable and Unstable Eigenspaces Projected into the Velocity Space\n({ps}, Lillian Shido)")
+plt.title(f"Stable and Unstable Eigenvectors Projected onto the Velocity Space\n({ps}, Lillian Shido)")
+# plt.title(f"Stable and Unstable Eigenspaces Projected onto the Velocity Space\n({ps}, Lillian Shido)")
 plt.grid()
-# plt.savefig(f'Eigenvectors_{ps}.png', dpi=300, bbox_inches='tight')
-plt.savefig(f'Eigenspaces_velocity{ps}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'Eigenvectors_velocity {ps}.png', dpi=300, bbox_inches='tight')
+# plt.savefig(f'Eigenspaces_velocity{ps}.png', dpi=300, bbox_inches='tight')
 
 # Calc angle between the stable and unstable eigenvectors projected on the velocity space
 b_vec = eigenvectors[:,0][3:5]
