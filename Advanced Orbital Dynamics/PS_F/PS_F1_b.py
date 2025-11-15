@@ -35,8 +35,8 @@ neg_tspan = [0,-tf]
 A = build_A_matrix_collinear(mu, x_L1, y_L1, 0)
 eigenvalues, eigenvectors = np.linalg.eig(A)
 # Plot eigenvectors
-L1 = pd.DataFrame({'Name':["L1"],'x':[x_L1],'y':[y_L1]})
-moon = pd.DataFrame({'Name':["Moon"],'x':[x_Moon],'y':[0]})
+L1 = pd.DataFrame({'name':["L1"],'x':[x_L1],'y':[y_L1]})
+moon = pd.DataFrame({'name':["Moon"],'x':[x_Moon],'y':[0]})
 eigenspace = pd.DataFrame({})
 manifold = pd.DataFrame({})
 for i in range(0,6):
@@ -267,6 +267,18 @@ eigspace = alt.Chart(eigenspace).mark_line(clip=True).encode(
     color='name'
 )
 
-final = alt.layer(base, zvc, eigspace)
+moon_loc = alt.Chart(moon).mark_point(size=30).encode(
+    x='x:Q',
+    y='y:Q',
+    color='name'
+)
+
+L1_loc = alt.Chart(L1).mark_point(size=30).encode(
+    x='x:Q',
+    y='y:Q',
+    color='name'
+)
+
+final = alt.layer(base, zvc, eigspace, moon_loc, L1_loc)
 final.save(f'manifolds_zvc {ps}.png', ppi=200)
 pdb.set_trace()
