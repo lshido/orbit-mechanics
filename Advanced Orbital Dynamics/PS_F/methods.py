@@ -486,3 +486,9 @@ def build_A_matrix_collinear(mu,x_L,y_L,z_L):
         [quad3,quad4]
     ])
     return A
+
+def calc_ZVC_Jacobi(mu, x, y):
+    d = sqrt((x+mu)**2 + y**2)
+    r = sqrt((x-1+mu)**2 + y**2)
+    C = 2*(1-mu)/d + 2*mu/r + x**2 + y**2
+    return C
