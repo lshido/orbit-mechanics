@@ -48,17 +48,20 @@ for i in range(0,6):
             label=f"$E^S$"
             linestyle="solid"
             label_point="$x_S^+$"
-            label_manifold="$W_{{loc}}^S$"
+            label_manifold="Stable Half-Manifold"
             color="blue"
         elif i==1:
             name="Unstable Eigenspace"
             label=f"$E^U$"
             linestyle="dashed"
             label_point="$x_U^+$"
-            label_manifold="$W_{{loc}}^U$"
+            label_manifold="Unstable Half-Manifold"
             color="red"
-        x_eig = x_L1 + eigenvectors[:,i][0].real[0,0]
-        y_eig = y_L1 + eigenvectors[:,i][1].real[0,0]
+        scale = 1 # Extend eigenvector line out
+        x_eig_max = x_L1 + scale*eigenvectors[:,i][0].real[0,0]
+        x_eig_min = x_L1 + scale*-eigenvectors[:,i][0].real[0,0]
+        y_eig_max = y_L1 + scale*eigenvectors[:,i][1].real[0,0]
+        y_eig_min = y_L1 + scale*-eigenvectors[:,i][1].real[0,0]
         nu_W = eigenvectors[:,i]/np.linalg.norm(eigenvectors[:,i][0:3])
         print(nu_W)
         scaled_nu_W = d_val*nu_W
@@ -75,8 +78,8 @@ for i in range(0,6):
         print(f"Check distance!: {check_distance}")
         eigenspace_data = pd.DataFrame({
             'name': name,
-            'x':[x_L1,x_eig],
-            'y':[y_L1,y_eig]
+            'x':[x_eig_min,x_L1,x_eig_max],
+            'y':[y_eig_min,y_L1,y_eig_max]
         })
         eigenspace = pd.concat([eigenspace, eigenspace_data], ignore_index=True)
         IC_pos = [
@@ -159,7 +162,7 @@ for x in np.arange(0,1.5,1e-3): # Find the curve for -1.5 < x < 1.5
                     C_error = abs(new_C - C)
                     if C_error < 1e-12:
                         zvc_data = pd.DataFrame({
-                            "name":'zvc',
+                            "name":'ZVC',
                             "x":[x],
                             "y":[y],
                             "new_C":[new_C],
@@ -179,7 +182,7 @@ for x in np.arange(0,1.5,1e-3): # Find the curve for -1.5 < x < 1.5
                 new_C = calc_ZVC_Jacobi(mu, x, y)
                 error_C = abs(new_C - C)
                 zvc_data = pd.DataFrame({
-                    "name":'zvc',
+                    "name":'ZVC',
                     "x":[x],
                     "y":[y],
                     "new_C":[new_C],
@@ -203,7 +206,7 @@ for y in np.arange(0.5,1.5,1e-3): # Find the curve for 0 < y < 1.21
                     C_error = abs(new_C - C)
                     if C_error < 1e-12:
                         zvc_data = pd.DataFrame({
-                            "name":'zvc',
+                            "name":'ZVC',
                             "x":[x],
                             "y":[y],
                             "new_C":[new_C],
@@ -223,7 +226,7 @@ for y in np.arange(0.5,1.5,1e-3): # Find the curve for 0 < y < 1.21
                 new_C = calc_ZVC_Jacobi(mu, x, y)
                 error_C = abs(new_C - C)
                 zvc_data = pd.DataFrame({
-                    "name":'zvc',
+                    "name":'ZVC',
                     "x":[x],
                     "y":[y],
                     "new_C":[new_C],
@@ -233,7 +236,7 @@ for y in np.arange(0.5,1.5,1e-3): # Find the curve for 0 < y < 1.21
                 break
 
 neg_y_zvc_data = pd.DataFrame({
-    'name':'zvc',
+    'name':'ZVC',
     'x':df_zvc['x'],
     'y':-df_zvc['y'],
     'new_C':df_zvc['new_C'],
@@ -242,43 +245,44 @@ neg_y_zvc_data = pd.DataFrame({
 df_zvc = pd.concat([df_zvc,neg_y_zvc_data],ignore_index=True)
 
 # Build plot
-x_min = 0.45
+x_min = 0.65
 x_max = 1.05
 y_lim = (x_max-x_min)/2
-base = alt.Chart(manifold).mark_line().encode(
-    x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max])),
-    y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim])),
-    color='name',
+base = alt.Chart(manifold).mark_line(clip=True).encode(
+    x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
+    y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
+    color=alt.Color('name:N').title(None),
     order='t',
 ).properties(
     width=400,
-    height=400
+    height=400,
+    title=f"Stable and Unstable Manifolds with ZVC at L1 ({ps}, Lillian Shido)"
 )
 
-zvc = alt.Chart(df_zvc).mark_point(size=1,filled=True,clip=True).encode(
+zvc = alt.Chart(df_zvc).mark_point(size=5,filled=True,clip=True).encode(
     x='x:Q',
     y='y:Q',
-    color='name'
+    color=alt.Color('name:N', scale=alt.Scale(domain=['ZVC'], range=['forestgreen'])).title(None)
 )
 
-eigspace = alt.Chart(eigenspace).mark_line(clip=True).encode(
+eigspace = alt.Chart(eigenspace).mark_line(strokeDash=(4,4),clip=True).encode(
     x='x:Q',
     y='y:Q',
-    color='name'
+    color=alt.Color('name:N').title(None)
 )
 
-moon_loc = alt.Chart(moon).mark_point(size=30).encode(
+# scale = alt.Scale(domain=['L1','Moon'], range=['darkblue','gray'])
+moon_loc = alt.Chart(moon).mark_point(filled=True,size=50,clip=True).encode(
     x='x:Q',
     y='y:Q',
-    color='name'
+    color=alt.Color('name:N', scale=alt.Scale(domain=['Moon'], range=['gray'])).title(None)
 )
 
-L1_loc = alt.Chart(L1).mark_point(size=30).encode(
+L1_loc = alt.Chart(L1).mark_point(filled=True,size=30,clip=True).encode(
     x='x:Q',
     y='y:Q',
-    color='name'
+    color=alt.Color('name:N', scale=alt.Scale(domain=['L1'], range=['darkblue'])).title(None)
 )
 
-final = alt.layer(base, zvc, eigspace, moon_loc, L1_loc)
+final = alt.layer(base, zvc, eigspace, moon_loc, L1_loc).resolve_scale(color='independent')
 final.save(f'manifolds_zvc {ps}.png', ppi=200)
-pdb.set_trace()
