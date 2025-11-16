@@ -492,3 +492,13 @@ def calc_ZVC_Jacobi(mu, x, y):
     r = sqrt((x-1+mu)**2 + y**2)
     C = 2*(1-mu)/d + 2*mu/r + x**2 + y**2
     return C
+
+def calc_velocity_from_Jacobi(C, mu, x, y, z):
+    d = sqrt((x+mu)**2 + y**2 + z**2)
+    r = sqrt((x-1+mu)**2 + y**2 + z**2)
+    x_y_sq = (x**2+y**2)/2
+    term_1 = (1-mu)/d
+    term_2 = mu/r
+    pseudo_U = term_1 + term_2 + x_y_sq
+    v_squared = 2*pseudo_U - C
+    return sqrt(v_squared)
