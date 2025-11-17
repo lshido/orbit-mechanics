@@ -11,6 +11,7 @@ from scipy.integrate import solve_ivp
 import altair as alt
 from great_tables import GT, md, system_fonts
 
+from symbols import tau_symbol, pi_symbol
 from constants import mu_Earth, mu_Moon, a_Moon
 from methods import system_properties, calc_L1, build_A_matrix_collinear, spatial_ode, calc_spatial_Jacobi, calc_ZVC_Jacobi,calc_velocity_from_Jacobi
 
@@ -23,11 +24,6 @@ mu = mu_Moon/(mu_Earth + mu_Moon)
 # Properties of the system
 mu, l_char, t_char, x_Earth, x_Moon = system_properties(mu_Earth, mu_Moon, a_Moon)
 x_L1, y_L1 = calc_L1(mu, a_Moon)
-
-# Configure the positive and negative time 
-tf = 0.5*pi
-pos_tspan = [0,tf]
-neg_tspan = [0,-tf]
 
 A = build_A_matrix_collinear(mu, x_L1, y_L1, 0)
 eigenvalues, eigenvectors = np.linalg.eig(A)
@@ -75,7 +71,15 @@ for x0_km in IC_list:
     })
     initial_velocities = pd.concat([initial_velocities, initial_velocities_data], ignore_index=True)
 
+# Configure the positive and negative time for propagation of the nonlinear equations
+tf = 0.3
+pos_tspan = [0,tf*pi]
+neg_tspan = [0,-tf*pi]
+# Specify time constant
+tau = 1/eigenvalues[1].real
+
 nonlinear_result = pd.DataFrame()
+tau_result = pd.DataFrame()
 for row in initial_velocities.iterrows():
         x0_km = row[1]['x0_km']
         x0 = row[1]['x0']
@@ -97,25 +101,46 @@ for row in initial_velocities.iterrows():
             'y':pos_t_prop.y[1]
         })
         nonlinear_result = pd.concat([nonlinear_result, nonlinear_result_data], ignore_index=True)
-        # neg_t_prop = solve_ivp(spatial_ode, neg_tspan, IC, args=(mu,), rtol=1e-12,atol=1e-14)
-        # nonlinear_result_data = pd.DataFrame({
-        #     'name': f"x0 = {x0_km} km",
-        #     't':neg_t_prop.t,
-        #     'x':neg_t_prop.y[0],
-        #     'y':neg_t_prop.y[1]
-        # })
-        # nonlinear_result = pd.concat([nonlinear_result, nonlinear_result_data], ignore_index=True)
+        neg_t_prop = solve_ivp(spatial_ode, neg_tspan, IC, args=(mu,), rtol=1e-12,atol=1e-14)
+        nonlinear_result_data = pd.DataFrame({
+            'name': f"x0 = {x0_km} km",
+            't':neg_t_prop.t,
+            'x':neg_t_prop.y[0],
+            'y':neg_t_prop.y[1]
+        })
+        nonlinear_result = pd.concat([nonlinear_result, nonlinear_result_data], ignore_index=True)
+        pos_tau_prop = solve_ivp(spatial_ode, [0,tau], IC, args=(mu,), rtol=1e-12,atol=1e-14)
+        tau_result_data = pd.DataFrame({
+            'name': f"x0 = {x0_km} km",
+            't':pos_tau_prop.t,
+            'x':pos_tau_prop.y[0],
+            'y':pos_tau_prop.y[1]
+        })
+        tau_result = pd.concat([tau_result, tau_result_data], ignore_index=True)
+        neg_tau_prop = solve_ivp(spatial_ode, [0,-tau], IC, args=(mu,), rtol=1e-12,atol=1e-14)
+        tau_result_data = pd.DataFrame({
+            'name': f"x0 = {x0_km} km",
+            't':neg_tau_prop.t,
+            'x':neg_tau_prop.y[0],
+            'y':neg_tau_prop.y[1]
+        })
+        tau_result = pd.concat([tau_result, tau_result_data], ignore_index=True)
+# Get 0, min, max for tau results
+max_tau = tau_result.loc[tau_result['t']==tau_result['t'].max()]
+min_tau = tau_result.loc[tau_result['t']==tau_result['t'].min()]
+zero_tau = tau_result.loc[tau_result['t']==0].drop_duplicates()
+tau_marks = pd.concat([max_tau, min_tau, zero_tau])
 
 # Build plot
-x_min = 0.834
-x_max = 0.840
+x_min = 0.8365
+x_max = 0.8385
 y_lim = (x_max-x_min)/2
 base = alt.Chart(nonlinear_result).mark_line(strokeWidth=1,clip=True).encode(
     x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
     # x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
     y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
     # y=alt.Y('y:Q', axis=alt.Axis(title='y [non-dim]')),
-    color=alt.Color('name:N', scale=alt.Scale(scheme='plasma')).title(None),
+    color=alt.Color('name:N', scale=alt.Scale(scheme='plasma')).title(f"t = {tf}{pi_symbol}"),
     order='t',
 ).properties(
     width=400,
@@ -127,6 +152,19 @@ eigspace = alt.Chart(eigenspace).mark_line(strokeWidth=1.5,strokeDash=(4,4),clip
     x='x:Q',
     y='y:Q',
     color=alt.Color('name:N', scale=alt.Scale(scheme='greenblue')).title(None)
+)
+
+time_constant = alt.Chart(tau_result).mark_line(strokeWidth=1.5,clip=True).encode(
+    x=alt.X('x:Q'),
+    y=alt.Y('y:Q'),
+    color=alt.Color('name:N', scale=alt.Scale(scheme='darkmulti')).title(f"t = {tau_symbol}"),
+    order='t',
+)
+
+time_constant_points_of_interest = alt.Chart(tau_marks).mark_point(clip=True).encode(
+    x='x:Q',
+    y='y:Q',
+    color=alt.value('red')
 )
 
 # scale = alt.Scale(domain=['L1','Moon'], range=['darkblue','gray'])
@@ -142,7 +180,7 @@ L1_loc = alt.Chart(L1).mark_point(filled=True,size=30,clip=True).encode(
     color=alt.Color('name:N', scale=alt.Scale(domain=['L1'], range=['darkblue'])).title(None)
 )
 
-final = alt.layer(base, eigspace, L1_loc).resolve_scale(color='independent')
+final = alt.layer(base, time_constant, time_constant_points_of_interest, eigspace, L1_loc).resolve_scale(color='independent')
 final.save(f'nonlinear_L1 {ps}.png', ppi=200)
 
 # initial_velocities_table = (
