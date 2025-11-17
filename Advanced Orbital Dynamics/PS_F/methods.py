@@ -502,3 +502,14 @@ def calc_velocity_from_Jacobi(C, mu, x, y, z):
     pseudo_U = term_1 + term_2 + x_y_sq
     v_squared = 2*pseudo_U - C
     return sqrt(v_squared)
+
+def calc_spatial_Jacobi_array(mu, row):
+    d = sqrt((row['x']+mu)**2 + row['y']**2 + 0**2)
+    r = sqrt((row['x']-1+mu)**2 + row['y']**2 + 0**2)
+    x_y_sq = (row['x']**2+row['y']**2)/2
+    term_1 = (1-mu)/d
+    term_2 = mu/r
+    pseudo_U = term_1 + term_2 + x_y_sq
+    v_squared = row['vx']**2 + row['vy']**2 + 0**2
+    C = 2*pseudo_U - v_squared
+    return C

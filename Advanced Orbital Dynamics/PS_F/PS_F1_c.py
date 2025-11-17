@@ -72,7 +72,7 @@ for x0_km in IC_list:
     initial_velocities = pd.concat([initial_velocities, initial_velocities_data], ignore_index=True)
 
 # Configure the positive and negative time for propagation of the nonlinear equations
-tf = 0.3
+tf = 0.5
 pos_tspan = [0,tf*pi]
 neg_tspan = [0,-tf*pi]
 # Specify time constant
@@ -117,19 +117,11 @@ for row in initial_velocities.iterrows():
             'y':pos_tau_prop.y[1]
         })
         tau_result = pd.concat([tau_result, tau_result_data], ignore_index=True)
-        neg_tau_prop = solve_ivp(spatial_ode, [0,-tau], IC, args=(mu,), rtol=1e-12,atol=1e-14)
-        tau_result_data = pd.DataFrame({
-            'name': f"x0 = {x0_km} km",
-            't':neg_tau_prop.t,
-            'x':neg_tau_prop.y[0],
-            'y':neg_tau_prop.y[1]
-        })
-        tau_result = pd.concat([tau_result, tau_result_data], ignore_index=True)
+
 # Get 0, min, max for tau results
 max_tau = tau_result.loc[tau_result['t']==tau_result['t'].max()]
 min_tau = tau_result.loc[tau_result['t']==tau_result['t'].min()]
 zero_tau = tau_result.loc[tau_result['t']==0].drop_duplicates()
-tau_marks = pd.concat([max_tau, min_tau, zero_tau])
 
 # Build plot
 x_min = 0.8365
@@ -161,10 +153,16 @@ time_constant = alt.Chart(tau_result).mark_line(strokeWidth=1.5,clip=True).encod
     order='t',
 )
 
-time_constant_points_of_interest = alt.Chart(tau_marks).mark_point(clip=True).encode(
+t_tau = alt.Chart(max_tau).mark_point(clip=True).encode(
     x='x:Q',
     y='y:Q',
-    color=alt.value('red')
+    color=alt.Color('name:N', scale=alt.Scale(scheme='darkmulti')).title(f"Location @ t = {tau_symbol}")
+)
+
+t_zero = alt.Chart(zero_tau).mark_point(shape='diamond', clip=True).encode(
+    x='x:Q',
+    y='y:Q',
+    color=alt.Color('name:N', scale=alt.Scale(scheme='darkmulti')).title(f"Location @ t = 0")
 )
 
 # scale = alt.Scale(domain=['L1','Moon'], range=['darkblue','gray'])
@@ -180,7 +178,7 @@ L1_loc = alt.Chart(L1).mark_point(filled=True,size=30,clip=True).encode(
     color=alt.Color('name:N', scale=alt.Scale(domain=['L1'], range=['darkblue'])).title(None)
 )
 
-final = alt.layer(base, time_constant, time_constant_points_of_interest, eigspace, L1_loc).resolve_scale(color='independent')
+final = alt.layer(base, time_constant, t_tau, t_zero, eigspace, L1_loc).resolve_scale(color='independent')
 final.save(f'nonlinear_L1 {ps}.png', ppi=200)
 
 # initial_velocities_table = (
