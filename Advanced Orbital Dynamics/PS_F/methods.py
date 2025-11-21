@@ -356,7 +356,7 @@ def find_halfperiod(starting_x, ydot_guess, mu, tolerance=1e-12, max_iterations=
         vxf: xdot at arrival
         vyf: ydot at arrival
     """
-    print(f"Looking for the half-period for initial states starting x = {starting_x} and vy guess = {ydot_guess}")
+    print(f"Looking for the initial conditions for half-period with initial guesses starting x = {starting_x} and vy guess = {ydot_guess}")
     x0 = starting_x # Initial x guess 
     vy0 = ydot_guess
     

@@ -20,6 +20,7 @@ mu = mu_Moon/(mu_Earth + mu_Moon)
 # Properties of the system
 mu, l_char, t_char, x_Earth, x_Moon = system_properties(mu_Earth, mu_Moon, a_Moon)
 x_L1, y_L1 = calc_L1(mu, a_Moon)
+L1 = pd.DataFrame({'name':["L1"],'x':[x_L1],'y':[y_L1]})
 
 # Initial Conditions
 xi = 0.01
@@ -59,6 +60,14 @@ df_monodromy = pd.DataFrame({
     'Determinant':[np.linalg.det(monodromy)],
     'Accuracy':[abs(np.linalg.det(monodromy))-1]
 })
+# For plotting purposes:
+full_period_prop = solve_ivp(spatial_ode, [0, period], IC, args=(mu,), rtol=1e-12,atol=1e-14)
+orbit = pd.DataFrame({
+    'name':'orbit',
+    't':full_period_prop.t,
+    'x':full_period_prop.y[0],
+    'y':full_period_prop.y[1]
+})
 
 # Get eigs and check they match
 eigenvalues, eigenvectors = np.linalg.eig(monodromy)
@@ -87,15 +96,40 @@ stm_t1 = t1_prop.y[6:42,-1].reshape(6,6)
 print("STM @ t1")
 print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in np.asarray(stm_t1)]))
 
+# Propagate a full period from t1 to get the monodromy @ t1
+t1_x = t1_prop.y[0,-1] 
+t1_y = t1_prop.y[1,-1] 
+t1_z = t1_prop.y[2,-1] 
+t1_vx = t1_prop.y[3,-1] 
+t1_vy = t1_prop.y[4,-1] 
+t1_vz = t1_prop.y[5,-1] 
+IC_t1 = [
+    t1_x, t1_y, t1_z, t1_vx, t1_vy, t1_vz,
+    1,0,0,0,0,0, # Identity matrix for phi ICs
+    0,1,0,0,0,0,
+    0,0,1,0,0,0,
+    0,0,0,1,0,0,
+    0,0,0,0,1,0,
+    0,0,0,0,0,1
+]
+t1_full_prop = solve_ivp(spatial_ode, [0, period], IC_t1, args=(mu,), rtol=1e-12,atol=1e-14)
+monodromy_t1 = t1_full_prop.y[6:42,-1].reshape(6,6)
+print("Monodromy @ t1")
+print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in np.asarray(monodromy_t1)]))
+
+monodromy_t1_calc = stm_t1 @ monodromy @ np.linalg.inv(stm_t1)
+print("Monodromy @ t1 from calcs")
+print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in np.asarray(monodromy_t1_calc)]))
+
 # Calculate the eigenvectors at t1
 t1_eigenvectors_list = []
 for i in range(0,6):
-    t1_eigenvectors_list.append(stm_t1 * eigenvectors[:,i])
+    t1_eigenvectors_list.append((stm_t1 @ eigenvectors[:,i])/np.linalg.norm(stm_t1 @ eigenvectors[:,i]))
 t1_eigenvectors = np.array(t1_eigenvectors_list)
 
 # Print the eigs
 for i in range(0,6):
-    print(f"eigenvectors_{i+1}:")
+    print(f"t1 eigenvectors_{i+1}:")
     print("\\begin{bmatrix}")
     try:
         for x in range(0,6): print(f"{t1_eigenvectors[i].flatten()[x]:15.5f}\\\\")
@@ -104,9 +138,18 @@ for i in range(0,6):
     print("\\end{bmatrix}")
 
 # Check their eigenvalues Av=λv
+t1_eigenvalues_list = []
+for i in range(0,6):
+    Av = monodromy_t1 @ t1_eigenvectors[i]
+    t1_eigenvalues_list.append(np.divide(Av,t1_eigenvectors[i]))
+t1_eigenvalues = np.array(t1_eigenvalues_list)
+# pdb.set_trace()
 # for i in range(0,6):
-#     Av = stm_t1 * t1_eigenvectors[i]
-#     if nonzero_index = np.where(t1_eigenvector != 0)
+#     print(f"Check eigenvalue match between t0 and t1")
+#     if np.isclose(eigenvalues[i],t1_eigenvalues[i],atol=1e-8).all():
+#         print("PASS!")
+#     else:
+#         print("FAIL.")
 
 eigenspace = pd.DataFrame({})
 manifold = pd.DataFrame({})
@@ -153,20 +196,36 @@ for i in range(0,6):
             'y':[y_eig_min,y_L1,y_eig_max]
         })
         eigenspace = pd.concat([eigenspace, eigenspace_data], ignore_index=True)
-pdb.set_trace()
+
 # Build plot
-x_min = 0.65
-x_max = 1.05
+x_min = 0.80
+x_max = 0.87
 y_lim = (x_max-x_min)/2
-base = alt.Chart(eigenspace).mark_line(clip=True).encode(
-    # x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
-    x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
-    # y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
-    y=alt.Y('y:Q', axis=alt.Axis(title='y [non-dim]')),
+base = alt.Chart(orbit).mark_line(clip=True).encode(
+    x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
+    # x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
+    y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
+    # y=alt.Y('y:Q', axis=alt.Axis(title='y [non-dim]')),
     color=alt.Color('name:N').title(None),
+    order='t'
 ).properties(
     width=400,
     height=400,
     title=f"Stable and Unstable Eigenspaces at the fixed point ({ps}, Lillian Shido)"
 )
-base.save(f'eigenspaces_fixed_point_{ps}.png', ppi=200)
+
+L1_loc = alt.Chart(L1).mark_point(filled=True,size=30,clip=True).encode(
+    x='x:Q',
+    y='y:Q',
+    color=alt.Color('name:N', scale=alt.Scale(domain=['L1'], range=['darkblue'])).title(None)
+)
+
+eigendirections = alt.Chart(eigenspace).mark_line().encode(
+    x='x:Q',
+    y='y:Q',
+    color=alt.Color('name:N')
+)
+
+final = alt.layer(base, L1_loc, eigendirections).resolve_scale(color='independent')
+
+final.save(f'eigenspaces_fixed_point_{ps}.png', ppi=200)
