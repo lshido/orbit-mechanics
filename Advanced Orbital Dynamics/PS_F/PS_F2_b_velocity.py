@@ -54,7 +54,7 @@ x_fixed = converged_initial_states[0]
 y_fixed = converged_initial_states[1]
 vx_fixed = converged_initial_states[2]
 vy_fixed = converged_initial_states[3]
-fixed_point = pd.DataFrame({'name': [f"Fixed Point @ {eta_symbol}=0"],'x':[x_fixed],'y':[y_fixed]})
+fixed_point = pd.DataFrame({'name': [f"Fixed Point @ {eta_symbol}=0"],'x':[vx_fixed],'y':[vy_fixed]})
 
 # Monodromy matrix from half period
 print("Propagating the half-period")
@@ -72,8 +72,8 @@ full_period_prop = solve_ivp(spatial_ode, [0, period], IC, args=(mu,), rtol=1e-1
 orbit = pd.DataFrame({
     'name':'orbit',
     't':full_period_prop.t,
-    'x':full_period_prop.y[0],
-    'y':full_period_prop.y[1]
+    'vx':full_period_prop.y[3],
+    'vy':full_period_prop.y[4]
 })
 
 # Get eigs and check they match
@@ -112,10 +112,10 @@ for i in range(0,6):
         x_eig_min = x_fixed + scale*-eigenvectors[:,i][0,0].real
         y_eig_max = y_fixed+ scale*eigenvectors[:,i][1,0].real
         y_eig_min = y_fixed+ scale*-eigenvectors[:,i][1,0].real
-        vx_eig_max = x_fixed+ vscale*eigenvectors[:,i][3,0].real
-        vx_eig_min = x_fixed+ vscale*-eigenvectors[:,i][3,0].real
-        vy_eig_max = y_fixed+ vscale*eigenvectors[:,i][4,0].real
-        vy_eig_min = y_fixed+ vscale*-eigenvectors[:,i][4,0].real
+        vx_eig_max = vx_fixed+ vscale*eigenvectors[:,i][3,0].real
+        vx_eig_min = vx_fixed+ vscale*-eigenvectors[:,i][3,0].real
+        vy_eig_max = vy_fixed+ vscale*eigenvectors[:,i][4,0].real
+        vy_eig_min = vy_fixed+ vscale*-eigenvectors[:,i][4,0].real
         eigenspace_pos_data = pd.DataFrame({
             'name': f'{name} (+)',
             'x':[x_fixed,x_eig_max],
@@ -130,51 +130,40 @@ for i in range(0,6):
         eigenspace = pd.concat([eigenspace, eigenspace_neg_data], ignore_index=True)
         velocity_eigenspace_pos_data = pd.DataFrame({
             'name': f'{name} (+)',
-            'vx':[x_fixed,vx_eig_max],
-            'vy':[y_fixed,vy_eig_max]
+            'vx':[vx_fixed,vx_eig_max],
+            'vy':[vy_fixed,vy_eig_max]
         })
         velocity_eigenspace = pd.concat([velocity_eigenspace, velocity_eigenspace_pos_data], ignore_index=True)
         velocity_eigenspace_neg_data = pd.DataFrame({
             'name': f'{name} (-)',
-            'vx':[vx_eig_min,x_fixed],
-            'vy':[vy_eig_min,y_fixed]
+            'vx':[vx_eig_min,vx_fixed],
+            'vy':[vy_eig_min,vy_fixed]
         })
         velocity_eigenspace = pd.concat([velocity_eigenspace, velocity_eigenspace_neg_data], ignore_index=True)
 
 # Build plot
-x_min = 0.78
-x_max = 0.88
+x_min = -0.1
+x_max = 0.1
 y_lim = (x_max-x_min)/2
 base = alt.Chart(orbit).mark_line(clip=True,strokeWidth=1).encode(
-    x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
+    x=alt.X('vx:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='vx [non-dim]')),
     # x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
-    y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
+    y=alt.Y('vy:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='vy [non-dim]')),
     # y=alt.Y('y:Q', axis=alt.Axis(title='y [non-dim]')),
     color=alt.Color('name:N').title(None),
     order='t'
 ).properties(
     width=400,
     height=400,
-    title=["Stable and Unstable Eigendirections on the Velocity Space",f"at the Fixed point @ {eta_symbol}=0 ({ps}, Lillian Shido)"]
-)
-
-L1_loc = alt.Chart(L1).mark_point(filled=True,size=30,clip=True).encode(
-    x='x:Q',
-    y='y:Q',
-    color=alt.Color('name:N', scale=alt.Scale(domain=['L1'], range=['darkblue'])).title(None)
+    title=["Lyapunov orbit with Eigendirections plotted on the Velocity Space Projection", f"at the Fixed point @ {eta_symbol}=0.01 ({ps}, Lillian Shido)"]
 )
 
 fixed_point_loc = alt.Chart(fixed_point).mark_point(filled=True,size=30,clip=True).encode(
-    x='x:Q',
-    y='y:Q',
+    x='vx:Q',
+    y='vy:Q',
     color=alt.Color('name:N', scale=alt.Scale(domain=[f'Fixed Point @ {eta_symbol}=0'], range=['green'])).title(None)
 )
 
-eigendirections = alt.Chart(eigenspace).mark_line(clip=True).encode(
-    x='x:Q',
-    y='y:Q',
-    color=alt.Color('name:N').title("Position Space Projections")
-)
 
 velocity_eigendirections = alt.Chart(velocity_eigenspace).mark_line(clip=True).encode(
     x='vx:Q',
@@ -182,10 +171,7 @@ velocity_eigendirections = alt.Chart(velocity_eigenspace).mark_line(clip=True).e
     color=alt.Color('name:N').title("Velocity Space Projections")
 )
 
-final_pos = alt.layer(base, L1_loc, eigendirections, fixed_point_loc).resolve_scale(color='independent')
 
-final_pos.save(f'eigenspaces_fixed_point_{ps}.png', ppi=200)
+final_vel = alt.layer(base, velocity_eigendirections, fixed_point_loc).resolve_scale(color='independent')
 
-final_vel = alt.layer(base, L1_loc, velocity_eigendirections, fixed_point_loc).resolve_scale(color='independent')
-
-final_vel.save(f'eigenspaces_fixed_point_velocity_{ps}.png', ppi=200)
+final_vel.save(f'eigenspaces_fixed_point_vel_proj_{ps}.png', ppi=200)
