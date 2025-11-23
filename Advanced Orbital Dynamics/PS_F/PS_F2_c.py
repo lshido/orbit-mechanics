@@ -89,114 +89,126 @@ for i in range(0,6):
         pdb.set_trace()
     print("\\end{bmatrix}")
 
-# Propagate by t1
-t1 = 0.25*period
-t1_prop = solve_ivp(spatial_ode, [0, t1], IC, args=(mu,), rtol=1e-12,atol=1e-14)
-stm_t1 = t1_prop.y[6:42,-1].reshape(6,6)
-print("STM @ t1")
-print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in np.asarray(stm_t1)]))
+# # Propagate by t1
+# t1 = 0.25*period
+# print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in np.asarray(stm_t1)]))
 
-# Propagate a full period from t1 to get the monodromy @ t1
-t1_x = t1_prop.y[0,-1] 
-t1_y = t1_prop.y[1,-1] 
-t1_z = t1_prop.y[2,-1] 
-t1_vx = t1_prop.y[3,-1] 
-t1_vy = t1_prop.y[4,-1] 
-t1_vz = t1_prop.y[5,-1]
-t1 = pd.DataFrame({'name':["t1"],'x':[t1_x],'y':[t1_y]})
+# # Propagate a full period from t1 to get the monodromy @ t1
+# t1_x = t1_prop.y[0,-1] 
+# t1_y = t1_prop.y[1,-1] 
+# t1_z = t1_prop.y[2,-1] 
+# t1_vx = t1_prop.y[3,-1] 
+# t1_vy = t1_prop.y[4,-1] 
+# t1_vz = t1_prop.y[5,-1]
+# t1 = pd.DataFrame({'name':["t1"],'x':[t1_x],'y':[t1_y]})
 
-IC_t1 = [
-    t1_x, t1_y, t1_z, t1_vx, t1_vy, t1_vz,
-    1,0,0,0,0,0, # Identity matrix for phi ICs
-    0,1,0,0,0,0,
-    0,0,1,0,0,0,
-    0,0,0,1,0,0,
-    0,0,0,0,1,0,
-    0,0,0,0,0,1
-]
-t1_full_prop = solve_ivp(spatial_ode, [0, period], IC_t1, args=(mu,), rtol=1e-12,atol=1e-14)
-monodromy_t1 = t1_full_prop.y[6:42,-1].reshape(6,6)
-print("Monodromy @ t1")
-print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in np.asarray(monodromy_t1)]))
+# IC_t1 = [
+#     t1_x, t1_y, t1_z, t1_vx, t1_vy, t1_vz,
+#     1,0,0,0,0,0, # Identity matrix for phi ICs
+#     0,1,0,0,0,0,
+#     0,0,1,0,0,0,
+#     0,0,0,1,0,0,
+#     0,0,0,0,1,0,
+#     0,0,0,0,0,1
+# ]
+# t1_full_prop = solve_ivp(spatial_ode, [0, period], IC_t1, args=(mu,), rtol=1e-12,atol=1e-14)
+# monodromy_t1 = t1_full_prop.y[6:42,-1].reshape(6,6)
+# print("Monodromy @ t1")
+# print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in np.asarray(monodromy_t1)]))
 
-monodromy_t1_calc = stm_t1 @ monodromy @ np.linalg.inv(stm_t1)
-print("Monodromy @ t1 from calcs")
-print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in np.asarray(monodromy_t1_calc)]))
+# monodromy_t1_calc = stm_t1 @ monodromy @ np.linalg.inv(stm_t1)
+# print("Monodromy @ t1 from calcs")
+# print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in np.asarray(monodromy_t1_calc)]))
 
-# Calculate the eigenvectors at t1
-t1_eigenvectors_list = []
-for i in range(0,6):
-    t1_eigenvectors_list.append((stm_t1 @ eigenvectors[:,i])/np.linalg.norm(stm_t1 @ eigenvectors[:,i]))
-t1_eigenvectors = np.array(t1_eigenvectors_list)
 
-# Print the eigs
-for i in range(0,6):
-    print(f"t1 eigenvectors_{i+1}:")
-    print("\\begin{bmatrix}")
-    try:
-        for x in range(0,6): print(f"{t1_eigenvectors[i].flatten()[x]:15.5f}\\\\")
-    except:
-        pdb.set_trace()
-    print("\\end{bmatrix}")
+all_eigenvectors_list = [] # Consider making this a dict, so we can also save the states
+all_eigenvectors = dict()
+for f in range(0, 100, 5):
+    fixed_point_prop = solve_ivp(spatial_ode, [0, f/100*period], IC, args=(mu,), rtol=1e-12,atol=1e-14)
+    stm_fixed_point = fixed_point_prop.y[6:42,-1].reshape(6,6)
+    all_eigenvectors['fp_x'] = fixed_point_prop.y[0,-1]
+    all_eigenvectors['fp_y'] = fixed_point_prop.y[1,-1]
+    all_eigenvectors['fp_vx'] = fixed_point_prop.y[3,-1]
+    all_eigenvectors['fp_vy'] = fixed_point_prop.y[4,-1]
+    fixed_point_eigenvectors_list = []
+    # Calculate the eigenvectors at the fixed point
+    for i in range(0,6):
+        fixed_point_eigenvectors_list.append((stm_fixed_point @ eigenvectors[:,i])/np.linalg.norm(stm_fixed_point @ eigenvectors[:,i]))
+    fixed_point_eigenvectors = np.array(fixed_point_eigenvectors_list)
+    all_eigenvectors['eigenvectors'] = fixed_point_eigenvectors
+pdb.set_trace()
 
-# Check their eigenvalues Av=λv
-t1_eigenvalues_list = []
-for i in range(0,6):
-    Av = monodromy_t1 @ t1_eigenvectors[i]
-    t1_eigenvalues_list.append(np.divide(Av,t1_eigenvectors[i]))
-t1_eigenvalues = np.array(t1_eigenvalues_list)
-# pdb.set_trace()
+# # Print the eigs
 # for i in range(0,6):
-#     print(f"Check eigenvalue match between t0 and t1")
-#     if np.isclose(eigenvalues[i],t1_eigenvalues[i],atol=1e-8).all():
-#         print("PASS!")
-#     else:
-#         print("FAIL.")
+#     print(f"t1 eigenvectors_{i+1}:")
+#     print("\\begin{bmatrix}")
+#     try:
+#         for x in range(0,6): print(f"{t1_eigenvectors[i].flatten()[x]:15.5f}\\\\")
+#     except:
+#         pdb.set_trace()
+#     print("\\end{bmatrix}")
 
+# # Check their eigenvalues Av=λv
+# t1_eigenvalues_list = []
+# for i in range(0,6):
+#     Av = monodromy_t1 @ t1_eigenvectors[i]
+#     t1_eigenvalues_list.append(np.divide(Av,t1_eigenvectors[i]))
+# t1_eigenvalues = np.array(t1_eigenvalues_list)
+# # pdb.set_trace()
+# # for i in range(0,6):
+# #     print(f"Check eigenvalue match between t0 and t1")
+# #     if np.isclose(eigenvalues[i],t1_eigenvalues[i],atol=1e-8).all():
+# #         print("PASS!")
+# #     else:
+# #         print("FAIL.")
+
+    
 eigenspace = pd.DataFrame({})
 velocity_eigenspace = pd.DataFrame({})
 manifold = pd.DataFrame({})
-for i in range(0,6):
-    if i==0 or i==1:
-    # if i==0:
-        if i==0:
-            name="Stable Eigendirection"
-        elif i==1:
-            name="Unstable Eigendirection"
-        scale = 0.03 # Extend eigenvector line out
-        vscale = 0.01
-        x_eig_max = t1_x + scale*t1_eigenvectors[i][0,0].real
-        x_eig_min = t1_x + scale*-t1_eigenvectors[i][0,0].real
-        y_eig_max = t1_y + scale*t1_eigenvectors[i][1,0].real
-        y_eig_min = t1_y + scale*-t1_eigenvectors[i][1,0].real
-        vx_eig_max = t1_x + vscale*t1_eigenvectors[i][3,0].real
-        vx_eig_min = t1_x + vscale*-t1_eigenvectors[i][3,0].real
-        vy_eig_max = t1_y + vscale*t1_eigenvectors[i][4,0].real
-        vy_eig_min = t1_y + vscale*-t1_eigenvectors[i][4,0].real
-        eigenspace_pos_data = pd.DataFrame({
-            'name': f'{name} (+)',
-            'x':[t1_x,x_eig_max],
-            'y':[t1_y,y_eig_max]
-        })
-        eigenspace = pd.concat([eigenspace, eigenspace_pos_data], ignore_index=True)
-        eigenspace_neg_data = pd.DataFrame({
-            'name': f'{name} (-)',
-            'x':[x_eig_min,t1_x],
-            'y':[y_eig_min,t1_y]
-        })
-        eigenspace = pd.concat([eigenspace, eigenspace_neg_data], ignore_index=True)
-        velocity_eigenspace_pos_data = pd.DataFrame({
-            'name': f'{name} (+)',
-            'vx':[t1_x,vx_eig_max],
-            'vy':[t1_y,vy_eig_max]
-        })
-        velocity_eigenspace = pd.concat([velocity_eigenspace, velocity_eigenspace_pos_data], ignore_index=True)
-        velocity_eigenspace_neg_data = pd.DataFrame({
-            'name': f'{name} (-)',
-            'vx':[vx_eig_min,t1_x],
-            'vy':[vy_eig_min,t1_y]
-        })
-        velocity_eigenspace = pd.concat([velocity_eigenspace, velocity_eigenspace_neg_data], ignore_index=True)
+for eigvec in all_eigenvectors_list:
+    pdb.set_trace()
+    for i in range(0,6):
+        if i==0 or i==1:
+        # if i==0:
+            if i==0:
+                name="Stable Eigendirection"
+            elif i==1:
+                name="Unstable Eigendirection"
+            scale = 0.03 # Extend eigenvector line out
+            vscale = 0.01
+            x_eig_max = t1_x + scale*t1_eigenvectors[i][0,0].real
+            x_eig_min = t1_x + scale*-t1_eigenvectors[i][0,0].real
+            y_eig_max = t1_y + scale*t1_eigenvectors[i][1,0].real
+            y_eig_min = t1_y + scale*-t1_eigenvectors[i][1,0].real
+            vx_eig_max = t1_x + vscale*t1_eigenvectors[i][3,0].real
+            vx_eig_min = t1_x + vscale*-t1_eigenvectors[i][3,0].real
+            vy_eig_max = t1_y + vscale*t1_eigenvectors[i][4,0].real
+            vy_eig_min = t1_y + vscale*-t1_eigenvectors[i][4,0].real
+            eigenspace_pos_data = pd.DataFrame({
+                'name': f'{name} (+)',
+                'x':[t1_x,x_eig_max],
+                'y':[t1_y,y_eig_max]
+            })
+            eigenspace = pd.concat([eigenspace, eigenspace_pos_data], ignore_index=True)
+            eigenspace_neg_data = pd.DataFrame({
+                'name': f'{name} (-)',
+                'x':[x_eig_min,t1_x],
+                'y':[y_eig_min,t1_y]
+            })
+            eigenspace = pd.concat([eigenspace, eigenspace_neg_data], ignore_index=True)
+            velocity_eigenspace_pos_data = pd.DataFrame({
+                'name': f'{name} (+)',
+                'vx':[t1_x,vx_eig_max],
+                'vy':[t1_y,vy_eig_max]
+            })
+            velocity_eigenspace = pd.concat([velocity_eigenspace, velocity_eigenspace_pos_data], ignore_index=True)
+            velocity_eigenspace_neg_data = pd.DataFrame({
+                'name': f'{name} (-)',
+                'vx':[vx_eig_min,t1_x],
+                'vy':[vy_eig_min,t1_y]
+            })
+            velocity_eigenspace = pd.concat([velocity_eigenspace, velocity_eigenspace_neg_data], ignore_index=True)
 pdb.set_trace()
 # Build plot
 x_min = 0.78
