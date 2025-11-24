@@ -70,7 +70,7 @@ df_monodromy = pd.DataFrame({
 # For plotting purposes:
 full_period_prop = solve_ivp(spatial_ode, [0, period], IC, args=(mu,), rtol=1e-12,atol=1e-14)
 orbit = pd.DataFrame({
-    'name':'orbit',
+    'name':'Periodic Orbit',
     't':full_period_prop.t,
     'x':full_period_prop.y[0],
     'y':full_period_prop.y[1]
@@ -132,7 +132,7 @@ IC_stable = [
     0,0,0,0,0,1
 ]
 stable_prop = pd.DataFrame({})
-forward_prop = solve_ivp(spatial_ode, [0, period/10], IC_stable, args=(mu,), rtol=1e-12,atol=1e-14)
+forward_prop = solve_ivp(spatial_ode, [0, period], IC_stable, args=(mu,), rtol=1e-12,atol=1e-14)
 stable_prop_data = pd.DataFrame({
     'name':'Forward Time',
     't':forward_prop.t,
@@ -178,21 +178,14 @@ eigenspace_neg_data = pd.DataFrame({
 })
 eigenspace = pd.concat([eigenspace, eigenspace_neg_data], ignore_index=True)
 
-# Build plot
-x_min = 0.846
-x_max = 0.848
-y_lim = (x_max-x_min)/2
-base = alt.Chart(orbit).mark_line(clip=True,strokeWidth=2).encode(
-    x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
+# Build Plots
+orbit_plot = alt.Chart(orbit).mark_line(clip=True,strokeWidth=2).encode(
+    x=alt.X('x:Q'),
     # x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
-    y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
+    y=alt.Y('y:Q'),
     # y=alt.Y('y:Q', axis=alt.Axis(title='y [non-dim]')),
     color=alt.Color('name:N').title(None),
     order='t'
-).properties(
-    width=400,
-    height=400,
-    title=["Step-Off distance from Fixed Point",f"of the orbit {xi_symbol}=0.01, {eta_symbol}=0 ({ps}, Lillian Shido)"]
 )
 
 fixed_point_loc = alt.Chart(fixed_point).mark_point(filled=True,size=30,clip=True).encode(
@@ -219,35 +212,22 @@ eigendirection_arrows = alt.Chart(eigenspace).mark_point(shape="wedge",filled=Tr
         color=alt.Color('label:N', scale=alt.Scale(domain=['Stable Eigenspace'], range=['darkolivegreen']), legend=None).title(None)
 )
 
-stable_prop_plot = alt.Chart(stable_prop).mark_line(strokeWidth=2).encode(
-    x='x:Q',
-    y='y:Q',
-    color=alt.Color('name:N', scale=alt.Scale(domain=['Foward Time'], range=['darkorange'])).title(None),
-    order='t'
-)
-
 step_off_loc = alt.Chart(x_step_off).mark_point(filled=True,size=30,clip=True).encode(
     x='x:Q',
     y='y:Q',
     color=alt.Color('name:N', scale=alt.Scale(domain=['Step-Off Point'], range=['red'])).title(None)
 )
 
-final_pos = alt.layer(base, eigendirections, stable_prop_plot, fixed_point_loc, step_off_loc).resolve_scale(color='independent')
-
-# final_pos.save(f'step_off_point_{ps}.png', ppi=200)
-
-# pdb.set_trace()
-
 # Build plot
-x_min = 0.845
-x_max = 0.855
+x_min = 0.840
+x_max = 0.850
 y_lim = (x_max-x_min)/2
 new_chart = alt.Chart(stable_prop).mark_line(clip=True,strokeWidth=2).encode(
     x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
     # x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
     y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
     # y=alt.Y('y:Q', axis=alt.Axis(title='y [non-dim]')),
-    color=alt.Color('name:N').title(None),
+    color=alt.Color('name:N', scale=alt.Scale(scheme='darkmulti')).title(None),
     order='t'
 ).properties(
     width=400,
@@ -255,6 +235,6 @@ new_chart = alt.Chart(stable_prop).mark_line(clip=True,strokeWidth=2).encode(
     title=["Step-Off distance from Fixed Point",f"of the orbit {xi_symbol}=0.01, {eta_symbol}=0 ({ps}, Lillian Shido)"]
 )
 
-new_chart_layer = alt.layer(new_chart, eigendirections, fixed_point_loc, step_off_loc).resolve_scale(color='independent')
+new_chart_layer = alt.layer(orbit_plot, new_chart, eigendirections, fixed_point_loc, step_off_loc).resolve_scale(color='independent')
 new_chart_layer.save(f'step_off_point_{ps}.png', ppi=200)
 pdb.set_trace()
