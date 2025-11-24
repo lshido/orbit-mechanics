@@ -66,8 +66,8 @@ full_period_prop = solve_ivp(spatial_ode, [0, period], IC, args=(mu,), rtol=1e-1
 orbit = pd.DataFrame({
     'name':'orbit',
     't':full_period_prop.t,
-    'x':full_period_prop.y[0],
-    'y':full_period_prop.y[1]
+    'vx':full_period_prop.y[3],
+    'vy':full_period_prop.y[4]
 })
 
 # Get eigs and check they match
@@ -174,15 +174,15 @@ for num, point in fixed_points.items():
             elif i==1:
                 name="Unstable Eigendirection"
             scale = 0.05 # Extend eigenvector line out
-            vscale = 0.01
+            vscale = 0.1
             x_eig_max = point['fp_x'] + scale*point['eigenvectors'][i][0,0].real
             x_eig_min = point['fp_x'] + scale*-point['eigenvectors'][i][0,0].real
             y_eig_max = point['fp_y'] + scale*point['eigenvectors'][i][1,0].real
             y_eig_min = point['fp_y'] + scale*-point['eigenvectors'][i][1,0].real
-            vx_eig_max = point['fp_x'] + vscale*point['eigenvectors'][i][3,0].real
-            vx_eig_min = point['fp_x'] + vscale*-point['eigenvectors'][i][3,0].real
-            vy_eig_max = point['fp_y'] + vscale*point['eigenvectors'][i][4,0].real
-            vy_eig_min = point['fp_y'] + vscale*-point['eigenvectors'][i][4,0].real
+            vx_eig_max = point['fp_vx'] + vscale*point['eigenvectors'][i][3,0].real
+            vx_eig_min = point['fp_vx'] + vscale*-point['eigenvectors'][i][3,0].real
+            vy_eig_max = point['fp_vy'] + vscale*point['eigenvectors'][i][4,0].real
+            vy_eig_min = point['fp_vy'] + vscale*-point['eigenvectors'][i][4,0].real
             angle_max = np.rad2deg(atan2((y_eig_max - point['fp_y']),(x_eig_max - point['fp_x'])))
             angle_min = np.rad2deg(atan2((y_eig_min - point['fp_y']),(x_eig_min - point['fp_x'])))
             eigenspace_pos_data = pd.DataFrame({
@@ -207,84 +207,68 @@ for num, point in fixed_points.items():
                 'angle_wedge': [90-angle_min]
             })
             eigenspace = pd.concat([eigenspace, eigenspace_neg_data], ignore_index=True)
+            angle_max_v = np.rad2deg(atan2((vy_eig_max - point['fp_vy']),(vx_eig_max - point['fp_vx'])))
+            angle_min_v = np.rad2deg(atan2((vy_eig_min - point['fp_vy']),(vx_eig_min - point['fp_vx'])))
             velocity_eigenspace_pos_data = pd.DataFrame({
                 'name': f'{num}: {name} (+)',
-                'vx':[point['fp_x']],
+                'label': f'{name}',
+                'vx':[point['fp_vx']],
                 'vx2':[vx_eig_max],
-                'vy':[point['fp_y']],
+                'vy':[point['fp_vy']],
                 'vy2':[vy_eig_max],
-                'angle':[np.rad2deg(atan2((vy_eig_max - point['fp_y']),(vx_eig_max - point['fp_x'])))]
+                'angle':[angle_max_v],
+                'angle_wedge': [90-angle_max_v]
             })
             velocity_eigenspace = pd.concat([velocity_eigenspace, velocity_eigenspace_pos_data], ignore_index=True)
             velocity_eigenspace_neg_data = pd.DataFrame({
                 'name': f'{num}: {name} (-)',
-                'vx':[point['fp_x']],
+                'label': f'{name}',
+                'vx':[point['fp_vx']],
                 'vx2':[vx_eig_min],
-                'vy':[point['fp_y']],
+                'vy':[point['fp_vy']],
                 'vy2':[vy_eig_min],
-                'angle':[np.rad2deg(atan2((vy_eig_min - point['fp_y']),(vx_eig_min - point['fp_x'])))]
+                'angle':[angle_min_v],
+                'angle_wedge': [90-angle_min_v]
             })
             velocity_eigenspace = pd.concat([velocity_eigenspace, velocity_eigenspace_neg_data], ignore_index=True)
 
 # Build plot
-x_min = 0.78
-x_max = 0.88
+x_min = -0.1
+x_max = 0.1
 y_lim = (x_max-x_min)/2
 base = alt.Chart(orbit).mark_line(clip=True,strokeWidth=2).encode(
-    x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
-    # x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
-    y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
-    # y=alt.Y('y:Q', axis=alt.Axis(title='y [non-dim]')),
+    x=alt.X('vx:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='vx [non-dim]')),
+    # x=alt.X('vx:Q', axis=alt.Axis(title='vx [non-dim]')),
+    y=alt.Y('vy:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='vy [non-dim]')),
+    # y=alt.Y('vy:Q', axis=alt.Axis(title='vy [non-dim]')),
     color=alt.Color('name:N').title(None),
     order='t'
 ).properties(
     width=400,
     height=400,
-    title=["Stable and Unstable Eigenvectors on the Position Space",f"of the orbit {xi_symbol}=0.01, {eta_symbol}=0 ({ps}, Lillian Shido)"]
+    title=["Stable and Unstable Eigenvectors on the Velocity Space",f"of the orbit {xi_symbol}=0.01, {eta_symbol}=0 ({ps}, Lillian Shido)"]
 )
 
-L1_loc = alt.Chart(L1).mark_point(filled=True,size=30,clip=True).encode(
-    x='x:Q',
-    y='y:Q',
-    color=alt.Color('name:N', scale=alt.Scale(domain=['L1'], range=['darkblue'])).title(None)
+velocity_eigendirections = alt.Chart(velocity_eigenspace).mark_rule(strokeWidth=0.5,clip=True).encode(
+    x='vx:Q',
+    y='vy:Q',
+    x2='vx2:Q',
+    y2='vy2:Q',
+    color=alt.Color('label:N', scale=alt.Scale(domain=['Stable Eigendirection', 'Unstable Eigendirection'], range=['darkolivegreen', 'darkorange'])).title("Velocity Space Projections")
 )
 
-# t1_loc = alt.Chart(t1).mark_point(filled=True,size=30,clip=True).encode(
-#     x='x:Q',
-#     y='y:Q',
-#     color=alt.Color('name:N', scale=alt.Scale(domain=['t1'], range=['green'])).title(None)
-# )
-
-eigendirections = alt.Chart(eigenspace).mark_rule(strokeWidth=0.5,clip=True).encode(
-    x='x:Q',
-    y='y:Q',
-    x2='x2:Q',
-    y2='y2:Q',
-    color=alt.Color('label:N', scale=alt.Scale(domain=['Stable Eigendirection', 'Unstable Eigendirection'], range=['darkolivegreen', 'darkorange'])).title("Position Space Projections")
-)
-
-eigendirection_arrows = alt.Chart(eigenspace).mark_point(shape="wedge",filled=True, fillOpacity=1,size=100).encode(
-        x='x2:Q',
+velocity_eigendirection_arrows = alt.Chart(velocity_eigenspace).mark_point(shape="wedge",filled=True, fillOpacity=1,size=100).encode(
+        x='vx2:Q',
         # x = alt.datum(0.874411),
-        y='y2:Q',
+        y='vy2:Q',
         # y = alt.datum(-0.015899),
         angle=alt.Angle('angle_wedge').scale(domain=[0, 360]),
         # angle=alt.AngleValue(),
         color=alt.Color('label:N', scale=alt.Scale(domain=['Stable Eigendirection', 'Unstable Eigendirection'], range=['darkolivegreen', 'darkorange']), legend=None).title(None)
 )
 
-velocity_eigendirections = alt.Chart(velocity_eigenspace).mark_line(clip=True).encode(
-    x='vx:Q',
-    y='vy:Q',
-    color=alt.Color('name:N').title("Velocity Space Projections")
-)
+final_vel = alt.layer(base, velocity_eigendirections, velocity_eigendirection_arrows).resolve_scale(color='independent')
 
-final_pos = alt.layer(base, L1_loc, eigendirections, eigendirection_arrows).resolve_scale(color='independent')
-
-final_pos.save(f'eigenspaces_fixed_point_{ps}.png', ppi=200)
-
-# final_vel = alt.layer(base, L1_loc, velocity_eigendirections).resolve_scale(color='independent')
-
-# final_vel.save(f'eigenspaces_fixed_point_velocity_{ps}.png', ppi=200)
+final_vel.save(f'eigenspaces_fixed_point_velocity_{ps}.png', ppi=200)
 
 pdb.set_trace()
