@@ -170,9 +170,9 @@ for num, point in fixed_points.items():
         if i==0 or i==1:
         # if i==0:
             if i==0:
-                name="Stable Eigendirection"
-            elif i==1:
                 name="Unstable Eigendirection"
+            elif i==1:
+                name="Stable Eigendirection"
             scale = 0.05 # Extend eigenvector line out
             vscale = 0.1
             x_eig_max = point['fp_x'] + scale*point['eigenvectors'][i][0,0].real
@@ -233,8 +233,8 @@ for num, point in fixed_points.items():
             velocity_eigenspace = pd.concat([velocity_eigenspace, velocity_eigenspace_neg_data], ignore_index=True)
 
 # Build plot
-x_min = -0.1
-x_max = 0.1
+x_min = -0.13
+x_max = 0.13
 y_lim = (x_max-x_min)/2
 base = alt.Chart(orbit).mark_line(clip=True,strokeWidth=2).encode(
     x=alt.X('vx:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='vx [non-dim]')),

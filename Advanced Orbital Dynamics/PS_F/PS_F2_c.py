@@ -170,10 +170,10 @@ for num, point in fixed_points.items():
         if i==0 or i==1:
         # if i==0:
             if i==0:
-                name="Stable Eigendirection"
-            elif i==1:
                 name="Unstable Eigendirection"
-            scale = 0.05 # Extend eigenvector line out
+            elif i==1:
+                name="Stable Eigendirection"
+            scale = 0.1 # Extend eigenvector line out
             vscale = 0.01
             x_eig_max = point['fp_x'] + scale*point['eigenvectors'][i][0,0].real
             x_eig_min = point['fp_x'] + scale*-point['eigenvectors'][i][0,0].real

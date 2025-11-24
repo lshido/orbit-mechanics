@@ -103,9 +103,9 @@ for i in range(0,6):
     if i==0 or i==1:
     # if i==0:
         if i==0:
-            name="Stable Eigendirection"
-        elif i==1:
             name="Unstable Eigendirection"
+        elif i==1:
+            name="Stable Eigendirection"
         scale = 0.03 # Extend eigenvector line out
         vscale = 0.01
         x_eig_max = x_fixed + scale*eigenvectors[:,i][0,0].real
@@ -155,7 +155,7 @@ base = alt.Chart(orbit).mark_line(clip=True,strokeWidth=1).encode(
 ).properties(
     width=400,
     height=400,
-    title=["Stable and Unstable Eigendirections on the Velocity Space",f"at the Fixed point @ {eta_symbol}=0 ({ps}, Lillian Shido)"]
+    title=["Stable and Unstable Eigendirections on the Position Space",f"at the Fixed point @ {eta_symbol}=0 ({ps}, Lillian Shido)"]
 )
 
 L1_loc = alt.Chart(L1).mark_point(filled=True,size=30,clip=True).encode(
