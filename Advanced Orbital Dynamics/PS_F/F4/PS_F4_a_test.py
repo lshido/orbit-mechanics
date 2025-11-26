@@ -1,0 +1,419 @@
+ps = "F4 part a"
+# Author: Lillian Shido
+# Date: 11/24/2025
+
+import pdb
+import numpy as np
+import pandas as pd
+from math import atan2, sin, isclose
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+from scipy.integrate import solve_ivp
+from great_tables import GT, md, system_fonts
+import altair as alt
+from copy import deepcopy
+
+from symbols import xi_symbol, eta_symbol
+from constants import mu_Earth, mu_Moon, a_Moon
+from methods import system_properties, calc_L1, calc_initial_velocities, find_halfperiod, calc_Jacobi, spatial_ode, calc_poincare_exponents, calc_spatial_monodromy_half
+
+mu = mu_Moon/(mu_Earth + mu_Moon)
+
+# Properties of the system
+mu, l_char, t_char, x_Earth, x_Moon = system_properties(mu_Earth, mu_Moon, a_Moon)
+x_L1, y_L1 = calc_L1(mu, a_Moon)
+L1 = pd.DataFrame({'name':["L1"],'x':[x_L1],'y':[y_L1]})
+
+# Initial Conditions
+xi = 0.01
+eta = 0
+
+# Distance from L1
+xi_from_L1_dim = xi*l_char
+eta_from_L1_dim = eta*l_char
+
+# Calc starting guess values
+xi_dot_0, eta_dot_0 = calc_initial_velocities(xi, eta, x_L1, y_L1, mu)
+starting_x = x_L1 + xi
+starting_y = y_L1 + eta
+starting_xdot = xi_dot_0
+ydot_guess = eta_dot_0
+
+iterations, tf, arrival_states, converged_initial_states = find_halfperiod(starting_x, ydot_guess, mu, tolerance=1e-12)
+period = 2*tf
+# Spatial ICs, but for z=zdot=0
+IC = [
+    converged_initial_states[0], converged_initial_states[1], 0, converged_initial_states[2], converged_initial_states[3], 0,
+    1,0,0,0,0,0, # Identity matrix for phi ICs
+    0,1,0,0,0,0,
+    0,0,1,0,0,0,
+    0,0,0,1,0,0,
+    0,0,0,0,1,0,
+    0,0,0,0,0,1
+]
+# Monodromy matrix from half period
+print("Propagating the half-period")
+print(f"period: {period}")
+half_period_prop = solve_ivp(spatial_ode, [0, tf], IC, args=(mu,), rtol=1e-12,atol=1e-14)
+stm_half = half_period_prop.y[6:42,-1].reshape(6,6)
+monodromy = calc_spatial_monodromy_half(stm_half)
+print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in np.asarray(monodromy)]))
+df_monodromy = pd.DataFrame({
+    'Determinant':[np.linalg.det(monodromy)],
+    'Accuracy':[abs(np.linalg.det(monodromy))-1]
+})
+# For plotting purposes:
+full_period_prop = solve_ivp(spatial_ode, [0, period], IC, args=(mu,), rtol=1e-12,atol=1e-14)
+orbit = pd.DataFrame({
+    'name':'Periodic Orbit',
+    't':full_period_prop.t,
+    'x':full_period_prop.y[0],
+    'y':full_period_prop.y[1]
+})
+
+# Get eigs and check they match
+eigenvalues, eigenvectors = np.linalg.eig(monodromy)
+for i in range(0,6):
+    print(f"Check eigenset {i+1}")
+    if np.isclose(monodromy*eigenvectors[:,i],eigenvalues[i]*eigenvectors[:,i],atol=1e-8).all():
+        print("PASS!")
+    else:
+        print("FAIL.")
+
+# Classify Eigenvalues and put them into a dataframe
+eigenvalue_df = pd.DataFrame({})
+eigenvalue_string_df = pd.DataFrame({})
+for enum, eigenvalue in enumerate(eigenvalues):
+    if not isclose(eigenvalue.imag, 0):
+        data = eigenvalue
+        stability = 'Center'
+    elif isclose(eigenvalue.real, 1, rel_tol=1e-6):
+        data = eigenvalue.real
+        stability = 'Center'
+    elif eigenvalue > 1:
+        data = eigenvalue.real
+        stability = 'Unstable'
+    elif eigenvalue < 1:
+        data = eigenvalue.real
+        stability = 'Stable'
+    eigval_data = pd.DataFrame({f"lambda_{enum+1}":[data, stability]})
+    eigval_string_data = pd.DataFrame({f"lambda_{enum+1}":[f'{data:.5g}', stability]})
+    eigenvalue_df = pd.concat([eigenvalue_df, eigval_data], axis=1)
+    eigenvalue_string_df = pd.concat([eigenvalue_string_df, eigval_string_data], axis=1)
+
+# eigenvalue_table = (
+#     GT(eigenvalue_string_df)
+#     .tab_header(
+#         title=md(f"Eigenvalues of Periodic Orbit at xi=0.01, eta=0<br>({ps}, Lillian Shido)")
+#     )
+#     .cols_label(
+#         lambda_1="{{:lambda:_1}}<br>[non-dim]",
+#         lambda_2="{{:lambda:_2}}<br>[non-dim]",
+#         lambda_3="{{:lambda:_3}}<br>[non-dim]",
+#         lambda_4="{{:lambda:_4}}<br>[non-dim]",
+#         lambda_5="{{:lambda:_5}}<br>[non-dim]",
+#         lambda_6="{{:lambda:_6}}<br>[non-dim]",
+#     )
+#     .cols_align(
+#         align="center"
+#     )
+#     .opt_table_outline()
+#     .opt_stylize()
+#     .opt_table_font(font=system_fonts(name="industrial"))
+#     .opt_horizontal_padding(scale=2)
+# )
+# eigenvalue_table.show()
+
+# Print the eigs
+# for i in range(0,6):
+#     print(f"lambda_{i+1}: {eigenvalues[i]:.5f}")
+#     print(f"eigenvectors_{i+1}:")
+#     print("\\begin{bmatrix}")
+#     try:
+#         for x in range(0,6): print(f"{eigenvectors[:,i].flatten()[0,x]:15.5f}\\\\")
+#     except:
+#         pdb.set_trace()
+#     print("\\end{bmatrix}")
+
+# # Propagate by t1
+# t1 = 0.25*period
+# print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in np.asarray(stm_t1)]))
+
+# # Propagate a full period from t1 to get the monodromy @ t1
+# t1_x = t1_prop.y[0,-1] 
+# t1_y = t1_prop.y[1,-1] 
+# t1_z = t1_prop.y[2,-1] 
+# t1_vx = t1_prop.y[3,-1] 
+# t1_vy = t1_prop.y[4,-1] 
+# t1_vz = t1_prop.y[5,-1]
+# t1 = pd.DataFrame({'name':["t1"],'x':[t1_x],'y':[t1_y]})
+
+# IC_t1 = [
+#     t1_x, t1_y, t1_z, t1_vx, t1_vy, t1_vz,
+#     1,0,0,0,0,0, # Identity matrix for phi ICs
+#     0,1,0,0,0,0,
+#     0,0,1,0,0,0,
+#     0,0,0,1,0,0,
+#     0,0,0,0,1,0,
+#     0,0,0,0,0,1
+# ]
+# t1_full_prop = solve_ivp(spatial_ode, [0, period], IC_t1, args=(mu,), rtol=1e-12,atol=1e-14)
+# monodromy_t1 = t1_full_prop.y[6:42,-1].reshape(6,6)
+# print("Monodromy @ t1")
+# print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in np.asarray(monodromy_t1)]))
+
+# monodromy_t1_calc = stm_t1 @ monodromy @ np.linalg.inv(stm_t1)
+# print("Monodromy @ t1 from calcs")
+# print("\n".join([" ".join(f"{item:15.5f}" for item in row) for row in np.asarray(monodromy_t1_calc)]))
+
+# Identify 20 fixed points around the orbit
+fixed_points = dict()
+# this works!:
+monodromy_error = pd.DataFrame()
+for enum, f in enumerate(range(0, 100, 5)):
+    fixed_points[enum] = dict()
+    fixed_point_prop = solve_ivp(spatial_ode, [0, f/100*period], IC, args=(mu,), rtol=1e-12,atol=1e-14)
+    stm_fixed_point = fixed_point_prop.y[6:42,-1].reshape(6,6)
+    fixed_points[enum]['fp_x'] = fixed_point_prop.y[0,-1]
+    fixed_points[enum]['fp_y'] = fixed_point_prop.y[1,-1]
+    fixed_points[enum]['fp_vx'] = fixed_point_prop.y[3,-1]
+    fixed_points[enum]['fp_vy'] = fixed_point_prop.y[4,-1]
+    fixed_point_eigenvectors_list = []
+    fixed_point_eigenvalues_list = []
+    # Get the monodromy matrix at fixed point
+    fixed_point_monodromy = stm_fixed_point @ monodromy @ np.linalg.inv(stm_fixed_point)
+    error = abs(np.linalg.det(fixed_point_monodromy)-1)
+    monodromy_error_data = pd.DataFrame({
+        "Fixed Point": [enum+1],
+        "Error": [error]
+    })
+    monodromy_error = pd.concat([monodromy_error, monodromy_error_data], ignore_index=True)
+    # Calculate the eigenvectors at the fixed point
+    for i in range(0,6):
+        fixed_point_eigenvectors = (stm_fixed_point @ eigenvectors[:,i])/np.linalg.norm(stm_fixed_point @ eigenvectors[:,i])
+        fixed_point_eigenvectors_list.append(fixed_point_eigenvectors)
+        # Use the monodromy matrix at fixed point to calc eigenvalues for each eigenvector
+        fixed_point_eigenvalues = np.divide(fixed_point_monodromy @ fixed_point_eigenvectors, fixed_point_eigenvectors)
+        fixed_point_eigenvalues_list.append(fixed_point_eigenvalues)
+    fixed_point_eigenvalues = np.array(fixed_point_eigenvalues_list)
+    fixed_point_eigenvectors = np.array(fixed_point_eigenvectors_list)
+    fixed_points[enum]['eigenvectors'] = fixed_point_eigenvectors
+    fixed_points[enum]['eigenvalues'] = fixed_point_eigenvalues
+
+# monodromy_error_table = (
+#     GT(monodromy_error)
+#     .tab_header(
+#         title=md(f"Error of Monodromy Matrix at each fixed point<br>(no optimization)<br>(F2 part c, Lillian Shido)")
+#     )
+#     .fmt_scientific(
+#         columns = ['Error'],
+#         n_sigfig = 5
+#     )
+#     .cols_align(
+#         align="center"
+#     )
+#     .opt_table_outline()
+#     .opt_stylize()
+#     .opt_table_font(font=system_fonts(name="industrial"))
+#     .opt_horizontal_padding(scale=2)
+# )
+# monodromy_error_table.show()
+
+# Try reducing error
+# t0 = 0
+# last_monodromy = deepcopy(monodromy)
+# for enum, f in enumerate(range(0, 100, 5)):
+#     fixed_points[enum] = dict()
+#     fixed_point_prop = solve_ivp(spatial_ode, [t0, f/100*period], IC, args=(mu,), rtol=1e-12,atol=1e-14)
+#     # Set the new t0 
+#     t0 = fixed_point_prop.t[-1]
+#     stm_fixed_point = fixed_point_prop.y[6:42,-1].reshape(6,6)
+#     fixed_points[enum]['fp_x'] = fixed_point_prop.y[0,-1]
+#     fixed_points[enum]['fp_y'] = fixed_point_prop.y[1,-1]
+#     fixed_points[enum]['fp_vx'] = fixed_point_prop.y[3,-1]
+#     fixed_points[enum]['fp_vy'] = fixed_point_prop.y[4,-1]
+#     fixed_point_eigenvectors_list = []
+#     fixed_point_eigenvalues_list = []
+#     # Calculate the eigenvectors at the fixed point
+#     for i in range(0,6):
+#         fixed_point_eigenvectors = (stm_fixed_point @ eigenvectors[:,i])/np.linalg.norm(stm_fixed_point @ eigenvectors[:,i])
+#         fixed_point_eigenvectors_list.append(fixed_point_eigenvectors)
+#         # Get the monodromy matrix at fixed point
+#         fixed_point_monodromy = stm_fixed_point @ last_monodromy @ np.linalg.inv(stm_fixed_point)
+#         # Use the monodromy matrix at fixed point to calc eigenvalues for each eigenvector
+#         fixed_point_eigenvalues = np.divide(fixed_point_monodromy @ fixed_point_eigenvectors, fixed_point_eigenvectors)
+#         fixed_point_eigenvalues_list.append(fixed_point_eigenvalues)
+#     last_monodromy = fixed_point_monodromy
+#     fixed_point_eigenvalues = np.array(fixed_point_eigenvalues_list)
+#     fixed_point_eigenvectors = np.array(fixed_point_eigenvectors_list)
+#     fixed_points[enum]['eigenvectors'] = fixed_point_eigenvectors
+#     fixed_points[enum]['eigenvalues'] = fixed_point_eigenvalues
+
+pdb.set_trace()
+# # Print the eigs
+# for i in range(0,6):
+#     print(f"t1 eigenvectors_{i+1}:")
+#     print("\\begin{bmatrix}")
+#     try:
+#         for x in range(0,6): print(f"{t1_eigenvectors[i].flatten()[x]:15.5f}\\\\")
+#     except:
+#         pdb.set_trace()
+#     print("\\end{bmatrix}")
+
+# # Check their eigenvalues Av=λv
+# t1_eigenvalues_list = []
+# for i in range(0,6):
+#     Av = monodromy_t1 @ t1_eigenvectors[i]
+#     t1_eigenvalues_list.append(np.divide(Av,t1_eigenvectors[i]))
+# t1_eigenvalues = np.array(t1_eigenvalues_list)
+# # pdb.set_trace()
+# # for i in range(0,6):
+# #     print(f"Check eigenvalue match between t0 and t1")
+# #     if np.isclose(eigenvalues[i],t1_eigenvalues[i],atol=1e-8).all():
+# #         print("PASS!")
+# #     else:
+# #         print("FAIL.")
+    
+eigenspace = pd.DataFrame({})
+velocity_eigenspace = pd.DataFrame({})
+manifold = pd.DataFrame({})
+for num, point in fixed_points.items():
+    for i in range(0,6):
+        if i==0 or i==1:
+        # if i==0:
+            if i==0:
+                name="Unstable Eigendirection"
+            elif i==1:
+                name="Stable Eigendirection"
+            scale = 0.1 # Extend eigenvector line out
+            vscale = 0.01
+            x_eig_max = point['fp_x'] + scale*point['eigenvectors'][i][0,0].real
+            x_eig_min = point['fp_x'] + scale*-point['eigenvectors'][i][0,0].real
+            y_eig_max = point['fp_y'] + scale*point['eigenvectors'][i][1,0].real
+            y_eig_min = point['fp_y'] + scale*-point['eigenvectors'][i][1,0].real
+            vx_eig_max = point['fp_x'] + vscale*point['eigenvectors'][i][3,0].real
+            vx_eig_min = point['fp_x'] + vscale*-point['eigenvectors'][i][3,0].real
+            vy_eig_max = point['fp_y'] + vscale*point['eigenvectors'][i][4,0].real
+            vy_eig_min = point['fp_y'] + vscale*-point['eigenvectors'][i][4,0].real
+            angle_max = np.rad2deg(atan2((y_eig_max - point['fp_y']),(x_eig_max - point['fp_x'])))
+            angle_min = np.rad2deg(atan2((y_eig_min - point['fp_y']),(x_eig_min - point['fp_x'])))
+            eigenspace_pos_data = pd.DataFrame({
+                'name': f'{num}: {name} (+)',
+                'label':f'{name}',
+                'x':[point['fp_x']],
+                'x2':[x_eig_max],
+                'y':[point['fp_y']],
+                'y2':[y_eig_max],
+                'angle':[angle_max],
+                'angle_wedge': [90-angle_max]
+            })
+            eigenspace = pd.concat([eigenspace, eigenspace_pos_data], ignore_index=True)
+            eigenspace_neg_data = pd.DataFrame({
+                'name': f'{num}: {name} (-)',
+                'label': f'{name}',
+                'x':[point['fp_x']],
+                'x2':[x_eig_min],
+                'y':[point['fp_y']],
+                'y2':[y_eig_min],
+                'angle':[angle_min],
+                'angle_wedge': [90-angle_min]
+            })
+            eigenspace = pd.concat([eigenspace, eigenspace_neg_data], ignore_index=True)
+            velocity_eigenspace_pos_data = pd.DataFrame({
+                'name': f'{num}: {name} (+)',
+                'vx':[point['fp_x']],
+                'vx2':[vx_eig_max],
+                'vy':[point['fp_y']],
+                'vy2':[vy_eig_max],
+                'angle':[np.rad2deg(atan2((vy_eig_max - point['fp_y']),(vx_eig_max - point['fp_x'])))]
+            })
+            velocity_eigenspace = pd.concat([velocity_eigenspace, velocity_eigenspace_pos_data], ignore_index=True)
+            velocity_eigenspace_neg_data = pd.DataFrame({
+                'name': f'{num}: {name} (-)',
+                'vx':[point['fp_x']],
+                'vx2':[vx_eig_min],
+                'vy':[point['fp_y']],
+                'vy2':[vy_eig_min],
+                'angle':[np.rad2deg(atan2((vy_eig_min - point['fp_y']),(vx_eig_min - point['fp_x'])))]
+            })
+            velocity_eigenspace = pd.concat([velocity_eigenspace, velocity_eigenspace_neg_data], ignore_index=True)
+
+# Build Plots
+# orbit_plot = alt.Chart(orbit).mark_line(clip=True,strokeWidth=2).encode(
+#     x=alt.X('x:Q'),
+#     # x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
+#     y=alt.Y('y:Q'),
+#     # y=alt.Y('y:Q', axis=alt.Axis(title='y [non-dim]')),
+#     color=alt.Color('name:N').title(None),
+#     order='t'
+# )
+
+# fixed_point_loc = alt.Chart(fixed_point).mark_point(filled=True,size=30,clip=True).encode(
+#     x='x:Q',
+#     y='y:Q',
+#     color=alt.Color('name:N').title(None)
+# )
+
+# eigendirections = alt.Chart(eigenspace).mark_rule(strokeWidth=0.5,clip=True).encode(
+#     x='x:Q',
+#     y='y:Q',
+#     x2='x2:Q',
+#     y2='y2:Q',
+#     color=alt.Color('label:N', scale=alt.Scale(domain=['Unstable Eigenspace'], range=['darkolivegreen'])).title(None)
+# )
+
+# eigendirection_arrows = alt.Chart(eigenspace).mark_point(shape="wedge",filled=True, fillOpacity=1,size=100,clip=True).encode(
+#         x='x2:Q',
+#         # x = alt.datum(0.874411),
+#         y='y2:Q',
+#         # y = alt.datum(-0.015899),
+#         angle=alt.Angle('angle_wedge').scale(domain=[0, 360]),
+#         # angle=alt.AngleValue(),
+#         color=alt.Color('label:N', scale=alt.Scale(domain=['Unstable Eigenspace'], range=['darkolivegreen']), legend=None).title(None)
+# )
+
+# step_off_loc = alt.Chart(x_step_off).mark_point(filled=True,size=30,clip=True).encode(
+#     x='x:Q',
+#     y='y:Q',
+#     color=alt.Color('name:N', scale=alt.Scale(domain=['Step-Off Point'], range=['red'])).title(None)
+# )
+
+# # scale = alt.Scale(domain=['L1','Moon'], range=['darkblue','gray'])
+# moon_loc = alt.Chart(moon).mark_point(filled=True,size=50,clip=True).encode(
+#     x='x:Q',
+#     y='y:Q',
+#     color=alt.Color('name:N', scale=alt.Scale(domain=['Moon'], range=['gray'])).title(None)
+# )
+
+# L1_loc = alt.Chart(L1).mark_point(filled=True,size=30,clip=True).encode(
+#     x='x:Q',
+#     y='y:Q',
+#     color=alt.Color('name:N', scale=alt.Scale(domain=['L1'], range=['darkblue'])).title(None)
+# )
+
+# earth_loc = alt.Chart(earth).mark_point(filled=True,size=30,clip=True).encode(
+#     x='x:Q',
+#     y='y:Q',
+#     color=alt.Color('name:N', scale=alt.Scale(domain=['Earth'], range=['darkblue'])).title(None)
+# )
+
+# # Build plot
+# x_min = 0.800
+# x_max = 0.870
+# y_lim = (x_max-x_min)/2
+# new_chart = alt.Chart(unstable_prop).mark_line(clip=True,strokeWidth=2).encode(
+#     x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
+#     # x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
+#     y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
+#     # y=alt.Y('y:Q', axis=alt.Axis(title='y [non-dim]')),
+#     color=alt.Color('name:N', scale=alt.Scale(scheme='darkmulti')).title(None),
+#     order='t'
+# ).properties(
+#     width=400,
+#     height=400,
+#     title=["Unstable Negative Half-Manifold for Moon-side fixed point y=0",f"of the orbit {xi_symbol}=0.01, {eta_symbol}=0 ({ps}, Lillian Shido)"]
+# )
+
+# new_chart_layer = alt.layer(orbit_plot, earth_loc, L1_loc, new_chart, eigendirections, fixed_point_loc, step_off_loc).resolve_scale(color='independent')
+# new_chart_layer.save(f'unstable_negative_halfmanifold_moonside_{ps}.png', ppi=200)
+

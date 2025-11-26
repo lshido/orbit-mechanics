@@ -196,7 +196,7 @@ def spatial_eoms(t,sv, mu):
 
 def spatial_ode(t,sv,mu):
     # Set up the EOM ODEs
-    eoms = spatial_eoms(t,sv,mu)
+    eoms = spatial_eoms(t,sv, mu)
 
     # Calc the partials using the current x and y values
     d = ((sv[0] + mu)**2 + sv[1]**2 + sv[2]**2)**(1/2)
@@ -356,6 +356,7 @@ def find_halfperiod(starting_x, ydot_guess, mu, tolerance=1e-12, max_iterations=
         vxf: xdot at arrival
         vyf: ydot at arrival
     """
+    print(f"Looking for the initial conditions for half-period with initial guesses starting x = {starting_x} and vy guess = {ydot_guess}")
     x0 = starting_x # Initial x guess 
     vy0 = ydot_guess
     
@@ -486,3 +487,30 @@ def build_A_matrix_collinear(mu,x_L,y_L,z_L):
         [quad3,quad4]
     ])
     return A
+
+def calc_ZVC_Jacobi(mu, x, y):
+    d = sqrt((x+mu)**2 + y**2)
+    r = sqrt((x-1+mu)**2 + y**2)
+    C = 2*(1-mu)/d + 2*mu/r + x**2 + y**2
+    return C
+
+def calc_velocity_from_Jacobi(C, mu, x, y, z):
+    d = sqrt((x+mu)**2 + y**2 + z**2)
+    r = sqrt((x-1+mu)**2 + y**2 + z**2)
+    x_y_sq = (x**2+y**2)/2
+    term_1 = (1-mu)/d
+    term_2 = mu/r
+    pseudo_U = term_1 + term_2 + x_y_sq
+    v_squared = 2*pseudo_U - C
+    return sqrt(v_squared)
+
+def calc_spatial_Jacobi_array(mu, row):
+    d = sqrt((row['x']+mu)**2 + row['y']**2 + 0**2)
+    r = sqrt((row['x']-1+mu)**2 + row['y']**2 + 0**2)
+    x_y_sq = (row['x']**2+row['y']**2)/2
+    term_1 = (1-mu)/d
+    term_2 = mu/r
+    pseudo_U = term_1 + term_2 + x_y_sq
+    v_squared = row['vx']**2 + row['vy']**2 + 0**2
+    C = 2*pseudo_U - v_squared
+    return C

@@ -373,6 +373,7 @@ while True:
 
 full_period_prop = solve_ivp(ode, [0, 2*tf], sv0, args=(mu,), rtol=1e-12,atol=1e-14)
 monodromy = full_period_prop.y[4:20,-1].reshape(4,4)
+pdb.set_trace()
 fig2, ax2 = plt.subplots(figsize=(6.5, 6.5))
 ax2.set_aspect('equal', 'box')
 ax2.xaxis.set_major_locator(ticker.MultipleLocator(0.1))

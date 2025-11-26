@@ -271,13 +271,13 @@ df_orbits = pd.DataFrame(
 )
 
 # Configuration
-first_delta_x = 0.002
-delta_x = 0.015 # step in x
+first_delta_x = 0.001
+delta_x = 0.008 # step in x
 
 orbit_x = starting_x
 orbit_ydot = ydot_guess
 # Use the arrival states for xi (x0, y0, vx0, vy0) as the starting x
-for orbit in range(16):
+for orbit in range(11):
     print(f"starting x0:{orbit_x}, starting ydot: {orbit_ydot}")
     iterations, tf, arrival_states, converged_initial_states = find_halfperiod(orbit_x, orbit_ydot, mu, tolerance=1e-12)
     if orbit <= 1: # For the first two calculations, naively guess ydot is the same
@@ -324,6 +324,8 @@ for orbit in range(16):
             "jacobi":[jacobi]
         })
         df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
+
+pdb.set_trace()
 
 # Table iterations each orbit takes to converge
 df_orbit_iterations = df_orbits[['orbit','xi','iterations']]

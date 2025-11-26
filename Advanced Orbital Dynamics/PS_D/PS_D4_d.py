@@ -366,7 +366,7 @@ for orbit in range(21):
             "jacobi":[jacobi]
         })
         df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
-
+pdb.set_trace()
 # Table iterations each orbit takes to converge
 df_orbit_iterations = df_orbits[['orbit','xi','iterations']]
 
