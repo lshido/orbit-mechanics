@@ -26,12 +26,24 @@ x_L1, y_L1 = calc_L1(mu, a_Moon)
 L1 = pd.DataFrame({'name':["L1"],'x':[x_L1],'y':[y_L1]})
 moon = pd.DataFrame({'name':["Moon"],'x':[x_Moon],'y':[0]})
 earth = pd.DataFrame({'name':["Earth"],'x':[x_Earth],'y':[0]})
-
+mu = 0.01215058162343
 tf_1 = 2.77648121127569
 tf_2 = 2.75330620148158
 # Spatial ICs, but for z=zdot=0
+# IC = [
+#     1,2,3, 0, 0.19369724986446, 0,
+#     1,0,0,0,0,0, # Identity matrix for phi ICs
+#     0,1,0,0,0,0,
+#     0,0,1,0,0,0,
+#     0,0,0,1,0,0,
+#     0,0,0,0,1,0,
+#     0,0,0,0,0,1
+# ]
+# halo_prop_half = solve_ivp(spatial_ode, [0, tf_1/2], IC, args=(mu,), method='DOP853', rtol=1e-15,atol=1e-16)
+
+
 IC_1 = [
-    0.82575887090385, 0, 0.0800, 0, 0.19369724986446, 0,
+    0.82575887090385, 0, 0.08, 0, 0.19369724986446, 0,
     1,0,0,0,0,0, # Identity matrix for phi ICs
     0,1,0,0,0,0,
     0,0,1,0,0,0,
@@ -41,7 +53,7 @@ IC_1 = [
 ]
 
 IC_2 = [
-    0.82356490862838, 0, 0.0400, 0, 0.14924319723734, 0,
+    0.82356490862838, 0, 0.04, 0, 0.14924319723734, 0,
     1,0,0,0,0,0, # Identity matrix for phi ICs
     0,1,0,0,0,0,
     0,0,1,0,0,0,
@@ -71,8 +83,8 @@ orbit = pd.concat([orbit_1, orbit_2], ignore_index=True)
 
 # Check that the orbits are periodic
 # 1. Check det(monodromy)=1
-halo_1_prop_half = solve_ivp(spatial_ode, [0, tf_1/2], IC_1, args=(mu,), rtol=1e-13,atol=1e-14)
-halo_2_prop_half = solve_ivp(spatial_ode, [0, tf_2/2], IC_2, args=(mu,), rtol=1e-13,atol=1e-14)
+halo_1_prop_half = solve_ivp(spatial_ode, [0, tf_1/2], IC_1, args=(mu,), method='DOP853', rtol=1e-15,atol=1e-16)
+halo_2_prop_half = solve_ivp(spatial_ode, [0, tf_2/2], IC_2, args=(mu,), method='DOP853', rtol=1e-15,atol=1e-16)
 monodromy_1 = calc_spatial_monodromy_half(halo_1_prop_half.y[6:42,-1].reshape(6,6))
 monodromy_2 = calc_spatial_monodromy_half(halo_2_prop_half.y[6:42,-1].reshape(6,6))
 error_monodromy_1 = abs(np.linalg.det(monodromy_1) - 1)
@@ -102,19 +114,19 @@ monodromy_error = (
     .opt_table_font(font=system_fonts(name="industrial"))
     .opt_horizontal_padding(scale=2)
 )
-# monodromy_error.show()
+monodromy_error.show()
 
 # 2. Check that there is a pair of trivial eigvals
 eigvals_1, eigvecs_1 = np.linalg.eig(monodromy_1)
 eigvals_2, eigvecs_2 = np.linalg.eig(monodromy_2)
 df_eigenvalues = pd.DataFrame({
    "halo":['halo_1', 'halo_2'],
-   "lambda_1":[f"{eigvals_1[0]:.6g}",f"{eigvals_2[0]:.6g}"], 
-   "lambda_2":[f"{eigvals_1[1]:.6g}",f"{eigvals_2[1]:.6g}"], 
-   "lambda_3":[f"{eigvals_1[2]:.6g}",f"{eigvals_2[2]:.6g}"], 
-   "lambda_4":[f"{eigvals_1[3]:.6g}",f"{eigvals_2[3]:.6g}"], 
-   "lambda_5":[f"{eigvals_1[4]:.6g}",f"{eigvals_2[4]:.6g}"], 
-   "lambda_6":[f"{eigvals_1[5]:.6g}",f"{eigvals_2[5]:.6g}"], 
+   "lambda_1":[f"{eigvals_1[0]:.7g}",f"{eigvals_2[0]:.7g}"], 
+   "lambda_2":[f"{eigvals_1[1]:.7g}",f"{eigvals_2[1]:.7g}"], 
+   "lambda_3":[f"{eigvals_1[2]:.7g}",f"{eigvals_2[2]:.7g}"], 
+   "lambda_4":[f"{eigvals_1[3]:.7g}",f"{eigvals_2[3]:.7g}"], 
+   "lambda_5":[f"{eigvals_1[4]:.7g}",f"{eigvals_2[4]:.7g}"], 
+   "lambda_6":[f"{eigvals_1[5]:.7g}",f"{eigvals_2[5]:.7g}"], 
 })
 eigenvalue_table = (
     GT(df_eigenvalues)
@@ -141,7 +153,7 @@ eigenvalue_table = (
     .opt_table_font(font=system_fonts(name="industrial"))
     .opt_horizontal_padding(scale=2)
 )
-eigenvalue_table.show()
+# eigenvalue_table.show()
 
 # 3. Check that states return to the same points
 error_halo_1_states = abs(halo_1_prop.y[0:6,-1] - halo_1_prop.y[0:6,0])
@@ -180,7 +192,7 @@ error_states_table = (
     .opt_table_font(font=system_fonts(name="industrial"))
     .opt_horizontal_padding(scale=2)
 )
-# error_states_table.show()
+error_states_table.show()
 
 x_min = 0.75
 x_max = 0.95
@@ -238,10 +250,10 @@ orbits_chart_xz = alt.Chart(orbit).mark_line(clip=True,strokeWidth=1).encode(
 orbits_chart_xz_layer = alt.layer(orbits_chart_xz, L1_loc).resolve_scale(color='independent')
 orbits_chart_xz_layer.save(f'halo_orbits_x-z_{ps}.png', ppi=200)
 
-orbits_chart_zy = alt.Chart(orbit).mark_line(clip=True,strokeWidth=1).encode(
-    x=alt.X('z:Q', scale=alt.Scale(domain=[-z_lim,z_lim]), axis=alt.Axis(title='z [non-dim]')),
+orbits_chart_yz = alt.Chart(orbit).mark_line(clip=True,strokeWidth=1).encode(
+    x=alt.X('y:Q', scale=alt.Scale(domain=[-z_lim,z_lim]), axis=alt.Axis(title='z [non-dim]')),
     # x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
-    y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
+    y=alt.Y('z:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
     # y=alt.Y('y:Q', axis=alt.Axis(title='y [non-dim]')),
     color=alt.Color('name:N', scale=alt.Scale(scheme='rainbow')).title(None),
     order='t'
@@ -251,8 +263,8 @@ orbits_chart_zy = alt.Chart(orbit).mark_line(clip=True,strokeWidth=1).encode(
     title=[f"Halo Orbits z-y plane ({ps}, Lillian Shido)"]
 )
 
-orbits_chart_zy_layer = alt.layer(orbits_chart_zy, L1_loc).resolve_scale(color='independent')
-orbits_chart_zy_layer.save(f'halo_orbits_z-y_{ps}.png', ppi=200)
+orbits_chart_yz_layer = alt.layer(orbits_chart_yz, L1_loc).resolve_scale(color='independent')
+orbits_chart_yz_layer.save(f'halo_orbits_y-z_{ps}.png', ppi=200)
 
 fig = px.line_3d(orbit, x="x", y='y', z='z', color='name',
                  labels={
