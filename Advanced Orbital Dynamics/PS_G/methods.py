@@ -464,7 +464,7 @@ def find_spatial_halfperiod(starting_x, z_guess, ydot_guess, mu, tolerance=1e-12
         vyf = prop.y[4,-1] # get ydot to calculate the acceleration
         vzf = prop.y[5,-1] 
         # Check if the vxf is close to 0 within acceptable margins
-        if abs(vxf) > tolerance and abs(vzf) > tolerance and counter <= max_iterations: # If not, recalculate the delta_v0 and try again
+        if (abs(vxf) > tolerance or abs(vzf) > tolerance) and counter <= max_iterations: # If not, recalculate the delta_v0 and try again
             # Calc the acceleration in x
             a_x, a_y, a_z = eval_spatial_acceleration(xf, yf, zf, vxf, vyf, mu)
             # Step 3: Calc new delta_vy0
@@ -491,13 +491,13 @@ def find_spatial_halfperiod(starting_x, z_guess, ydot_guess, mu, tolerance=1e-12
             break
     return counter, tf, arrival_states, converged_initial_states
 
-def find_spatial_halfperiod_fixed_z(starting_x, z_guess, ydot_guess, mu, tolerance=1e-12, max_iterations=50):
+def find_spatial_halfperiod_fixed_z(x_guess, starting_z, ydot_guess, mu, tolerance=1e-12, max_iterations=50):
     """
     Calculates the resulting half period states for a 3-dimensional perpindicular x-axis crossing
     
     args:
-        starting_x: starting x location that you want to propagate half period for 
-        z_guess: the guessed z to start the propagation
+        x_guess: starting x location that you want to propagate half period for 
+        starting_z: the guessed z to start the propagation
         ydot_guess: the guessed ydot to start the propagation
         mu: the mu value for the system
         tolerance: convergence tolerance for the targeter, default: 1e-12
@@ -509,9 +509,9 @@ def find_spatial_halfperiod_fixed_z(starting_x, z_guess, ydot_guess, mu, toleran
         arrival_states: list of values of the final states
         converged_initial_states: list of values of the converged initial states
     """
-    print(f"Looking for the initial conditions for half-period with initial guesses starting x = {starting_x}, z= {z_guess}, and vy guess = {ydot_guess}")
-    x0 = starting_x # Starting x
-    z0 = z_guess # Initial z guess
+    print(f"Looking for the initial conditions for half-period with initial guesses starting x = {x_guess}, z= {starting_z}, and vy guess = {ydot_guess}")
+    x0 = x_guess # Starting x
+    z0 = starting_z # Initial z guess
     vy0 = ydot_guess # Initial ydot guess
     
     counter = 0
@@ -530,11 +530,11 @@ def find_spatial_halfperiod_fixed_z(starting_x, z_guess, ydot_guess, mu, toleran
         prop = solve_ivp(spatial_ode, [0, 50*pi], IC_guess, events=crossxEvent, args=(mu,), rtol=1e-12,atol=1e-14)
         stm = prop.y[6:42,-1].reshape(6,6) # turn into 6x6 phi matrix
         tf = prop.t_events[0][1]
-        phi_43 = stm[3,2]
+        phi_41 = stm[3,0]
         phi_45 = stm[3,4]
-        phi_63 = stm[5,2]
+        phi_61 = stm[5,0]
         phi_65 = stm[5,4]
-        phi_23 = stm[1,2]
+        phi_21 = stm[1,0]
         phi_25 = stm[1,4]
         rf = prop.y[0:3,-1].reshape(3,1) # position at tf, turn into 3x1 vector
         vf = prop.y[3:6,-1].reshape(3,1) # velocity at tf, turn into 3x1 vector
@@ -547,26 +547,26 @@ def find_spatial_halfperiod_fixed_z(starting_x, z_guess, ydot_guess, mu, toleran
         # print for info
         # print(f"{counter}, tf: {tf}, x:{IC_guess[0]}, y:{IC_guess[1]}, vx:{IC_guess[2]}, vy0:{IC_guess[3]}")
         # Check if the vxf is close to 0 within acceptable margins
-        if abs(vxf) > tolerance and abs(vzf) > tolerance and counter <= max_iterations: # If not, recalculate the delta_v0 and try again
+        if (abs(vxf) > tolerance or abs(vzf) > tolerance) and counter <= max_iterations: # If not, recalculate the delta_v0 and try again
             # Calc the acceleration in x
             a_x, a_y, a_z = eval_spatial_acceleration(xf, yf, zf, vxf, vyf, mu)
             # Step 3: Calc new delta_vy0
-            term_1 = phi_43 - a_x*phi_23/vyf
+            term_1 = phi_41 - a_x*phi_21/vyf
             term_2 = phi_45 - a_x*phi_25/vyf
-            term_3 = phi_63 - a_z*phi_23/vyf
+            term_3 = phi_61 - a_z*phi_21/vyf
             term_4 = phi_65 - a_z*phi_25/vyf
             a = np.array([[term_1, term_2],[term_3, term_4]])
             b = np.array([-vxf,-vzf])
             sol = np.linalg.solve(a,b)
-            delta_vy0 = sol[0]
-            delta_z0 = sol[1]
+            delta_x0 = sol[0]
+            delta_vy0 = sol[1]
             # Step 4: Use new deltas_ydot_t to calc new ICs
-            if delta_vy0 > 0.1:
-                delta_vy0 = delta_vy0/3
-            if delta_z0 > 0.1:
-                delta_z0 = delta_z0/3
+            if delta_vy0 > 0.01:
+                delta_vy0 = delta_vy0/10
+            if delta_x0 > 0.001:
+                delta_x0 = delta_x0/5
             vy0 = vy0 + delta_vy0
-            z0 = z0 + delta_z0
+            x0 = x0 + delta_x0
             continue
         else: # If error is within acceptable margins, break out of iterative loop
             arrival_states = [rf[0,0], rf[1,0], rf[2,0], vf[0,0], vf[1,0], vf[2,0]]

@@ -13,6 +13,7 @@ from great_tables import GT, md, system_fonts
 import altair as alt
 from copy import deepcopy
 import plotly.express as px
+import plotly.graph_objects as go
 
 from symbols import xi_symbol, eta_symbol
 from constants import mu_Earth, mu_Moon, a_Moon
@@ -20,11 +21,11 @@ from methods import system_properties, calc_L1, find_spatial_halfperiod, calc_sp
 
 # Properties of the system
 mu_ignore, l_char, t_char, x_Earth, x_Moon = system_properties(mu_Earth, mu_Moon, a_Moon)
-moon = pd.DataFrame({'name':["Moon"],'x':[x_Moon],'y':[0]})
-earth = pd.DataFrame({'name':["Earth"],'x':[x_Earth],'y':[0]})
 mu = 0.01215058162343
 x_L1, y_L1 = calc_L1(mu, a_Moon)
-L1 = pd.DataFrame({'name':["L1"],'x':[x_L1],'y':[y_L1]})
+moon = pd.DataFrame({'name':["Moon"],'x':[x_Moon],'y':[0]})
+earth = pd.DataFrame({'name':["Earth"],'x':[x_Earth],'y':[0]})
+L1 = pd.DataFrame({'name':["L1"],'x':[x_L1],'y':[y_L1],'z':[0]})
 # tf_1 = 2.77648121127569
 # tf_2 = 2.75330620148158
 
@@ -76,9 +77,6 @@ df_orbits = pd.DataFrame()
 for orbit in range(5):
     print(f"starting x0:{orbit_x}, starting ydot: {orbit_ydot}")
     iterations, tf, arrival_states, converged_initial_states = find_spatial_halfperiod(orbit_x, orbit_z, orbit_ydot, mu, tolerance=1e-12)
-    orbit_x = converged_initial_states[0] + delta_x # Step the x by delta_x
-    orbit_z = converged_initial_states[2] + delta_x*z_slope
-    orbit_ydot = converged_initial_states[4] + delta_x*vy_slope
     print(f"found x0:{converged_initial_states[0]}, found z0: {converged_initial_states[2]}, found ydot: {converged_initial_states[4]}")
     # Calc Jacobi
     jacobi = calc_spatial_Jacobi(mu, converged_initial_states[0], converged_initial_states[1], converged_initial_states[2], converged_initial_states[3], converged_initial_states[4], converged_initial_states[5])
@@ -98,8 +96,41 @@ for orbit in range(5):
         "jacobi":[jacobi]
     })
     df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
-
-    
+    # Update to new ICs
+    orbit_x = converged_initial_states[0] + delta_x # Step the x by delta_x
+    orbit_z = converged_initial_states[2] + delta_x*z_slope
+    orbit_ydot = converged_initial_states[4] + delta_x*vy_slope
+halo3_table = (
+    GT(df_orbits[df_orbits['orbit']==4])
+    .tab_header(
+        title=md(f"Initial States and Properties of 3rd Halo Orbit<br>({ps}, Lillian Shido)")
+    )
+    .cols_label(
+        tf="{{Half-Period}}<br>[non-dim]",
+        x="{{x}}<br>[non-dim]",
+        y="{{y}}<br>[non-dim]",
+        z="{{z}}<br>[non-dim]",
+        vx="{{v_x}}<br>[non-dim]",
+        vy="{{v_y}}<br>[non-dim]",
+        vz="{{v_z}}<br>[non-dim]",
+        jacobi="JC"
+    )
+    .fmt_number(
+        columns=["x","y","z","vx","vy","vz","tf","jacobi"],
+        n_sigfig=6
+    )
+    .cols_align(
+        align="center"
+    )
+    .cols_hide(
+        columns=['xi','orbit','iterations','name']
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+halo3_table.show()
 
 # For plotting purposes:
 converged_1 = [
@@ -138,29 +169,30 @@ orbit_2 = pd.DataFrame({
 })
 orbit = pd.concat([orbit_1, orbit_2], ignore_index=True)
 
-for halo in df_orbits.iterrows():
-    x = halo[1]['x']
-    IC = [
-        halo[1]['x'], halo[1]['y'], halo[1]['z'], halo[1]['vx'], halo[1]['vy'], halo[1]['vz'],
-        1,0,0,0,0,0, # Identity matrix for phi ICs
-        0,1,0,0,0,0,
-        0,0,1,0,0,0,
-        0,0,0,1,0,0,
-        0,0,0,0,1,0,
-        0,0,0,0,0,1
-    ]
-    halo_prop = solve_ivp(spatial_ode, [0, 2*halo[1]['tf']], IC, args=(mu,), method='DOP853', rtol=1e-14,atol=1e-16)
-    halo_data = pd.DataFrame({
-        'name':halo[1]['name'],
-        't':halo_prop.t,
-        'x':halo_prop.y[0],
-        'y':halo_prop.y[1],
-        'z':halo_prop.y[2]
-    })
-    try:
-        orbit = pd.concat([orbit, halo_data], ignore_index=True)
-    except:
-        pdb.set_trace()
+for enum, halo in enumerate(df_orbits.iterrows()):
+    if enum==4: # Propagate just the last one
+        x = halo[1]['x']
+        IC = [
+            halo[1]['x'], halo[1]['y'], halo[1]['z'], halo[1]['vx'], halo[1]['vy'], halo[1]['vz'],
+            1,0,0,0,0,0, # Identity matrix for phi ICs
+            0,1,0,0,0,0,
+            0,0,1,0,0,0,
+            0,0,0,1,0,0,
+            0,0,0,0,1,0,
+            0,0,0,0,0,1
+        ]
+        halo_prop = solve_ivp(spatial_ode, [0, 2*halo[1]['tf']], IC, args=(mu,), method='DOP853', rtol=1e-14,atol=1e-16)
+        halo_data = pd.DataFrame({
+            'name':halo[1]['name'],
+            't':halo_prop.t,
+            'x':halo_prop.y[0],
+            'y':halo_prop.y[1],
+            'z':halo_prop.y[2]
+        })
+        try:
+            orbit = pd.concat([orbit, halo_data], ignore_index=True)
+        except:
+            pdb.set_trace()
 
 arrival_df = pd.DataFrame({
     "halo": ['halo_1 (half-period)', 'halo_1 (full-period)', 'halo_2 (half-period)', 'halo_2 (full-period)'],
@@ -190,7 +222,7 @@ arrival_table = (
     .opt_table_font(font=system_fonts(name="industrial"))
     .opt_horizontal_padding(scale=2)
 )
-arrival_table.show()
+# arrival_table.show()
 # Check that the orbits are periodic
 # 1. Check det(monodromy)=1
 halo_1_prop_half = solve_ivp(spatial_ode, [0, tf_1], converged_1, args=(mu,), method='DOP853', rtol=1e-14,atol=1e-16)
@@ -306,8 +338,8 @@ error_states_table = (
 )
 # error_states_table.show()
 
-x_min = 0.75
-x_max = 0.95
+x_min = 0.76
+x_max = 0.96
 y_lim = (x_max-x_min)/2
 z_lim = (x_max-x_min)/2
 
@@ -363,9 +395,9 @@ orbits_chart_xz_layer = alt.layer(orbits_chart_xz, L1_loc).resolve_scale(color='
 orbits_chart_xz_layer.save(f'halo_orbits_x-z_{ps}.png', ppi=200)
 
 orbits_chart_yz = alt.Chart(orbit).mark_line(clip=True,strokeWidth=1).encode(
-    x=alt.X('y:Q', scale=alt.Scale(domain=[-z_lim,z_lim]), axis=alt.Axis(title='z [non-dim]')),
+    x=alt.X('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
     # x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
-    y=alt.Y('z:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
+    y=alt.Y('z:Q', scale=alt.Scale(domain=[-z_lim,z_lim]), axis=alt.Axis(title='z [non-dim]')),
     # y=alt.Y('y:Q', axis=alt.Axis(title='y [non-dim]')),
     color=alt.Color('name:N', scale=alt.Scale(scheme='rainbow')).title(None),
     order='t'
@@ -384,8 +416,9 @@ fig = px.line_3d(orbit, x="x", y='y', z='z', color='name',
                      "y": "y [non-dim]",
                      "z": "z [non-dim]"
                  })
+fig.add_trace(go.Scatter3d(x=L1['x'],y=L1['y'],z=L1['z'],name='L1'))
 fig.update_layout(
-    title=dict(text=f"Halo Orbits #1 and #2 ({ps}, Lillian Shido)", font=dict(size=30), automargin=True, yref='paper'),
+    title=dict(text=f"3 Halo Orbits near L1 ({ps}, Lillian Shido)", font=dict(size=30), automargin=True, yref='paper'),
     legend=dict(title=dict(text=None)),
     scene = dict(
         xaxis=dict(range=[x_min, x_max]),
