@@ -1,6 +1,6 @@
-ps = "G1 part d fixed_z only"
+ps = "G2 part a"
 # Author: Lillian Shido
-# Date: 12/5/2025
+# Date: 12/8/2025
 
 import pdb
 import numpy as np
@@ -101,10 +101,11 @@ for orbit in range(n_orbits):
     df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
     if converged_initial_states[2] <= 0:
         break
-halo3_table = (
-    GT(df_orbits[df_orbits['orbit']==4])
+
+halo_intersect = (
+    GT(df_orbits[df_orbits['z']==0])
     .tab_header(
-        title=md(f"Initial States and Properties of 3rd Halo Orbit<br>({ps}, Lillian Shido)")
+        title=md(f"Initial States and Properties of Halo that Intersects x-y Plane<br>({ps}, Lillian Shido)")
     )
     .cols_label(
         tf="{{Half-Period}}<br>[non-dim]",
@@ -131,173 +132,139 @@ halo3_table = (
     .opt_table_font(font=system_fonts(name="industrial"))
     .opt_horizontal_padding(scale=2)
 )
-# halo3_table.show()
+# halo_intersect.show()
 
-# # For plotting purposes:
-# converged_1 = [
-#     converged_IC_1[0], converged_IC_1[1], converged_IC_1[2], converged_IC_1[3], converged_IC_1[4], converged_IC_1[5],
-#     1,0,0,0,0,0, # Identity matrix for phi ICs
-#     0,1,0,0,0,0,
-#     0,0,1,0,0,0,
-#     0,0,0,1,0,0,
-#     0,0,0,0,1,0,
-#     0,0,0,0,0,1
-# ]
-# converged_2 = [
-#     converged_IC_2[0], converged_IC_2[1], converged_IC_2[2], converged_IC_2[3], converged_IC_2[4], converged_IC_2[5],
-#     1,0,0,0,0,0, # Identity matrix for phi ICs
-#     0,1,0,0,0,0,
-#     0,0,1,0,0,0,
-#     0,0,0,1,0,0,
-#     0,0,0,0,1,0,
-#     0,0,0,0,0,1
-# ]
-# halo_1_prop = solve_ivp(spatial_ode, [0, tf_1*2], converged_1, args=(mu,), rtol=1e-14,atol=1e-16)
-# halo_2_prop = solve_ivp(spatial_ode, [0, tf_2*2], converged_2, args=(mu,), rtol=1e-14,atol=1e-16)
-# orbit_1 = pd.DataFrame({
-#     'name':'halo_1',
-#     't':halo_1_prop.t,
-#     'x':halo_1_prop.y[0],
-#     'y':halo_1_prop.y[1],
-#     'z':halo_1_prop.y[2]
-# })
-# orbit_2 = pd.DataFrame({
-#     'name':'halo_2',
-#     't':halo_2_prop.t,
-#     'x':halo_2_prop.y[0],
-#     'y':halo_2_prop.y[1],
-#     'z':halo_2_prop.y[2]
-# })
-# orbit = pd.concat([orbit_1, orbit_2], ignore_index=True)
 orbit = pd.DataFrame()
-for enum, halo in enumerate(df_orbits.iterrows()):
-    x = halo[1]['x']
-    IC = [
-        halo[1]['x'], halo[1]['y'], halo[1]['z'], halo[1]['vx'], halo[1]['vy'], halo[1]['vz'],
-        1,0,0,0,0,0, # Identity matrix for phi ICs
-        0,1,0,0,0,0,
-        0,0,1,0,0,0,
-        0,0,0,1,0,0,
-        0,0,0,0,1,0,
-        0,0,0,0,0,1
-    ]
-    halo_prop = solve_ivp(spatial_ode, [0, 2*halo[1]['tf']], IC, args=(mu,), method='DOP853', rtol=1e-14,atol=1e-16)
-    halo_data = pd.DataFrame({
-        'name':halo[1]['z'],
-        't':halo_prop.t,
-        'x':halo_prop.y[0],
-        'y':halo_prop.y[1],
-        'z':halo_prop.y[2]
-    })
-    try:
-        orbit = pd.concat([orbit, halo_data], ignore_index=True)
-    except:
-        pdb.set_trace()
+halo = df_orbits.iloc[-1]
+IC = [
+    halo['x'], halo['y'], halo['z'], halo['vx'], halo['vy'], halo['vz'],
+    1,0,0,0,0,0, # Identity matrix for phi ICs
+    0,1,0,0,0,0,
+    0,0,1,0,0,0,
+    0,0,0,1,0,0,
+    0,0,0,0,1,0,
+    0,0,0,0,0,1
+]
+try:
+    halo_prop = solve_ivp(spatial_ode, [0, 2*halo['tf']], IC, args=(mu,), method='DOP853', rtol=1e-14,atol=1e-16)
+except:
+    pdb.set_trace()
+monodromy = halo_prop.y[6:42,-1].reshape(6,6)
+halo_data = pd.DataFrame({
+    'name':halo['z'],
+    't':halo_prop.t,
+    'x':halo_prop.y[0],
+    'y':halo_prop.y[1],
+    'z':halo_prop.y[2]
+})
+try:
+    orbit = pd.concat([orbit, halo_data], ignore_index=True)
+except:
+    pdb.set_trace()
 
-# arrival_df = pd.DataFrame({
-#     "halo": ['halo_1 (half-period)', 'halo_1 (full-period)', 'halo_2 (half-period)', 'halo_2 (full-period)'],
-#     "y": [arrival_states_1[1], halo_1_prop.y[1,-1], arrival_states_2[1], halo_2_prop.y[1,-1]],
-#     "vx": [arrival_states_1[3], halo_1_prop.y[3,-1], arrival_states_2[3], halo_2_prop.y[3,-1]],
-#     "vz": [arrival_states_1[5], halo_1_prop.y[5,-1], arrival_states_2[5], halo_2_prop.y[5,-1]]
-# })
-# arrival_table = (
-#     GT(arrival_df)
-#     .tab_header(
-#         title=md(f"Perpindicularity of Half-Period of Halos<br>({ps}, Lillian Shido)")
-#     )
-#     .cols_label(
-#         y="{{y}}",
-#         vx="{{v_x}}",
-#         vz="{{v_z}}",
-#     )
-#     .fmt_scientific(
-#         columns=["y","vx","vz"],
-#         n_sigfig=6
-#     )
-#     .cols_align(
-#         align="center"
-#     )
-#     .opt_table_outline()
-#     .opt_stylize()
-#     .opt_table_font(font=system_fonts(name="industrial"))
-#     .opt_horizontal_padding(scale=2)
-# )
-# # arrival_table.show()
-# # Check that the orbits are periodic
-# # 1. Check det(monodromy)=1
-# halo_1_prop_half = solve_ivp(spatial_ode, [0, tf_1], converged_1, args=(mu,), method='DOP853', rtol=1e-14,atol=1e-16)
-# halo_2_prop_half = solve_ivp(spatial_ode, [0, tf_2], converged_2, args=(mu,), method='DOP853', rtol=1e-14,atol=1e-16)
-# monodromy_1 = calc_spatial_monodromy_half(halo_1_prop_half.y[6:42,-1].reshape(6,6))
-# monodromy_2 = calc_spatial_monodromy_half(halo_2_prop_half.y[6:42,-1].reshape(6,6))
-# # monodromy_1 = halo_1_prop.y[6:42,-1].reshape(6,6)
-# # monodromy_2 = halo_2_prop.y[6:42,-1].reshape(6,6)
-# error_monodromy_1 = abs(np.linalg.det(monodromy_1) - 1)
-# error_monodromy_2 = abs(np.linalg.det(monodromy_2) - 1)
-# df_monodromy_error = pd.DataFrame({
-#     "error_monodromy_1":[error_monodromy_1],
-#     "error_monodromy_2":[error_monodromy_2],
-# })
-# monodromy_error = (
-#     GT(df_monodromy_error)
-#     .tab_header(
-#         title=md(f"Monodromy Matrix Error of Halos<br>({ps}, Lillian Shido)")
-#     )
-#     .cols_label(
-#         error_monodromy_1="{{Error Halo #1}}",
-#         error_monodromy_2="{{Error Halo #2}}",
-#     )
-#     .fmt_scientific(
-#         columns=["error_monodromy_1","error_monodromy_2"],
-#         n_sigfig=5
-#     )
-#     .cols_align(
-#         align="center"
-#     )
-#     .opt_table_outline()
-#     .opt_stylize()
-#     .opt_table_font(font=system_fonts(name="industrial"))
-#     .opt_horizontal_padding(scale=2)
-# )
-# # monodromy_error.show()
+# Check that the orbits are periodic
+# 1. Check det(monodromy)=1
+error_monodromy_1 = abs(np.linalg.det(monodromy) - 1)
+df_monodromy_error = pd.DataFrame({
+    "error_monodromy_1":[error_monodromy_1],
+})
+monodromy_error = (
+    GT(df_monodromy_error)
+    .tab_header(
+        title=md(f"Monodromy Matrix Error of Halo Orbit at z=0<br>({ps}, Lillian Shido)")
+    )
+    .cols_label(
+        error_monodromy_1="{{Error}}",
+    )
+    .fmt_scientific(
+        columns=["error_monodromy_1"],
+        n_sigfig=5
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+monodromy_error.show()
 
-# # 2. Check that there is a pair of trivial eigvals
-# eigvals_1, eigvecs_1 = np.linalg.eig(monodromy_1)
-# eigvals_2, eigvecs_2 = np.linalg.eig(monodromy_2)
-# df_eigenvalues = pd.DataFrame({
-#    "halo":['halo_1', 'halo_2'],
-#    "lambda_1":[f"{eigvals_1[0]:.7g}",f"{eigvals_2[0]:.7g}"], 
-#    "lambda_2":[f"{eigvals_1[1]:.7g}",f"{eigvals_2[1]:.7g}"], 
-#    "lambda_3":[f"{eigvals_1[2]:.7g}",f"{eigvals_2[2]:.7g}"], 
-#    "lambda_4":[f"{eigvals_1[3]:.7g}",f"{eigvals_2[3]:.7g}"], 
-#    "lambda_5":[f"{eigvals_1[4]:.7g}",f"{eigvals_2[4]:.7g}"], 
-#    "lambda_6":[f"{eigvals_1[5]:.7g}",f"{eigvals_2[5]:.7g}"], 
-# })
-# eigenvalue_table = (
-#     GT(df_eigenvalues)
-#     .tab_header(
-#         title=md(f"Eigenvalues of Halo Orbits<br>({ps}, Lillian Shido)")
-#     )
-#     .cols_label(
-#         lambda_1="{{:lambda:_1}}",
-#         lambda_2="{{:lambda:_2}}",
-#         lambda_3="{{:lambda:_3}}",
-#         lambda_4="{{:lambda:_4}}",
-#         lambda_5="{{:lambda:_5}}",
-#         lambda_6="{{:lambda:_6}}",
-#     )
-#     .cols_align(
-#         align="center"
-#     )
-#     # .fmt_number(
-#     #     columns=["lambda_1","lambda_2","lambda_3","lambda_4","lambda_5","lambda_6"],
-#     #     n_sigfig=6
-#     # )
-#     .opt_table_outline()
-#     .opt_stylize()
-#     .opt_table_font(font=system_fonts(name="industrial"))
-#     .opt_horizontal_padding(scale=2)
-# )
-# # eigenvalue_table.show()
+# 2. Check that there is a pair of trivial eigvals
+eigvals_1, eigvecs_1 = np.linalg.eig(monodromy)
+df_eigenvalues = pd.DataFrame({
+   "halo":['halo_1'],
+   "lambda_1":[f"{eigvals_1[0]:.7g}"], 
+   "lambda_2":[f"{eigvals_1[1]:.7g}"], 
+   "lambda_3":[f"{eigvals_1[2]:.7g}"], 
+   "lambda_4":[f"{eigvals_1[3]:.7g}"], 
+   "lambda_5":[f"{eigvals_1[4]:.7g}"], 
+   "lambda_6":[f"{eigvals_1[5]:.7g}"], 
+})
+eigenvalue_table = (
+    GT(df_eigenvalues)
+    .tab_header(
+        title=md(f"Eigenvalues of Halo Orbit at z=0<br>({ps}, Lillian Shido)")
+    )
+    .cols_label(
+        lambda_1="{{:lambda:_1}}",
+        lambda_2="{{:lambda:_2}}",
+        lambda_3="{{:lambda:_3}}",
+        lambda_4="{{:lambda:_4}}",
+        lambda_5="{{:lambda:_5}}",
+        lambda_6="{{:lambda:_6}}",
+    )
+    .cols_align(
+        align="center"
+    )
+    .cols_hide(
+        columns=['halo']
+    )
+    # .fmt_number(
+    #     columns=["lambda_1","lambda_2","lambda_3","lambda_4","lambda_5","lambda_6"],
+    #     n_sigfig=6
+    # )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+eigenvalue_table.show()
+
+df_eigenvalues_abs = pd.DataFrame({
+    "eig_1_abs":[abs(eigvals_1[0])],
+    "eig_2_abs":[abs(eigvals_1[1])],
+    "eig_3_abs":[abs(eigvals_1[2])],
+    "eig_4_abs":[abs(eigvals_1[3])],
+    "eig_5_abs":[abs(eigvals_1[4])],
+    "eig_6_abs":[abs(eigvals_1[5])]
+})
+eig_abs_table = (
+    GT(df_eigenvalues_abs)
+    .tab_header(
+        title=md(f"Absolute Values of the Eigenvalues of Halo Orbit at z=0<br>({ps}, Lillian Shido)")
+    )
+    .cols_label(
+        eig_1_abs="{{| :lambda:_1 |}}",
+        eig_2_abs="{{| :lambda:_2 |}}",
+        eig_3_abs="{{| :lambda:_3 |}}",
+        eig_4_abs="{{| :lambda:_4 |}}",
+        eig_5_abs="{{| :lambda:_5 |}}",
+        eig_6_abs="{{| :lambda:_6 |}}"
+    )
+    .fmt_number(
+        columns=["eig_1_abs","eig_2_abs","eig_3_abs","eig_4_abs","eig_5_abs","eig_6_abs"],
+        n_sigfig=6
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+eig_abs_table.show()
 
 # # 3. Check that states return to the same points
 # error_halo_1_states = abs(halo_1_prop.y[0:6,-1] - halo_1_prop.y[0:6,0])
@@ -376,7 +343,7 @@ earth_loc = alt.Chart(earth).mark_point(filled=True,size=30,clip=True).encode(
 )
 
 orbits_chart_xy_layer = alt.layer(orbits_chart_xy, L1_loc).resolve_scale(color='independent')
-orbits_chart_xy_layer.save(f'halo_orbits_x-y_{ps}.png', ppi=200)
+# orbits_chart_xy_layer.save(f'halo_orbits_x-y_{ps}.png', ppi=200)
 
 orbits_chart_xz = alt.Chart(orbit).mark_line(clip=True,strokeWidth=1).encode(
     x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
@@ -392,7 +359,7 @@ orbits_chart_xz = alt.Chart(orbit).mark_line(clip=True,strokeWidth=1).encode(
 )
 
 orbits_chart_xz_layer = alt.layer(orbits_chart_xz, L1_loc).resolve_scale(color='independent')
-orbits_chart_xz_layer.save(f'halo_orbits_x-z_{ps}.png', ppi=200)
+# orbits_chart_xz_layer.save(f'halo_orbits_x-z_{ps}.png', ppi=200)
 
 orbits_chart_yz = alt.Chart(orbit).mark_line(clip=True,strokeWidth=1).encode(
     x=alt.X('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
@@ -408,7 +375,7 @@ orbits_chart_yz = alt.Chart(orbit).mark_line(clip=True,strokeWidth=1).encode(
 )
 
 orbits_chart_yz_layer = alt.layer(orbits_chart_yz, L1_loc).resolve_scale(color='independent')
-orbits_chart_yz_layer.save(f'halo_orbits_y-z_{ps}.png', ppi=200)
+# orbits_chart_yz_layer.save(f'halo_orbits_y-z_{ps}.png', ppi=200)
 
 fig = px.line_3d(orbit, x="x", y='y', z='z', color='name',
                  labels={
@@ -428,6 +395,6 @@ fig.update_layout(
         aspectmode='manual'  
     ),
 )
-fig.show()
+# fig.show()
 
 pdb.set_trace()

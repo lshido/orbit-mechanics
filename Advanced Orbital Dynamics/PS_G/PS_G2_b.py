@@ -1,6 +1,6 @@
-ps = "G1 part d"
+ps = "G2 part b"
 # Author: Lillian Shido
-# Date: 12/7/2025
+# Date: 12/8/2025
 
 import pdb
 import numpy as np
@@ -62,7 +62,7 @@ delta_x = -0.001 # step in x
 orbit_x = starting_x
 orbit_ydot = ydot_guess
 # Use the arrival states for xi (x0, y0, vx0, vy0) as the starting x
-n_orbits = 20
+n_orbits = 50
 for orbit in range(n_orbits):
     print(f"starting x0:{orbit_x}, starting ydot: {orbit_ydot}")
     iterations, tf, arrival_states, converged_initial_states = find_halfperiod(orbit_x, orbit_ydot, mu, tolerance=1e-12)
@@ -88,10 +88,12 @@ for orbit in range(n_orbits):
     else:
         # Calc the slope from the last pair of x0 and vy0
         my_slope = (df_orbits.iloc[-1]['vy']-df_orbits.iloc[-2]['vy'])/(df_orbits.iloc[-1]['x']-df_orbits.iloc[-2]['x'])
-        if 0.78 < orbit_x < 0.81:
-            delta_x = delta_x*8
-        if orbit_x < 0.78:
-            delta_x = delta_x/1
+        if 0.75 < orbit_x < 0.81:
+            delta_x = first_delta_x*8
+        if 0.713 < orbit_x < 0.77:
+            delta_x = first_delta_x*3
+        if orbit_x < 0.713:
+            delta_x = first_delta_x/2 
         orbit_x = converged_initial_states[0] + delta_x # Step the x by delta_x
         orbit_ydot = converged_initial_states[3] + delta_x*my_slope
         print(f"found x0:{converged_initial_states[0]}, found ydot: {converged_initial_states[3]}")
@@ -312,7 +314,7 @@ eig_table = (
     )
     .tab_style(
         style=style.fill(color="yellow"),
-        locations=loc.body(columns=["stability_3", "x0"], rows=[3, 4])
+        locations=loc.body(columns=["stability_3", "x0"], rows=[3, 4, 20, 21, 41, 42])
     )
     .opt_table_outline()
     .opt_stylize()
@@ -352,7 +354,7 @@ eig_abs_table = (
     )
     .tab_style(
         style=style.fill(color="yellow"),
-        locations=loc.body(columns=["eig_5_abs", "eig_6_abs", "x0"], rows=[3, 4])
+        locations=loc.body(columns=["eig_5_abs", "eig_6_abs", "x0"], rows=[3, 4, 20, 21, 41, 42])
     )
     .opt_table_outline()
     .opt_stylize()
@@ -389,7 +391,7 @@ stability_table = (
     )
     .tab_style(
         style=style.fill(color="yellow"),
-        locations=loc.body(columns=["stability_3", "x0"], rows=[3, 4])
+        locations=loc.body(columns=["stability_3", "x0"], rows=[3, 4, 20, 21, 41, 42])
     )
     .opt_table_outline()
     .opt_stylize()
@@ -398,8 +400,8 @@ stability_table = (
 )
 stability_table.show()
 
-x_min = 0.76
-x_max = 0.96
+x_min = 0.35
+x_max = 1.35
 y_lim = (x_max-x_min)/2
 z_lim = (x_max-x_min)/2
 
