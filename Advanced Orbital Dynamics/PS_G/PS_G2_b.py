@@ -124,6 +124,7 @@ labels = [fr'$\xi$={i}' if i!=0 else f'Baseline' for i, c in enumerate(colors)]
 
 # Initialize eigenvalue dataframe
 df_eigenvalues = pd.DataFrame()
+df_abs_eigenvalues = pd.DataFrame()
 df_eigenvalues_float = pd.DataFrame()
 df_jc_period = pd.DataFrame()
 # Initialize Poincaré exponents
@@ -178,6 +179,17 @@ for enum, orbit in enumerate(df_orbits.iterrows()):
     })
     df_eigenvalues = pd.concat([df_eigenvalues, eigenvalues_data], ignore_index=True)
 
+    for e in range(0,6):
+        abs_eigenvalues_data = pd.DataFrame({
+            "orbit":[enum],
+            "xi":[xi0],
+            "x0":[x0],
+            "period":[2*tf],
+            "jacobi":[jacobi],
+            "label":[f'lambda_{e+1}'],
+            f"lambda":[abs(eigenvalues[e])]
+        })
+        df_abs_eigenvalues = pd.concat([df_abs_eigenvalues, abs_eigenvalues_data], ignore_index=True)
     eigenvalues_float_data = pd.DataFrame({
         "orbit":[enum],
         "xi":[xi0],
@@ -260,33 +272,33 @@ fig1.suptitle(rf"Eigenvalues for each $\xi$ ({ps}, Lillian Shido)")
 ax1.grid()
 ax2.grid()
 plt.savefig(f'eigs_complex_{ps}.png', dpi=300, bbox_inches='tight')
-plt.show()
+# plt.show()
 
-# Make a table with just the non-unity pairs
-df_stability_index = pd.DataFrame()
-for enum, row in enumerate(df_eigenvalues.iterrows()):
-    eig_1 = row[1]['eig_1']
-    eig_2 = row[1]['eig_2']
-    eig_3 = row[1]['eig_3']
-    eig_4 = row[1]['eig_4']
-    eig_5 = row[1]['eig_5']
-    eig_6 = row[1]['eig_6']
-    if enum <= 10:
-        stability_data = pd.DataFrame({
-            "stability_1": [calc_stability_index(eig_1, eig_2)],
-            "stability_2": [calc_stability_index(eig_3, eig_4)],
-            "stability_3": [calc_stability_index(eig_5, eig_6)]
-        })
-        df_stability_index = pd.concat([df_stability_index, stability_data], ignore_index=True)
-    else:
-        stability_data = pd.DataFrame({
-            "stability_1": [calc_stability_index(eig_1, eig_4)],
-            "stability_2": [calc_stability_index(eig_2, eig_3)],
-            "stability_3": [calc_stability_index(eig_5, eig_6)]
-        })
-        df_stability_index = pd.concat([df_stability_index, stability_data], ignore_index=True)
+# # Make a table with just the non-unity pairs
+# df_stability_index = pd.DataFrame()
+# for enum, row in enumerate(df_eigenvalues.iterrows()):
+#     eig_1 = row[1]['eig_1']
+#     eig_2 = row[1]['eig_2']
+#     eig_3 = row[1]['eig_3']
+#     eig_4 = row[1]['eig_4']
+#     eig_5 = row[1]['eig_5']
+#     eig_6 = row[1]['eig_6']
+#     if enum <= 10:
+#         stability_data = pd.DataFrame({
+#             "stability_1": [calc_stability_index(eig_1, eig_2)],
+#             "stability_2": [calc_stability_index(eig_3, eig_4)],
+#             "stability_3": [calc_stability_index(eig_5, eig_6)]
+#         })
+#         df_stability_index = pd.concat([df_stability_index, stability_data], ignore_index=True)
+#     else:
+#         stability_data = pd.DataFrame({
+#             "stability_1": [calc_stability_index(eig_1, eig_4)],
+#             "stability_2": [calc_stability_index(eig_2, eig_3)],
+#             "stability_3": [calc_stability_index(eig_5, eig_6)]
+#         })
+#         df_stability_index = pd.concat([df_stability_index, stability_data], ignore_index=True)
 
-df_family_stability = df_eigenvalues[['x0','orbit','xi','period']].join(df_stability_index)
+# df_family_stability = df_eigenvalues[['x0','orbit','xi','period']].join(df_stability_index)
 
 eig_table = (
     GT(df_eigenvalues)
@@ -322,7 +334,7 @@ eig_table = (
     .opt_horizontal_padding(scale=2)
     .cols_hide(columns=["jacobi","eig_1_abs","eig_2_abs","eig_3_abs","eig_4_abs","eig_5_abs","eig_6_abs","eig_1","eig_2","eig_3","eig_4","eig_5","eig_6"])
 )
-eig_table.show()
+# eig_table.show()
 
 eig_abs_table = (
     GT(df_eigenvalues)
@@ -362,43 +374,43 @@ eig_abs_table = (
     .opt_horizontal_padding(scale=2)
     .cols_hide(columns=["jacobi","eig_1_string","eig_2_string","eig_3_string","eig_4_string","eig_5_string","eig_6_string","eig_1","eig_2","eig_3","eig_4","eig_5","eig_6"])
 )
-eig_abs_table.show()
+# eig_abs_table.show()
 
-stability_table = (
-    GT(df_family_stability)
-    .tab_header(
-        title=md(f"Stability indices in L1 Lyapunov Family<br>({ps}, Lillian Shido)")
-    )
-    .cols_label(
-        orbit="Orbit",
-        xi="{{:xi:}}",
-        x0="{{x_0}}<br>[non-dim]",
-        period="{{Period}}<br>[non-dim]",
-        stability_1="Stability Index 1<br>{{:nu:_1}}",
-        stability_2="Stability Index 2<br>{{:nu:_2}}",
-        stability_3="Stability Index 3<br>{{:nu:_3}}",
-    )
-    .fmt_number(
-        columns=["x0","xi","period"],
-        decimals=4
-    )
-    .fmt_number(
-        columns=["stability_1","stability_2","stability_3",],
-        n_sigfig=6
-    )
-    .cols_align(
-        align="center"
-    )
-    .tab_style(
-        style=style.fill(color="yellow"),
-        locations=loc.body(columns=["stability_3", "x0"], rows=[3, 4, 20, 21, 41, 42])
-    )
-    .opt_table_outline()
-    .opt_stylize()
-    .opt_table_font(font=system_fonts(name="industrial"))
-    .opt_horizontal_padding(scale=2)
-)
-stability_table.show()
+# stability_table = (
+#     GT(df_family_stability)
+#     .tab_header(
+#         title=md(f"Stability indices in L1 Lyapunov Family<br>({ps}, Lillian Shido)")
+#     )
+#     .cols_label(
+#         orbit="Orbit",
+#         xi="{{:xi:}}",
+#         x0="{{x_0}}<br>[non-dim]",
+#         period="{{Period}}<br>[non-dim]",
+#         stability_1="Stability Index 1<br>{{:nu:_1}}",
+#         stability_2="Stability Index 2<br>{{:nu:_2}}",
+#         stability_3="Stability Index 3<br>{{:nu:_3}}",
+#     )
+#     .fmt_number(
+#         columns=["x0","xi","period"],
+#         decimals=4
+#     )
+#     .fmt_number(
+#         columns=["stability_1","stability_2","stability_3",],
+#         n_sigfig=6
+#     )
+#     .cols_align(
+#         align="center"
+#     )
+#     .tab_style(
+#         style=style.fill(color="yellow"),
+#         locations=loc.body(columns=["stability_3", "x0"], rows=[3, 4, 20, 21, 41, 42])
+#     )
+#     .opt_table_outline()
+#     .opt_stylize()
+#     .opt_table_font(font=system_fonts(name="industrial"))
+#     .opt_horizontal_padding(scale=2)
+# )
+# stability_table.show()
 
 x_min = 0.35
 x_max = 1.35
@@ -448,6 +460,20 @@ lyapunovs_chart = alt.Chart(plot_orbits).mark_line(clip=True,strokeWidth=1).enco
 )
 
 lyapunovs_chart_layer = alt.layer(lyapunovs_chart, L1_loc, orbit_3_chart).resolve_scale(color='independent')
-lyapunovs_chart_layer.save(f'L1_lyapunovs_{ps}.png', ppi=200)
+# lyapunovs_chart_layer.save(f'L1_lyapunovs_{ps}.png', ppi=200)
 
+eigval_chart = alt.Chart(df_abs_eigenvalues[df_abs_eigenvalues['label']=='lambda_6']).mark_point(size=10,clip=True).encode(
+    x=alt.X('x:Q', scale=alt.Scale(domain=[0.7,0.9]), axis=alt.Axis(title='x [non-dim]')),
+    # x=alt.X('x0:Q', axis=alt.Axis(title='x [non-dim]')),
+    # y=alt.Y('y:Q', scale=alt.Scale(domain=[0.5,1.8]), axis=alt.Axis(title='normalized lambda')),
+    y=alt.Y('lambda:Q', axis=alt.Axis(title='normalized eigenvalue')),
+    color=alt.Color('label:N').title(None),
+).properties(
+    width=500,
+    # height=100,
+    title=[f"Out-of-Plane Stability ({ps}, Lillian Shido)"]
+)
 
+eigval_chart.save(f'out_of_plane_eigvals_{ps}.png', ppi=200)
+
+pdb.set_trace()
