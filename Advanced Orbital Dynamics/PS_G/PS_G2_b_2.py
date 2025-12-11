@@ -1,4 +1,4 @@
-ps = "G2 part b"
+ps = "G2 part b_2"
 # Author: Lillian Shido
 # Date: 12/8/2025
 
@@ -56,13 +56,22 @@ ydot_guess = eta_dot_0
 df_orbits = pd.DataFrame()
 
 # Configuration
-first_delta_x = -0.001
+first_delta_x = -0.0005
 delta_x = -0.001 # step in x
 
-orbit_x = starting_x
-orbit_ydot = ydot_guess
+starting_x_1 = 0.822915
+ydot_guess_1 =  0.131296
+
+starting_x_2 = 0.780915
+ydot_guess_2 =  0.445412
+
+starting_x_3 = 0.712415
+ydot_guess_3 =  0.611142
+
+orbit_x = starting_x_1
+orbit_ydot = ydot_guess_1
 # Use the arrival states for xi (x0, y0, vx0, vy0) as the starting x
-n_orbits = 50
+n_orbits = 2
 for orbit in range(n_orbits):
     print(f"starting x0:{orbit_x}, starting ydot: {orbit_ydot}")
     iterations, tf, arrival_states, converged_initial_states = find_halfperiod(orbit_x, orbit_ydot, mu, tolerance=1e-12)
@@ -88,12 +97,12 @@ for orbit in range(n_orbits):
     else:
         # Calc the slope from the last pair of x0 and vy0
         my_slope = (df_orbits.iloc[-1]['vy']-df_orbits.iloc[-2]['vy'])/(df_orbits.iloc[-1]['x']-df_orbits.iloc[-2]['x'])
-        if 0.75 < orbit_x < 0.81:
-            delta_x = first_delta_x*8
-        if 0.713 < orbit_x < 0.77:
-            delta_x = first_delta_x*3
-        if orbit_x < 0.713:
-            delta_x = first_delta_x/2 
+        # if 0.75 < orbit_x < 0.81:
+        #     delta_x = first_delta_x*8
+        # if 0.713 < orbit_x < 0.77:
+        #     delta_x = first_delta_x*3
+        # if orbit_x < 0.713:
+        #     delta_x = first_delta_x/2 
         orbit_x = converged_initial_states[0] + delta_x # Step the x by delta_x
         orbit_ydot = converged_initial_states[3] + delta_x*my_slope
         print(f"found x0:{converged_initial_states[0]}, found ydot: {converged_initial_states[3]}")
@@ -352,17 +361,17 @@ eig_table = (
     .cols_align(
         align="center"
     )
-    .tab_style(
-        style=style.fill(color="yellow"),
-        locations=loc.body(columns=["stability_3", "x0"], rows=[3, 4, 20, 21, 41, 42])
-    )
+    # .tab_style(
+    #     style=style.fill(color="yellow"),
+    #     locations=loc.body(columns=["stability_3", "x0"], rows=[3, 4, 20, 21, 41, 42])
+    # )
     .opt_table_outline()
     .opt_stylize()
     .opt_table_font(font=system_fonts(name="industrial"))
     .opt_horizontal_padding(scale=2)
-    .cols_hide(columns=["jacobi","eig_1_abs","eig_2_abs","eig_3_abs","eig_4_abs","eig_5_abs","eig_6_abs","eig_1","eig_2","eig_3","eig_4","eig_5","eig_6"])
+    .cols_hide(columns=["orbit", "jacobi","eig_1_abs","eig_2_abs","eig_3_abs","eig_4_abs","eig_5_abs","eig_6_abs","eig_1","eig_2","eig_3","eig_4","eig_5","eig_6"])
 )
-# eig_table.show()
+eig_table.show()
 
 
 oop_eigs_table = (
@@ -389,13 +398,16 @@ oop_eigs_table = (
         columns=["eig_5_abs","eig_6_abs"],
         n_sigfig=5
     )
+    .cols_hide(
+        columns=['orbit']
+    )
     .cols_align(
         align="center"
     )
-    .tab_style(
-        style=style.fill(color="yellow"),
-        locations=loc.body(columns=["eig_5_string", "eig_6_string", "eig_5_abs", "eig_6_abs", "x0"], rows=[3, 4, 20, 21, 41, 42])
-    )
+    # .tab_style(
+    #     style=style.fill(color="yellow"),
+    #     locations=loc.body(columns=["eig_5_string", "eig_6_string", "eig_5_abs", "eig_6_abs", "x0"], rows=[3, 4, 20, 21, 41, 42])
+    # )
     .opt_table_outline()
     .opt_stylize()
     .opt_table_font(font=system_fonts(name="industrial"))
@@ -431,10 +443,10 @@ eig_abs_table = (
     .cols_align(
         align="center"
     )
-    .tab_style(
-        style=style.fill(color="yellow"),
-        locations=loc.body(columns=["eig_5_abs", "eig_6_abs", "x0"], rows=[3, 4, 20, 21, 41, 42])
-    )
+    # .tab_style(
+    #     style=style.fill(color="yellow"),
+    #     locations=loc.body(columns=["eig_5_abs", "eig_6_abs", "x0"], rows=[3, 4, 20, 21, 41, 42])
+    # )
     .opt_table_outline()
     .opt_stylize()
     .opt_table_font(font=system_fonts(name="industrial"))
