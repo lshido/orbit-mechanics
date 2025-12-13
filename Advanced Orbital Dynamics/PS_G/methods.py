@@ -635,6 +635,9 @@ def calc_spatial_monodromy_half(stm_half):
 def calc_stability_index(lambda_i, lambda_j):
     return 1/2*(lambda_i + lambda_j)
 
+def calc_stability_recip(lambda_i):
+    return 1/2*(lambda_i + 1/lambda_i)
+
 def build_A_matrix_collinear(mu,x_L,y_L,z_L):
     # Calc the partials using the current x and y values
     d = ((x_L + mu)**2 + y_L**2 + z_L**2)**(1/2)

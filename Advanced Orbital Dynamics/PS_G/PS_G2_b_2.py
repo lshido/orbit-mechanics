@@ -62,16 +62,16 @@ delta_x = -0.001 # step in x
 starting_x_1 = 0.822915
 ydot_guess_1 =  0.131296
 
-starting_x_2 = 0.780915
-ydot_guess_2 =  0.445412
+starting_x_2 = 0.781915
+ydot_guess_2 =  0.442038
 
 starting_x_3 = 0.712415
 ydot_guess_3 =  0.611142
 
-orbit_x = starting_x_1
-orbit_ydot = ydot_guess_1
+orbit_x = starting_x_3
+orbit_ydot = ydot_guess_3
 # Use the arrival states for xi (x0, y0, vx0, vy0) as the starting x
-n_orbits = 2
+n_orbits = 1
 for orbit in range(n_orbits):
     print(f"starting x0:{orbit_x}, starting ydot: {orbit_ydot}")
     iterations, tf, arrival_states, converged_initial_states = find_halfperiod(orbit_x, orbit_ydot, mu, tolerance=1e-12)
