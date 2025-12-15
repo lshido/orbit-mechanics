@@ -298,7 +298,7 @@ x_y_chart = alt.Chart(df_prop).mark_line(clip=True,strokeWidth=2).encode(
 ).properties(
     width=400,
     height=400,
-    title=["Stable Negative Half-Manifold (x-y plane)",f"({ps}, Lillian Shido)"]
+    title=["Stable and Unstable Manifold Trajectories for Halo Orbit Half-Manifold (x-y plane)",f"({ps}, Lillian Shido)"]
 )
 x_y_chart_layer = alt.layer(x_y_chart, orbit_x_y, moon_x_y, earth_x_y, L1_x_y).resolve_scale(color='independent')
 x_y_chart_layer.save(f'stable and unstable manifolds_x_y{ps}.png', ppi=200)
@@ -314,7 +314,7 @@ y_z_chart = alt.Chart(df_prop).mark_line(clip=True,strokeWidth=2).encode(
 ).properties(
     width=400,
     height=400,
-    title=["Stable Negative Half-Manifold (y-z plane)",f"({ps}, Lillian Shido)"]
+    title=["Stable and Unstable Manifold Trajectories for Halo Orbit Half-Manifold (y-z plane)",f"({ps}, Lillian Shido)"]
 )
 y_z_chart_layer = alt.layer(y_z_chart, orbit_y_z, moon_y_z, earth_y_z, L1_y_z).resolve_scale(color='independent')
 y_z_chart_layer.save(f'stable and unstable manifolds_y_z{ps}.png', ppi=200)
@@ -330,7 +330,7 @@ x_z_chart = alt.Chart(df_prop).mark_line(clip=True,strokeWidth=2).encode(
 ).properties(
     width=400,
     height=400,
-    title=["Stable Negative Half-Manifold (x-z plane)",f"({ps}, Lillian Shido)"]
+    title=["Stable and Unstable Manifold Trajectories for Halo Orbit Half-Manifold (x-z plane)",f"({ps}, Lillian Shido)"]
 )
 x_z_chart_layer = alt.layer(x_z_chart, orbit_x_z, moon_x_z, earth_x_z, L1_x_z).resolve_scale(color='independent')
 x_z_chart_layer.save(f'stable and unstable manifolds_x_z{ps}.png', ppi=200)
