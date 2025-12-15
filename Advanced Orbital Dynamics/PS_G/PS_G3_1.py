@@ -158,6 +158,25 @@ for stability_label in ['stable','unstable']:
             'vz':[vz0]
         })
         df_step_off = pd.concat([df_step_off, step_off_data], ignore_index=True)
+step_off_table = (
+    GT(df_step_off)
+    .tab_header(
+        title=md(f"Initial Conditions of Step-Off Points to Propagate Manifold Trajectories of Selected L1 Halo ({ps}, Lillian Shido)")
+    )
+    .fmt_number(
+        columns=["x","y","z","vx","vy","vz"],
+        n_sigfig=6
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+step_off_table.show()
+
 
 # Propagate the negative and positive manifolds for stable and unstable 
 def crossxEventMoon(t, sv, mu):
@@ -196,37 +215,84 @@ for row in df_step_off.iterrows():
     })
     df_prop = pd.concat([df_prop, prop_data], ignore_index=True)
 
-pdb.set_trace()
-
-x_min = 0.75
-x_max = 0.95
+x_min = -0.6
+x_max = 1.2
 y_lim = (x_max-x_min)/2
 z_lim = (x_max-x_min)/2
 
-moon_loc = alt.Chart(moon).mark_point(filled=True,size=50,clip=True).encode(
+moon_x_y = alt.Chart(moon).mark_point(filled=True,size=50,clip=True).encode(
     x='x:Q',
     y='y:Q',
     color=alt.Color('name:N', scale=alt.Scale(domain=['Moon'], range=['gray'])).title(None)
 )
+moon_y_z = alt.Chart(moon).mark_point(filled=True,size=50,clip=True).encode(
+    x='y:Q',
+    y='z:Q',
+    color=alt.Color('name:N', scale=alt.Scale(domain=['Moon'], range=['gray'])).title(None)
+)
+moon_x_z = alt.Chart(moon).mark_point(filled=True,size=50,clip=True).encode(
+    x='x:Q',
+    y='z:Q',
+    color=alt.Color('name:N', scale=alt.Scale(domain=['Moon'], range=['gray'])).title(None)
+)
 
-L1_loc = alt.Chart(L1).mark_point(filled=True,size=30,clip=True).encode(
+L1_x_y = alt.Chart(L1).mark_point(filled=True,size=30,clip=True).encode(
     x='x:Q',
     y='y:Q',
     color=alt.Color('name:N', scale=alt.Scale(domain=['L1'], range=['darkgreen'])).title(None)
 )
+L1_y_z = alt.Chart(L1).mark_point(filled=True,size=30,clip=True).encode(
+    x='y:Q',
+    y='z:Q',
+    color=alt.Color('name:N', scale=alt.Scale(domain=['L1'], range=['darkgreen'])).title(None)
+)
+L1_x_z = alt.Chart(L1).mark_point(filled=True,size=30,clip=True).encode(
+    x='x:Q',
+    y='z:Q',
+    color=alt.Color('name:N', scale=alt.Scale(domain=['L1'], range=['darkgreen'])).title(None)
+)
 
-earth_loc = alt.Chart(earth).mark_point(filled=True,size=30,clip=True).encode(
+earth_x_y = alt.Chart(earth).mark_point(filled=True,size=30,clip=True).encode(
     x='x:Q',
     y='y:Q',
     color=alt.Color('name:N', scale=alt.Scale(domain=['Earth'], range=['darkblue'])).title(None)
 )
+earth_y_z = alt.Chart(earth).mark_point(filled=True,size=30,clip=True).encode(
+    x='y:Q',
+    y='z:Q',
+    color=alt.Color('name:N', scale=alt.Scale(domain=['Earth'], range=['darkblue'])).title(None)
+)
+earth_x_z = alt.Chart(earth).mark_point(filled=True,size=30,clip=True).encode(
+    x='x:Q',
+    y='z:Q',
+    color=alt.Color('name:N', scale=alt.Scale(domain=['Earth'], range=['darkblue'])).title(None)
+)
+
+orbit_x_y = alt.Chart(orbit).mark_line(strokeWidth=2,clip=True).encode(
+    x='x:Q',
+    y='y:Q',
+    color=alt.Color('name:N', scale=alt.Scale(domain=['halo_1'], range=['red'])).title(None),
+    order='t'
+)
+orbit_y_z = alt.Chart(orbit).mark_line(strokeWidth=2,clip=True).encode(
+    x='y:Q',
+    y='z:Q',
+    color=alt.Color('name:N', scale=alt.Scale(domain=['halo_1'], range=['red'])).title(None),
+    order='t'
+)
+orbit_x_z = alt.Chart(orbit).mark_line(strokeWidth=2,clip=True).encode(
+    x='x:Q',
+    y='z:Q',
+    color=alt.Color('name:N', scale=alt.Scale(domain=['halo_1'], range=['red'])).title(None),
+    order='t'
+)
 
 # x-y plane chart
 x_y_chart = alt.Chart(df_prop).mark_line(clip=True,strokeWidth=2).encode(
-    # x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
-    x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
-    # y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
-    y=alt.Y('y:Q', axis=alt.Axis(title='y [non-dim]')),
+    x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
+    # x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
+    y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
+    # y=alt.Y('y:Q', axis=alt.Axis(title='y [non-dim]')),
     color=alt.Color('name:N', scale=alt.Scale(scheme='darkmulti')).title(None),
     order='t'
 ).properties(
@@ -234,15 +300,15 @@ x_y_chart = alt.Chart(df_prop).mark_line(clip=True,strokeWidth=2).encode(
     height=400,
     title=["Stable Negative Half-Manifold (x-y plane)",f"({ps}, Lillian Shido)"]
 )
-x_y_chart_layer = alt.layer(x_y_chart, moon_loc, earth_loc, L1_loc).resolve_scale(color='independent')
+x_y_chart_layer = alt.layer(x_y_chart, orbit_x_y, moon_x_y, earth_x_y, L1_x_y).resolve_scale(color='independent')
 x_y_chart_layer.save(f'stable and unstable manifolds_x_y{ps}.png', ppi=200)
 
 # y-z plane chart
 y_z_chart = alt.Chart(df_prop).mark_line(clip=True,strokeWidth=2).encode(
-    # x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
-    x=alt.X('y:Q', axis=alt.Axis(title='y [non-dim]')),
-    # y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
-    y=alt.Y('z:Q', axis=alt.Axis(title='z [non-dim]')),
+    x=alt.X('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
+    # x=alt.X('y:Q', axis=alt.Axis(title='y [non-dim]')),
+    y=alt.Y('z:Q', scale=alt.Scale(domain=[-z_lim,z_lim]), axis=alt.Axis(title='z [non-dim]')),
+    # y=alt.Y('z:Q', axis=alt.Axis(title='z [non-dim]')),
     color=alt.Color('name:N', scale=alt.Scale(scheme='darkmulti')).title(None),
     order='t'
 ).properties(
@@ -250,15 +316,15 @@ y_z_chart = alt.Chart(df_prop).mark_line(clip=True,strokeWidth=2).encode(
     height=400,
     title=["Stable Negative Half-Manifold (y-z plane)",f"({ps}, Lillian Shido)"]
 )
-y_z_chart_layer = alt.layer(y_z_chart).resolve_scale(color='independent')
+y_z_chart_layer = alt.layer(y_z_chart, orbit_y_z, moon_y_z, earth_y_z, L1_y_z).resolve_scale(color='independent')
 y_z_chart_layer.save(f'stable and unstable manifolds_y_z{ps}.png', ppi=200)
 
 # x-z plane chart
 x_z_chart = alt.Chart(df_prop).mark_line(clip=True,strokeWidth=2).encode(
-    # x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
-    x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
-    # y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
-    y=alt.Y('z:Q', axis=alt.Axis(title='z [non-dim]')),
+    x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
+    # x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
+    y=alt.Y('z:Q', scale=alt.Scale(domain=[-z_lim,z_lim]), axis=alt.Axis(title='z [non-dim]')),
+    # y=alt.Y('z:Q', axis=alt.Axis(title='z [non-dim]')),
     color=alt.Color('name:N', scale=alt.Scale(scheme='darkmulti')).title(None),
     order='t'
 ).properties(
@@ -266,7 +332,7 @@ x_z_chart = alt.Chart(df_prop).mark_line(clip=True,strokeWidth=2).encode(
     height=400,
     title=["Stable Negative Half-Manifold (x-z plane)",f"({ps}, Lillian Shido)"]
 )
-x_z_chart_layer = alt.layer(x_z_chart, moon_loc, earth_loc, L1_loc).resolve_scale(color='independent')
+x_z_chart_layer = alt.layer(x_z_chart, orbit_x_z, moon_x_z, earth_x_z, L1_x_z).resolve_scale(color='independent')
 x_z_chart_layer.save(f'stable and unstable manifolds_x_z{ps}.png', ppi=200)
 
 # 3-D chart
@@ -283,9 +349,9 @@ fig.update_layout(
     title=dict(text=f"Stable and Unstable Manifolds in L1 Halo ({ps}, Lillian Shido)", font=dict(size=30), automargin=True, yref='paper'),
     legend=dict(title=dict(text=None)),
     scene = dict(
-        # xaxis=dict(range=[x_min, x_max]),
-        # yaxis=dict(range=[-y_lim,y_lim]),
-        # zaxis=dict(range=[-z_lim,z_lim]),
+        xaxis=dict(range=[x_min, x_max]),
+        yaxis=dict(range=[-y_lim,y_lim]),
+        zaxis=dict(range=[-z_lim,z_lim]),
         aspectratio = dict(x=1,y=1,z=1),
         aspectmode='manual'  
     ),
