@@ -1,4 +1,4 @@
-ps = "G4 part a"
+ps = "G4 part d"
 # Author: Lillian Shido
 # Date: 12/15/2025
 
@@ -186,7 +186,7 @@ for row in orbit_desired_jc.iterrows():
         my_eigenvectors_list.append(eigenvectors[:,i])
     my_eigenvectors = np.array(my_eigenvectors_list)
     last_eigenvectors = deepcopy(my_eigenvectors)
-    for enum, f in enumerate(range(0, 100, 5)):
+    for enum, f in enumerate(range(0, 100, 1)):
         fixed_points[enum] = dict()
         fixed_point_prop = solve_ivp(spatial_ode, [t0, f/100*period], last_IC, args=(mu,), rtol=1e-12,atol=1e-14)
         # Set the new t0 
@@ -312,41 +312,63 @@ step_off_table = (
 # step_off_table.show()
 
 # Propagate the negative and positive manifolds for stable and unstable 
-def crossxEventMoon(t, sv, mu):
-    return sv[1] if sv[0] > x_Moon else np.nan
-crossxEventMoon.terminal = True
+def cross_xMoon(t, sv, mu):
+    # return sv[1] if sv[0] == x_Moon else np.nan
+    return sv[0] - x_Moon
+cross_xMoon.terminal = True
 
 def crossxEventEarth(t, sv, mu):
     return sv[1] if sv[0] < x_Earth else np.nan
 crossxEventEarth.terminal = True
-events_list = [crossxEventEarth, crossxEventMoon]
+events_list = [cross_xMoon]
 df_prop = pd.DataFrame()
+df_map = pd.DataFrame()
 prop_length = 5*period
 for row in df_step_off.iterrows():
-    IC = [
-        row[1]['x'], row[1]['y'], row[1]['z'], row[1]['vx'], row[1]['vy'], row[1]['vz'],
-        1,0,0,0,0,0, # Identity matrix for phi ICs
-        0,1,0,0,0,0,
-        0,0,1,0,0,0,
-        0,0,0,1,0,0,
-        0,0,0,0,1,0,
-        0,0,0,0,0,1
-    ]
-    if row[1]['stability']=='unstable':
-        propagation_time = prop_length
-    if row[1]['stability']=='stable':
-        propagation_time = -prop_length
-    prop = solve_ivp(spatial_ode, [0, propagation_time], IC, events=events_list, args=(mu,), rtol=1e-12,atol=1e-14)
-    prop_data = pd.DataFrame({
-        'name': row[1]['name'],
-        'stability':row[1]['stability'],
-        'manifold':row[1]['manifold'],
-        't':prop.t,
-        'x':prop.y[0],
-        'y':prop.y[1],
-        'z':prop.y[2]
-    })
-    df_prop = pd.concat([df_prop, prop_data], ignore_index=True)
+    if (row[1]['type']=='L1_Lyapunov' and row[1]['stability']=='unstable' and row[1]['manifold']=='negative') or (row[1]['type'] =='L2_Lyapunov' and row[1]['stability']=='stable' and row[1]['manifold']=='positive'):
+        IC = [
+            row[1]['x'], row[1]['y'], row[1]['z'], row[1]['vx'], row[1]['vy'], row[1]['vz'],
+            1,0,0,0,0,0, # Identity matrix for phi ICs
+            0,1,0,0,0,0,
+            0,0,1,0,0,0,
+            0,0,0,1,0,0,
+            0,0,0,0,1,0,
+            0,0,0,0,0,1
+        ]
+        if row[1]['stability']=='unstable':
+            propagation_time = prop_length
+        if row[1]['stability']=='stable':
+            propagation_time = -prop_length
+        prop = solve_ivp(spatial_ode, [0, propagation_time], IC, events=events_list, args=(mu,), rtol=1e-12,atol=1e-14)
+        if row[1]['stability']=='unstable':
+            time = prop.t
+            event_time = prop.t_events[0][0]
+        if row[1]['stability']=='stable':
+            time = -prop.t
+            event_time = -prop.t_events[0][0]
+        map_data = pd.DataFrame({
+            'name': row[1]['name'],
+            'stability':row[1]['stability'],
+            'manifold':row[1]['manifold'],
+            't':[event_time],
+            'x':[prop.y_events[0][0][0]],
+            'y':[prop.y_events[0][0][1]],
+            'z':[prop.y_events[0][0][2]],
+            'vx':[prop.y_events[0][0][3]],
+            'vy':[prop.y_events[0][0][4]],
+            'vz':[prop.y_events[0][0][5]]
+        })
+        df_map = pd.concat([df_map, map_data], ignore_index=True)
+        prop_data = pd.DataFrame({
+            'name': row[1]['name'],
+            'stability':row[1]['stability'],
+            'manifold':row[1]['manifold'],
+            't':time,
+            'x':prop.y[0],
+            'y':prop.y[1],
+            'z':prop.y[2]
+        })
+        df_prop = pd.concat([df_prop, prop_data], ignore_index=True)
 
 # Calculate the distance between the trajectory and earth or moon
 def calc_distance(x,y,z,specified_point):
@@ -529,21 +551,22 @@ step_off = alt.Chart(df_step_off).mark_point(filled=True,size=30,clip=True).enco
 )
 
 # x-y plane chart
-# x_y_chart = alt.Chart(df_prop).mark_line(clip=True,strokeWidth=1).encode(
-x_y_chart = alt.Chart(propagated_orbits).mark_line(clip=True,strokeWidth=1).encode(
+x_y_chart = alt.Chart(df_prop).mark_line(clip=True,strokeWidth=1).encode(
+# x_y_chart = alt.Chart(propagated_orbits).mark_line(clip=True,strokeWidth=1).encode(
     x=alt.X('x:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='x [non-dim]')),
     # x=alt.X('x:Q', axis=alt.Axis(title='x [non-dim]')),
     y=alt.Y('y:Q', scale=alt.Scale(domain=[-y_lim,y_lim]), axis=alt.Axis(title='y [non-dim]')),
     # y=alt.Y('y:Q', axis=alt.Axis(title='y [non-dim]')),
-    color=alt.Color('name:N', scale=alt.Scale(scheme='darkmulti')).title(None),
+    color=alt.Color('name:N', scale=alt.Scale(scheme='rainbow')).title(None),
     order='t'
 ).properties(
     width=400,
     height=400,
-    title=["L1 and L2 Lyapunovs with JC=3.15000 with fixed points",f"({ps}, Lillian Shido)"]
+    title=["L1 and L2 Manifold Flow to the Moon",f"({ps}, Lillian Shido)"]
 )
-x_y_chart_layer = alt.layer(x_y_chart, L1_x_y,L2_x_y, step_off, moon_x_y).resolve_scale(color='independent')
-x_y_chart_layer.save(f'lyapunovs_fixed_points {ps}.png', ppi=200)
+
+x_y_chart_layer = alt.layer(x_y_chart, L1_x_y, L2_x_y, moon_x_y).resolve_scale(color='independent')
+# x_y_chart_layer.save(f'Towards the Moon {ps}.png', ppi=200)
 
 # 3-D chart
 fig = px.line_3d(df_prop, x="x", y='y', z='z', color='name',
@@ -569,5 +592,50 @@ fig.update_layout(
     ),
 )
 # fig.show()
+
+# vy-y map plot
+map_chart = alt.Chart(df_map).mark_point(filled=True,size=30,clip=True).encode(
+# x_y_chart = alt.Chart(propagated_orbits).mark_line(clip=True,strokeWidth=1).encode(
+    # x=alt.X('y:Q', scale=alt.Scale(domain=[x_min,x_max]), axis=alt.Axis(title='y [non-dim]')),
+    x=alt.X('y:Q', axis=alt.Axis(title='y [non-dim]')),
+    y=alt.Y('vy:Q', scale=alt.Scale(domain=[-0.05,0.05]), axis=alt.Axis(title='vy [non-dim]')),
+    # y=alt.Y('vy:Q', axis=alt.Axis(title='vy [non-dim]')),
+    color=alt.Color('stability:N', scale=alt.Scale(domain=['stable', 'unstable'], range=['dodgerblue','red'])).title(None)
+).properties(
+    width=400,
+    height=400,
+    title=["Poincaré Map with hyperplane @ x_Moon",f"({ps}, Lillian Shido)"]
+)
+
+map_chart.save(f'{ps}_map.png', ppi=200)
+
+close_maps = df_map.iloc[['93','108']]
+closest_points_table = (
+    GT(close_maps)
+    .tab_header(
+        title=md(f"Points for Heteroclinic Connection ({ps}, Lillian Shido)")
+    )
+    .cols_label(
+        t="{{Time}}<br>[nd]",
+        x="{{x}}<br>[nd]",
+        y="{{y}}<br>[nd]",
+        z="{{z}}<br>[nd]",
+        vx="{{vx}}<br>[nd]",
+        vy="{{vy}}<br>[nd]",
+        vz="{{vz}}<br>[nd]"
+    )
+    .fmt_number(
+        columns=["t","x","y","z","vx","vy","vz"],
+        decimals=5
+    )
+    .cols_align(
+        align="center"
+    )
+    .opt_table_outline()
+    .opt_stylize()
+    .opt_table_font(font=system_fonts(name="industrial"))
+    .opt_horizontal_padding(scale=2)
+)
+closest_points_table.show()
 
 pdb.set_trace()
