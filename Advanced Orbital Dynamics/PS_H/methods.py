@@ -1,0 +1,763 @@
+from math import pi, sqrt
+import numpy as np
+from scipy.integrate import solve_ivp
+import pdb
+import pandas as pd
+
+def system_properties(mu_major,mu_minor, a):
+    mu = mu_minor/(mu_major+mu_minor)
+    x_major = -mu
+    x_minor = 1-mu
+    l_char = a
+    t_char = sqrt(l_char**3/(mu_major+mu_minor))
+    return mu,l_char, t_char, x_major, x_minor
+
+def calc_error(actual, ideal):
+    return abs(actual-ideal)/abs(ideal)
+
+def calc_L1(mu):
+    gamma = 0.2
+    tolerance = 1e-12
+    counter = 0
+    while True:
+        counter = counter + 1
+        f = 1-mu-gamma-((1-mu)/(1-gamma)**2)+(mu/gamma**2)
+        f_prime = -1-(2*(1-mu)/(1-gamma)**3)-(2*mu/gamma**3)
+        if abs(f) > tolerance:
+            gamma = gamma - f/f_prime;
+            continue
+        else:
+            x = 1 - mu - gamma
+            # # Add check for accleration
+            # d_x = x*a+mu
+            # r_x = x*a-1+mu
+            # d = ((x*a+mu)**2)**(1/2)
+            # r = ((x*a-1+mu)**2)**(1/2)
+            # accel = -(1-mu)/d**3*d_x - mu/r**3*r_x
+            # # Add check for partial wrt gamma
+            # partial = (1-mu)/(1-gamma)**2 - mu/(gamma)**2 - (1-mu-gamma)
+            x_L1 = x
+            y_L1 = 0
+            counter = 0
+            break
+    return x_L1, y_L1
+
+# Calculate the location of L2
+def calc_L2(mu):
+    gamma = 1e-6
+    tolerance=1e-12
+    counter = 0
+    while True:
+        counter = counter + 1
+        f = -(((1-mu)/(1+gamma)**2)+(mu/gamma**2)-1+mu-gamma)
+        f_prime = ((2*(1-mu))/(1+gamma)**3)+((2*mu)/(gamma**3))+1
+        if abs(f) > tolerance:
+            gamma = gamma - f/f_prime
+            continue
+        else:
+            x = 1 - mu + gamma
+            # # Add check for accleration
+            # d_x = x*a+mu
+            # r_x = x*a-1+mu
+            # d = ((x*a+mu)**2)**(1/2)
+            # r = ((x*a-1+mu)**2)**(1/2)
+            # accel = -(1-mu)/d**3*d_x - mu/r**3*r_x
+            # # Add check for partial wrt x
+            # partial = -((1-mu)/(x+mu)**2) - mu/(x-1+mu)**2 + x
+            x_L2 = x
+            y_L2 = 0
+            counter = 0
+            break
+    return x_L2, y_L2
+
+# Calculate the Eigenvalues
+def calc_libration_eigenvalues(mu, x_L, y_L):
+    d = ((x_L+mu)**2 + y_L**2)**(1/2)
+    r = ((x_L-1+mu)**2 + y_L**2)**(1/2)
+    U_xx = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*(x_L+mu)**2/d**5 + 3*mu*(x_L-1+mu)**2/r**5
+    U_yy = 1 - (1-mu)/d**3 - mu/r**3
+    B_1 = 2 - (U_xx + U_yy)/2
+    B_2_squared = -U_xx*U_yy
+    s = (B_1 + (B_1**2 + B_2_squared)**(1/2))**(1/2)
+    B_3 = (s**2 + U_xx)/(2*s)
+    big_Lambda_1 = -B_1 + (B_1**2 + B_2_squared)**(1/2)
+    big_Lambda_2 = -B_1 - (B_1**2 + B_2_squared)**(1/2)
+    lambda_1 = (big_Lambda_1)**(1/2) # real
+    lambda_2 = -(big_Lambda_1)**(1/2) # real
+    lambda_3 = (big_Lambda_2)**(1/2) # imaginary
+    lambda_4 = -(big_Lambda_2)**(1/2) # imaginary
+    period = 2*pi/s
+    B_2 = B_2_squared**(1/2)
+    return lambda_1, lambda_2, lambda_3, lambda_4, B_1, B_2, B_3, s, period
+
+def calc_out_of_plane_eigenvalues(mu,x_L,y_L):
+    d = ((x_L+mu)**2 + y_L**2)**(1/2)
+    r = ((x_L-1+mu)**2 + y_L**2)**(1/2)
+    U_zz = -(1-mu)/d**3 - mu/r**3
+    lambda_1 = (-abs(U_zz))**(1/2)
+    lambda_2 = -(-abs(U_zz))**(1/2)
+    return lambda_1, lambda_2
+
+def calc_initial_velocities(xi_0, eta_0, x_L, y_L, mu):
+    """
+    Calculates the initial velocities around the collinear libration points.
+    
+    Args:
+        xi_0: x-direction distance offset from the libration point
+        eta_0: y-direction distance offset from the libration point
+        x_L: The x value of the libration point
+        y_L: The y value of the libration point
+        mu: The mu value for the system
+
+    Returns:
+        xi_dot: The initial velocity in the xi direction
+        eta_dot: The initial velocity in the eta direction
+    """
+    d = sqrt((x_L+mu)**2 + y_L**2)
+    r = sqrt((x_L-1+mu)**2 + y_L**2)
+    U_xx = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*(x_L+mu)**2/d**5 + 3*mu*(x_L-1+mu)**2/r**5
+    U_yy = 1 - (1-mu)/d**3 - mu/r**3
+    B_1 = 2 - (U_xx + U_yy)/2
+    B_2_squared = -U_xx*U_yy
+    s = (B_1 + (B_1**2 + B_2_squared)**(1/2))**(1/2)
+    B_3 = (s**2 + U_xx)/(2*s)
+    xi_dot_0 = eta_0*s/B_3
+    eta_dot_0 = -B_3*xi_0*s
+    return xi_dot_0, eta_dot_0
+
+def planar_eoms(t,sv,mu):
+    
+    # Set up the EOM ODEs
+    eoms = [
+        sv[2],
+        sv[3],
+        2*sv[3] + sv[0] - (1 - mu) * (sv[0] + mu) / ((sv[0] + mu)**2 + sv[1]**2)**(3/2)-\
+        mu * (sv[0] - 1 + mu) / ((sv[0] - 1 + mu)**2 + sv[1]**2)**(3/2),
+        -2*sv[2] + sv[1] - (1 - mu) * sv[1] / ((sv[0] + mu)**2 + sv[1]**2)**(3/2) -\
+        mu * sv[1]/((sv[0] - 1 + mu)**2 + sv[1]**2)**(3/2)
+    ]
+    return eoms
+
+def planar_ode(t,sv,mu):
+    # Set up the EOM ODEs
+    eoms = [
+        sv[2],
+        sv[3],
+        2*sv[3] + sv[0] - (1 - mu) * (sv[0] + mu) / ((sv[0] + mu)**2 + sv[1]**2)**(3/2)-\
+        mu * (sv[0] - 1 + mu) / ((sv[0] - 1 + mu)**2 + sv[1]**2)**(3/2),
+        -2*sv[2] + sv[1] - (1 - mu) * sv[1] / ((sv[0] + mu)**2 + sv[1]**2)**(3/2) -\
+        mu * sv[1]/((sv[0] - 1 + mu)**2 + sv[1]**2)**(3/2)
+    ]
+    # Calc the partials using the current x and y values
+    d = sqrt((sv[0]+mu)**2 + sv[1]**2);
+    r = sqrt((sv[0]-1+mu)**2 + sv[1]**2);
+    U_xx = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*(sv[0]+mu)**2/d**5 + 3*mu*(sv[0]-1+mu)**2/r**5;
+    U_yy = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*sv[1]**2/d**5 + 3*mu*sv[1]**2/r**5;
+    U_xy = 3*(1-mu)*(sv[0]+mu)*sv[1]/d**5 + 3*mu*(sv[0]-1+mu)*sv[1]/r**5;
+
+    # Set up the STM ODEs
+    stm = [
+    sv[12],
+    sv[13],
+    sv[14],
+    sv[15],
+    sv[16],
+    sv[17],
+    sv[18],
+    sv[19],
+    U_xx*sv[4] + U_xy*sv[8] + 2*sv[16],
+    U_xx*sv[5] + U_xy*sv[9] + 2*sv[17],
+    U_xx*sv[6] + U_xy*sv[10] + 2*sv[18],
+    U_xx*sv[7] + U_xy*sv[11] + 2*sv[19],
+    U_xy*sv[4] + U_yy*sv[8] - 2*sv[12],
+    U_xy*sv[5] + U_yy*sv[9] - 2*sv[13],
+    U_xy*sv[6] + U_yy*sv[10] - 2*sv[14],
+    U_xy*sv[7] + U_yy*sv[11] - 2*sv[15]
+    ]
+    # Combine them into one big matrix
+    combined = eoms + stm
+    return combined
+
+def spatial_eoms(t,sv, mu):
+    # Set up the EOM ODEs
+    d = ((sv[0] + mu)**2 + sv[1]**2 + sv[2]**2)**(1/2)
+    r = ((sv[0] - 1 + mu)**2 + sv[1]**2 + sv[2]**2)**(1/2)
+    eoms = [
+        sv[3],
+        sv[4],
+        sv[5],
+        2*sv[4] + sv[0] - (1 - mu) * (sv[0] + mu) / d**3 -\
+        mu * (sv[0] - 1 + mu) / r**3,
+        -2*sv[3] + sv[1] - (1 - mu) * sv[1] / d**3 -\
+        mu * sv[1]/r**3,
+        -(1-mu)*sv[2]/d**3 - mu*sv[2]/r**3
+    ]
+    return eoms
+
+def spatial_ode(t,sv,mu):
+    # Set up the EOM ODEs
+    eoms = spatial_eoms(t,sv,mu)
+
+    # Calc the partials using the current x and y values
+    d = ((sv[0] + mu)**2 + sv[1]**2 + sv[2]**2)**(1/2)
+    r = ((sv[0] - 1 + mu)**2 + sv[1]**2 + sv[2]**2)**(1/2)
+    U_xx = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*(sv[0]+mu)**2/d**5 + 3*mu*(sv[0]-1+mu)**2/r**5
+    U_yy = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*sv[1]**2/d**5 + 3*mu*sv[1]**2/r**5
+    U_zz = -(1-mu)/d**3 - mu/r**3 + 3*(1-mu)*sv[2]**2/d**5 + 3*mu*sv[2]**2/r**5
+    U_xy = 3*(1-mu)*(sv[0]+mu)*sv[1]/d**5 + 3*mu*(sv[0]-1+mu)*sv[1]/r**5
+    U_xz = 3*(1-mu)*(sv[0]+mu)*sv[2]/d**5 + 3*mu*(sv[0]-1+mu)*sv[2]/r**5
+    U_yz = 3*(1-mu)*sv[1]*sv[2]/d**5 + 3*mu*sv[1]*sv[2]/r**5
+    
+    # Build A matrix
+    quad_1 = np.zeros((3,3))
+    quad_2 = np.identity(3)
+    quad_3 = np.array([
+        [U_xx,U_xy,U_xz],
+        [U_xy,U_yy,U_yz],
+        [U_xz,U_yz,U_zz]
+    ])
+    quad_4 = np.array([
+        [0,2,0],
+        [-2,0,0],
+        [0,0,0]
+    ])
+    A = np.bmat([
+        [quad_1, quad_2],
+        [quad_3, quad_4]
+    ])
+    # Set up the STM ODEs
+    phi = sv[6:42].reshape(6,6)
+    stm = A*phi
+    # Combine them into one big matrix
+    combined = eoms + np.squeeze(stm.reshape(-1)).tolist()[0]
+    return combined
+
+def spatial_2bp_eoms(t,sv,mu,r):
+    # Set up the EOM ODEs
+    eoms = [
+        sv[3],
+        sv[4],
+        sv[5],
+        -mu*sv[0]/r**3,
+        -mu*sv[1]/r**3,
+        -mu*sv[2]/r**3
+    ]
+    return eoms
+
+def spatial_2bp_ode(t,sv,mu,r):
+    # Set up the EOM ODEs
+    eoms = spatial_2bp_eoms(t,sv,mu,r)
+
+    # Calc the partials using the current x and y values
+    A11 = -mu/r**3 + 3*mu*sv[0]**2/r**5
+    A12 = 3*mu*sv[0]*sv[1]/r**5
+    A13 = 3*mu*sv[0]*sv[2]/r**5
+    A21 = 3*mu*sv[1]*sv[0]/r**5
+    A22 = -mu/r**3 + 3*mu*sv[1]**2/r**5
+    A23 = 3*mu*sv[1]*sv[2]/r**5
+    A31 = 3*mu*sv[2]*sv[0]/r**5
+    A32 = 3*mu*sv[2]*sv[1]/r**5
+    A33 = -mu/r**3 + 3*mu*sv[2]**2/r**5
+    
+    # Build A matrix
+    quad_1 = np.zeros((3,3))
+    quad_2 = np.identity(3)
+    quad_3 = np.array([
+        [A11, A12, A13],
+        [A21, A22, A23],
+        [A31, A32, A33]
+    ])
+    quad_4 = np.zeros((3,3))
+    A = np.bmat([
+        [quad_1, quad_2],
+        [quad_3, quad_4]
+    ])
+    # Set up the STM ODEs
+    phi = sv[6:42].reshape(6,6)
+    stm = A*phi
+    # Combine them into one big matrix
+    combined = eoms + np.squeeze(stm.reshape(-1)).tolist()[0]
+    return combined
+
+def crossxEvent(t, sv, mu):
+    return sv[1] # Return value of y
+crossxEvent.terminal = 2
+
+def eval_2bp_acceleration(x,y,z,mu,r):
+    a_x = -mu*x/r**3
+    a_y = -mu*y/r**3
+    a_z = -mu*z/r**3
+    return a_x, a_y, a_z
+
+def eval_acceleration(x,y,xdot,ydot,mu):
+    # Simply evaluate the EOMs with the position and velocity
+    a_x = 2*ydot + x - (1 - mu) * (x + mu) / ((x + mu)**2 + y**2)**(3/2)-\
+        mu * (x - 1 + mu) / ((x - 1 + mu)**2 + y**2)**(3/2)
+    a_y = -2*xdot + y - (1 - mu) * y / ((x + mu)**2 + y**2)**(3/2) -\
+        mu * y/((x - 1 + mu)**2 + y**2)**(3/2)
+    return a_x, a_y
+
+def eval_spatial_acceleration(x,y,z,xdot,ydot,mu):
+    # Simply evaluate the EOMs with the position and velocity
+    d = ((x + mu)**2 + y**2 + z**2)**(1/2)
+    r = ((x - 1 + mu)**2 + y**2 + z**2)**(1/2)
+    a_x = 2*ydot + x - (1 - mu) * (x + mu) / d**3 -\
+        mu * (x - 1 + mu) / r**3
+    a_y = -2*xdot + y - (1 - mu) * y / d**3 -\
+        mu * y/r**3
+    a_z = -(1-mu)*z/d**3 - mu*z/r**3
+    return a_x, a_y, a_z
+
+def eval_kinematic(x0,y0,xdot_0,ydot_0,a_x, a_y,t_span):
+    # Evaluate the kinematic equations with the time
+    xdot = xdot_0 + a_x*t_span
+    ydot = ydot_0 + a_y*t_span
+    x = x0 + xdot_0*t_span
+    y = y0 + ydot_0*t_span
+    return x,y,xdot,ydot
+
+def eval_3d_kinematic(x0,y0,z0,xdot_0,ydot_0,zdot_0,a_x,a_y,a_z,t_span):
+    # Evaluate the kinematic equations with the time
+    xdot = xdot_0 + a_x*t_span
+    ydot = ydot_0 + a_y*t_span
+    zdot = zdot_0 + a_z*t_span
+    x = x0 + xdot_0*t_span
+    y = y0 + ydot_0*t_span
+    z = z0 + zdot_0*t_span
+    return x,y,z,xdot,ydot,zdot
+
+def calc_Jacobi(mu, x, y, vx, vy):
+    d = sqrt((x+mu)**2 + y**2)
+    r = sqrt((x-1+mu)**2 + y**2)
+    x_y_sq = (x**2+y**2)/2
+    term_1 = (1-mu)/d
+    term_2 = mu/r
+    pseudo_U = term_1 + term_2 + x_y_sq
+    v_squared = vx**2 + vy**2
+    C = 2*pseudo_U - v_squared
+    return C
+
+def calc_spatial_Jacobi(mu, x, y, z, vx, vy, vz):
+    d = sqrt((x+mu)**2 + y**2 + z**2)
+    r = sqrt((x-1+mu)**2 + y**2 + z**2)
+    x_y_sq = (x**2+y**2)/2
+    term_1 = (1-mu)/d
+    term_2 = mu/r
+    pseudo_U = term_1 + term_2 + x_y_sq
+    v_squared = vx**2 + vy**2 + vz**2
+    C = 2*pseudo_U - v_squared
+    return C
+
+def calc_velocity_from_Jacobi(C, mu, x, y, z):
+    d = sqrt((x+mu)**2 + y**2 + z**2)
+    r = sqrt((x-1+mu)**2 + y**2 + z**2)
+    x_y_sq = (x**2+y**2)/2
+    term_1 = (1-mu)/d
+    term_2 = mu/r
+    pseudo_U = term_1 + term_2 + x_y_sq
+    v_squared = 2*pseudo_U - C
+    return sqrt(v_squared)
+
+
+def find_halfperiod(starting_x, ydot_guess, mu, tolerance=1e-12, max_iterations=50):
+    """
+    Calculates the resulting half period states for a perpindicular x-axis crossing
+    
+    args:
+        starting_x: starting x location that you want to propagate half period for 
+        ydot_guess: the guessed ydot to start the propagation
+        mu: the mu value for the system
+        tolerance: convergence tolerance for the targeter, default: 1e-12
+        max_iterations: maximum number of iterations before terminating, default=50
+
+    returns:
+        iterations: number of iterations targeter took to converge. 50 is the maximum
+        tf: half period
+        xf: x at arrival
+        yf: y at arrival
+        vxf: xdot at arrival
+        vyf: ydot at arrival
+    """
+    print(f"Looking for the initial conditions for half-period with initial guesses starting x = {starting_x} and vy guess = {ydot_guess}")
+    x0 = starting_x # Initial x guess 
+    vy0 = ydot_guess
+    
+    counter = 0
+    while True:
+        IC_guess = [
+            x0, 0, 0, vy0, # Initial states
+            1,0,0,0, # Identity matrix for phi ICs
+            0,1,0,0,
+            0,0,1,0,
+            0,0,0,1
+        ]
+        counter = counter + 1
+        # Step 1: Using ICs, propagate EOM+STM until second x-axis cross, get STM, get xdot, ydot
+        prop = solve_ivp(planar_ode, [0, 50*pi], IC_guess, events=crossxEvent, args=(mu,), rtol=1e-12,atol=1e-14)
+        stm = prop.y[4:20,-1].reshape(4,4) # turn into 4x4 phi matrix
+        tf = prop.t_events[0][1]
+        phi_34 = stm[2,3]
+        phi_24 = stm[1,3]
+        rf = prop.y[0:2,-1].reshape(2,1) # position at tf, turn into 2x1 vector
+        vf = prop.y[2:4,-1].reshape(2,1) # velocity at tf, turn into 2x1 vector
+        vxf = prop.y[2,-1] # get xdot to compare against tolerance
+        vyf = prop.y[3,-1] # get ydot to calculate the acceleration
+        # print for info
+        # print(f"{counter}, tf: {tf}, x:{IC_guess[0]}, y:{IC_guess[1]}, vx:{IC_guess[2]}, vy0:{IC_guess[3]}")
+        # Check if the vxf is close to 0 within acceptable margins
+        if abs(vxf) > tolerance and counter <= max_iterations: # If not, recalculate the delta_v0 and try again
+            # Calc the acceleration in x
+            a_x, a_y = eval_acceleration(rf[0,0], rf[1,0], vxf, vyf, mu)
+            # Step 3: Calc new delta_vy0
+            delta_vy0 = -vxf / (phi_34 - phi_24*(a_x/vyf))
+            # Step 4: Use new deltas_ydot_t to calc new ICs
+            if delta_vy0 > 0.1:
+                delta_vy0 = delta_vy0/3
+            vy0 = vy0 + delta_vy0
+            continue
+        else: # If error is within acceptable margins, break out of iterative loop
+            arrival_states = [rf[0,0], rf[1,0], vf[0,0], vf[1,0]]
+            converged_initial_states = [IC_guess[0], IC_guess[1], IC_guess[2], IC_guess[3]]            
+            break
+    return counter, tf, arrival_states, converged_initial_states
+
+def find_spatial_halfperiod(starting_x, z_guess, ydot_guess, mu, tolerance=1e-12, max_iterations=50):
+    """
+    Calculates the resulting half period states for a 3-dimensional perpindicular x-axis crossing
+    
+    args:
+        starting_x: starting x location that you want to propagate half period for 
+        z_guess: the guessed z to start the propagation
+        ydot_guess: the guessed ydot to start the propagation
+        mu: the mu value for the system
+        tolerance: convergence tolerance for the targeter, default: 1e-12
+        max_iterations: maximum number of iterations before terminating, default=50
+
+    returns:
+        counter: number of iterations targeter took to converge. 50 is the maximum
+        tf: half period
+        arrival_states: list of values of the final states
+        converged_initial_states: list of values of the converged initial states
+    """
+    print(f"Looking for the initial conditions for half-period with initial guesses starting x = {starting_x}, z= {z_guess}, and vy guess = {ydot_guess}")
+    x0 = starting_x # Starting x
+    z0 = z_guess # Initial z guess
+    vy0 = ydot_guess # Initial ydot guess
+    
+    counter = 0
+    while True:
+        IC_guess = [
+            x0, 0, z0, 0, vy0, 0,
+            1,0,0,0,0,0, # Identity matrix for phi ICs
+            0,1,0,0,0,0,
+            0,0,1,0,0,0,
+            0,0,0,1,0,0,
+            0,0,0,0,1,0,
+            0,0,0,0,0,1
+        ]
+        counter = counter + 1
+        # Step 1: Using ICs, propagate EOM+STM until second x-axis cross, get STM, get xdot, ydot
+        prop = solve_ivp(spatial_ode, [0, 50*pi], IC_guess, events=crossxEvent, args=(mu,), rtol=1e-12,atol=1e-14)
+        stm = prop.y[6:42,-1].reshape(6,6) # turn into 6x6 phi matrix
+        tf = prop.t_events[0][1]
+        phi_43 = stm[3,2]
+        phi_45 = stm[3,4]
+        phi_63 = stm[5,2]
+        phi_65 = stm[5,4]
+        phi_23 = stm[1,2]
+        phi_25 = stm[1,4]
+        rf = prop.y[0:3,-1].reshape(3,1) # position at tf, turn into 3x1 vector
+        vf = prop.y[3:6,-1].reshape(3,1) # velocity at tf, turn into 3x1 vector
+        xf = prop.y[0,-1]
+        yf = prop.y[1,-1]
+        zf = prop.y[2,-1]
+        vxf = prop.y[3,-1] # get xdot to compare against tolerance
+        vyf = prop.y[4,-1] # get ydot to calculate the acceleration
+        vzf = prop.y[5,-1] 
+        # Check if the vxf is close to 0 within acceptable margins
+        if (abs(vxf) > tolerance or abs(vzf) > tolerance) and counter <= max_iterations: # If not, recalculate the delta_v0 and try again
+            # Calc the acceleration in x
+            a_x, a_y, a_z = eval_spatial_acceleration(xf, yf, zf, vxf, vyf, mu)
+            # Step 3: Calc new delta_vy0
+            term_1 = phi_43 - a_x*phi_23/vyf
+            term_2 = phi_45 - a_x*phi_25/vyf
+            term_3 = phi_63 - a_z*phi_23/vyf
+            term_4 = phi_65 - a_z*phi_25/vyf
+            a = np.array([[term_1, term_2],[term_3, term_4]])
+            b = np.array([-vxf,-vzf])
+            sol = np.linalg.solve(a,b)
+            delta_z0 = sol[0]
+            delta_vy0 = sol[1]
+            # Step 4: Use new deltas_ydot_t to calc new ICs
+            if delta_vy0 > 0.01:
+                delta_vy0 = delta_vy0/10
+            if delta_z0 > 0.001:
+                delta_z0 = delta_z0/10
+            vy0 = vy0 + delta_vy0
+            z0 = z0 + delta_z0
+            continue
+        else: # If error is within acceptable margins, break out of iterative loop
+            arrival_states = [rf[0,0], rf[1,0], rf[2,0], vf[0,0], vf[1,0], vf[2,0]]
+            converged_initial_states = [IC_guess[0], IC_guess[1], IC_guess[2], IC_guess[3], IC_guess[4], IC_guess[5]]            
+            break
+    return counter, tf, arrival_states, converged_initial_states
+
+def find_spatial_halfperiod_fixed_z(x_guess, starting_z, ydot_guess, mu, tolerance=1e-12, max_iterations=50):
+    """
+    Calculates the resulting half period states for a 3-dimensional perpindicular x-axis crossing
+    
+    args:
+        x_guess: starting x location that you want to propagate half period for 
+        starting_z: the guessed z to start the propagation
+        ydot_guess: the guessed ydot to start the propagation
+        mu: the mu value for the system
+        tolerance: convergence tolerance for the targeter, default: 1e-12
+        max_iterations: maximum number of iterations before terminating, default=50
+
+    returns:
+        counter: number of iterations targeter took to converge. 50 is the maximum
+        tf: half period
+        arrival_states: list of values of the final states
+        converged_initial_states: list of values of the converged initial states
+    """
+    print(f"Looking for the initial conditions for half-period with initial guesses starting x = {x_guess}, z= {starting_z}, and vy guess = {ydot_guess}")
+    x0 = x_guess # Starting x
+    z0 = starting_z # Initial z guess
+    vy0 = ydot_guess # Initial ydot guess
+    
+    counter = 0
+    while True:
+        IC_guess = [
+            x0, 0, z0, 0, vy0, 0,
+            1,0,0,0,0,0, # Identity matrix for phi ICs
+            0,1,0,0,0,0,
+            0,0,1,0,0,0,
+            0,0,0,1,0,0,
+            0,0,0,0,1,0,
+            0,0,0,0,0,1
+        ]
+        counter = counter + 1
+        # Step 1: Using ICs, propagate EOM+STM until second x-axis cross, get STM, get xdot, ydot
+        prop = solve_ivp(spatial_ode, [0, 50*pi], IC_guess, events=crossxEvent, args=(mu,), rtol=1e-12,atol=1e-14)
+        stm = prop.y[6:42,-1].reshape(6,6) # turn into 6x6 phi matrix
+        tf = prop.t_events[0][1]
+        phi_41 = stm[3,0]
+        phi_45 = stm[3,4]
+        phi_61 = stm[5,0]
+        phi_65 = stm[5,4]
+        phi_21 = stm[1,0]
+        phi_25 = stm[1,4]
+        rf = prop.y[0:3,-1].reshape(3,1) # position at tf, turn into 3x1 vector
+        vf = prop.y[3:6,-1].reshape(3,1) # velocity at tf, turn into 3x1 vector
+        xf = prop.y[0,-1]
+        yf = prop.y[1,-1]
+        zf = prop.y[2,-1]
+        vxf = prop.y[3,-1] # get xdot to compare against tolerance
+        vyf = prop.y[4,-1] # get ydot to calculate the acceleration
+        vzf = prop.y[5,-1] # get ydot to calculate the acceleration
+        # print for info
+        # print(f"{counter}, tf: {tf}, x:{IC_guess[0]}, y:{IC_guess[1]}, vx:{IC_guess[2]}, vy0:{IC_guess[3]}")
+        # Check if the vxf is close to 0 within acceptable margins
+        if (abs(vxf) > tolerance or abs(vzf) > tolerance) and counter <= max_iterations: # If not, recalculate the delta_v0 and try again
+            # Calc the acceleration in x
+            a_x, a_y, a_z = eval_spatial_acceleration(xf, yf, zf, vxf, vyf, mu)
+            # Step 3: Calc new delta_vy0
+            term_1 = phi_41 - a_x*phi_21/vyf
+            term_2 = phi_45 - a_x*phi_25/vyf
+            term_3 = phi_61 - a_z*phi_21/vyf
+            term_4 = phi_65 - a_z*phi_25/vyf
+            a = np.array([[term_1, term_2],[term_3, term_4]])
+            b = np.array([-vxf,-vzf])
+            sol = np.linalg.solve(a,b)
+            delta_x0 = sol[0]
+            delta_vy0 = sol[1]
+            # Step 4: Use new deltas_ydot_t to calc new ICs
+            if delta_vy0 > 0.01:
+                delta_vy0 = delta_vy0/10
+            if delta_x0 > 0.001:
+                delta_x0 = delta_x0/5
+            vy0 = vy0 + delta_vy0
+            x0 = x0 + delta_x0
+            continue
+        else: # If error is within acceptable margins, break out of iterative loop
+            arrival_states = [rf[0,0], rf[1,0], rf[2,0], vf[0,0], vf[1,0], vf[2,0]]
+            converged_initial_states = [IC_guess[0], IC_guess[1], IC_guess[2], IC_guess[3], IC_guess[4], IC_guess[5]]            
+            break
+    return counter, tf, arrival_states, converged_initial_states
+
+def calc_poincare_exponents(eig, period):
+    omega = 1/period*np.log(eig)
+    return omega
+
+def calc_planar_monodromy_half(stm_half):
+    G = np.array([
+    [1,0,0,0],
+    [0,-1,0,0],
+    [0,0,-1,0],
+    [0,0,0,1]
+    ])
+    I = np.identity(2)
+    omega = np.array([
+        [0,1],
+        [-1,0]
+        ])
+    term1 = np.bmat([
+        [np.zeros((2,2)) , -I],
+        [I , -2*omega] 
+        ])
+    term2 = np.transpose(stm_half)
+    term3 = np.bmat([
+        [-2*omega , I],
+        [-I , np.zeros((2,2))]
+    ])
+    monodromy_half = G*term1*term2*term3*G*stm_half
+    return monodromy_half
+
+def calc_spatial_monodromy_half(stm_half):
+    G = np.array([
+        [1,0,0,0,0,0],
+        [0,-1,0,0,0,0],
+        [0,0,1,0,0,0],
+        [0,0,0,-1,0,0],
+        [0,0,0,0,1,0],
+        [0,0,0,0,0,-1]
+        ])
+    I = np.identity(3)
+    omega = np.array([
+        [0,1,0],
+        [-1,0,0],
+        [0,0,0]
+        ])
+    term1 = np.bmat([
+        [np.zeros((3,3)) , -I],
+        [I , -2*omega] 
+        ])
+    term2 = np.transpose(stm_half)
+    term3 = np.bmat([
+        [-2*omega , I],
+        [-I , np.zeros((3,3))]
+    ])
+    try:
+        monodromy_half = G*term1*term2*term3*G*stm_half
+    except:
+        pdb.set_trace()
+    return monodromy_half
+
+def calc_stability_index(lambda_i, lambda_j):
+    return 1/2*(lambda_i + lambda_j)
+
+def calc_stability_recip(lambda_i):
+    return 1/2*(lambda_i + 1/lambda_i)
+
+def build_A_matrix_collinear(mu,x_L,y_L,z_L):
+    # Calc the partials using the current x and y values
+    d = ((x_L + mu)**2 + y_L**2 + z_L**2)**(1/2)
+    r = ((x_L - 1 + mu)**2 + y_L**2 + z_L**2)**(1/2)
+    U_xx = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*(x_L+mu)**2/d**5 + 3*mu*(x_L-1+mu)**2/r**5
+    U_yy = 1 - (1-mu)/d**3 - mu/r**3 + 3*(1-mu)*y_L**2/d**5 + 3*mu*y_L**2/r**5
+    U_zz = -(1-mu)/d**3 - mu/r**3 + 3*(1-mu)*z_L**2/d**5 + 3*mu*z_L**2/r**5
+    U_xy = 3*(1-mu)*(x_L+mu)*y_L/d**5 + 3*mu*(x_L-1+mu)*y_L/r**5
+    U_xz = 3*(1-mu)*(x_L+mu)*z_L/d**5 + 3*mu*(x_L-1+mu)*z_L/r**5
+    U_yz = 3*(1-mu)*y_L*z_L/d**5 + 3*mu*y_L*z_L/r**5
+    quad1 = np.zeros((3,3))
+    quad2 = np.identity(3)
+    quad3 = np.array([
+        [U_xx, U_xy, U_xz],
+        [U_xy, U_yy, U_yz],
+        [U_xz, U_yz, U_zz]
+    ])
+    quad4 = np.array([
+        [0,2,0],
+        [-2,0,0],
+        [0,0,0]
+    ])
+    A = np.bmat([
+        [quad1,quad2],
+        [quad3,quad4]
+    ])
+    return A
+
+def calc_ZVC_Jacobi(mu, x, y):
+    d = sqrt((x+mu)**2 + y**2)
+    r = sqrt((x-1+mu)**2 + y**2)
+    C = 2*(1-mu)/d + 2*mu/r + x**2 + y**2
+    return C
+
+def calc_spatial_Jacobi_array(mu, row):
+    d = sqrt((row['x']+mu)**2 + row['y']**2 + 0**2)
+    r = sqrt((row['x']-1+mu)**2 + row['y']**2 + 0**2)
+    x_y_sq = (row['x']**2+row['y']**2)/2
+    term_1 = (1-mu)/d
+    term_2 = mu/r
+    pseudo_U = term_1 + term_2 + x_y_sq
+    v_squared = row['vx']**2 + row['vy']**2 + 0**2
+    C = 2*pseudo_U - v_squared
+    return C
+
+# Seek half-period with specific jacobi
+def find_halfperiod_with_jacobi(desired_JC, starting_x, ydot_guess, mu, first_delta_x, jc_tolerance=1e-6, max_orbits=200):
+    # Use the arrival states for xi (x0, y0, vx0, vy0) as the starting x
+    n_orbits = max_orbits
+    orbit_desired_jc = pd.DataFrame()
+    orbit_x = starting_x
+    orbit_ydot = ydot_guess
+    df_orbits = pd.DataFrame()
+    for orbit in range(n_orbits):
+        print(f"starting x0:{orbit_x}, starting ydot: {orbit_ydot}")
+        iterations, tf, arrival_states, converged_initial_states = find_halfperiod(orbit_x, orbit_ydot, mu, tolerance=1e-12)
+        jacobi = calc_spatial_Jacobi(mu, converged_initial_states[0], converged_initial_states[1], 0,converged_initial_states[2], converged_initial_states[3],0)
+        delta_jc = desired_JC - jacobi
+        if abs(delta_jc) > jc_tolerance:
+            if orbit <= 1: # For the first two calculations, naively guess ydot is the same
+                orbit_x = converged_initial_states[0] + first_delta_x # Step the x by delta_x
+                orbit_ydot = converged_initial_states[3]
+                print(f"found x0:{converged_initial_states[0]}, found ydot: {converged_initial_states[3]}")
+                # Calc Jacobi
+                # Compile data
+                orbit_IC_data = pd.DataFrame({
+                    "orbit":[orbit],
+                    "iterations":[iterations],
+                    "tf":[tf],
+                    "x":[converged_initial_states[0]],
+                    "y":[converged_initial_states[1]],
+                    "vx":[converged_initial_states[2]],
+                    "vy":[converged_initial_states[3]],
+                    "jacobi":[jacobi]
+                })
+                df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
+            else:
+                # Calc the slope from the last pair of x0 and vy0
+                x_jc_slope = (df_orbits.iloc[-1]['x']-df_orbits.iloc[-2]['x'])/(df_orbits.iloc[-1]['jacobi']-df_orbits.iloc[-2]['jacobi'])
+                vy_x_slope = (df_orbits.iloc[-1]['vy']-df_orbits.iloc[-2]['vy'])/(df_orbits.iloc[-1]['x']-df_orbits.iloc[-2]['x'])
+                delta_x = delta_jc*x_jc_slope
+                orbit_x = converged_initial_states[0] + delta_x/5 # Step the x by delta_x
+                orbit_ydot = converged_initial_states[3] + delta_x/5*vy_x_slope
+                
+                # Compile data
+                orbit_IC_data = pd.DataFrame({
+                    "orbit":[orbit],
+                    "iterations":[iterations],
+                    "tf":[tf],
+                    "x":[converged_initial_states[0]],
+                    "y":[converged_initial_states[1]],
+                    "vx":[converged_initial_states[2]],
+                    "vy":[converged_initial_states[3]],
+                    "jacobi":[jacobi]
+                })
+                df_orbits = pd.concat([df_orbits, orbit_IC_data], ignore_index=True)
+        else:
+            orbit_desired_jc_data = pd.DataFrame({
+                "orbit":[orbit],
+                "iterations":[iterations],
+                "tf":[tf],
+                "x":[converged_initial_states[0]],
+                "y":[converged_initial_states[1]],
+                "vx":[converged_initial_states[2]],
+                "vy":[converged_initial_states[3]],
+                "jacobi":[jacobi]
+            })
+            orbit_desired_jc = pd.concat([orbit_desired_jc, orbit_desired_jc_data], ignore_index=True)
+            print("Found orbit with desired jacobi!")
+            break
+
+    return tf, converged_initial_states
